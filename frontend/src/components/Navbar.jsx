@@ -1,0 +1,133 @@
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { HospitalIcon, AlertTriangleIcon, FileTextIcon, CalendarIcon, StethoscopeIcon } from './Icons';
+
+export default function Navbar() {
+  const { user, profiles, activeProfile, switchProfile, logout } = useAuth();
+  const location = useLocation();
+
+  return (
+    <>
+      {/* Global Demonstration Environment Top Bar */}
+      <div className="demo-banner">
+        <div>
+          <span className="demo-badge">Techthon 2026</span>
+          <span>Demonstration Environment — Synthetic Health Data (Visionet Techthon Round 2)</span>
+        </div>
+        <div>
+          <span>Sri Shakthi Institute of Engineering & Technology</span>
+        </div>
+      </div>
+
+      <nav className="navbar">
+        <div className="navbar-inner">
+          <Link to="/" className="brand-logo">
+            <HospitalIcon size={24} />
+            <span>MediBridge</span>
+          </Link>
+
+          <ul className="nav-links">
+            <li>
+              <Link to="/" className={`nav-item ${location.pathname === '/' ? 'active' : ''}`}>
+                Discover & Book
+              </Link>
+            </li>
+
+            {user?.role === 'patient' && (
+              <>
+                <li>
+                  <Link
+                    to="/patient-dashboard"
+                    className={`nav-item ${location.pathname === '/patient-dashboard' ? 'active' : ''}`}
+                  >
+                    <CalendarIcon size={16} /> Appointments & Vault
+                  </Link>
+                </li>
+              </>
+            )}
+
+            {user?.role === 'doctor' && (
+              <li>
+                <Link
+                  to="/doctor-portal"
+                  className={`nav-item ${location.pathname === '/doctor-portal' ? 'active' : ''}`}
+                >
+                  <StethoscopeIcon size={16} /> Doctor Portal
+                </Link>
+              </li>
+            )}
+
+            {(user?.role === 'hospital_admin' || user?.role === 'super_admin') && (
+              <li>
+                <Link
+                  to="/admin-console"
+                  className={`nav-item ${location.pathname === '/admin-console' ? 'active' : ''}`}
+                >
+                  Operations Console
+                </Link>
+              </li>
+            )}
+
+            <li>
+              <Link to="/emergency" className="btn btn-sm btn-danger">
+                <AlertTriangleIcon size={14} /> Emergency (108)
+              </Link>
+            </li>
+
+            {/* Patient Family Profile Switcher */}
+            {user?.role === 'patient' && profiles.length > 0 && (
+              <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.75rem', color: '#A0B3BD' }}>Profile:</span>
+                <select
+                  value={activeProfile?._id || ''}
+                  onChange={(e) => switchProfile(e.target.value)}
+                  style={{
+                    backgroundColor: '#1A3E4E',
+                    color: '#FFFFFF',
+                    border: '1px solid #28556B',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {profiles.map((p) => (
+                    <option key={p._id} value={p._id}>
+                      {p.fullName} ({p.relationship})
+                    </option>
+                  ))}
+                </select>
+              </li>
+            )}
+
+            {user ? (
+              <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    backgroundColor: '#1A3E4E',
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    color: '#D9EAE6'
+                  }}
+                >
+                  {user.role}
+                </span>
+                <button onClick={logout} className="btn btn-sm btn-secondary" style={{ padding: '2px 8px' }}>
+                  Logout
+                </button>
+              </li>
+            ) : (
+              <li>
+                <Link to="/login" className="btn btn-sm btn-primary">
+                  Login
+                </Link>
+              </li>
+            )}
+          </ul>
+        </div>
+      </nav>
+    </>
+  );
+}

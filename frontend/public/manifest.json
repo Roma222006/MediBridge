@@ -1,0 +1,16 @@
+{
+  "short_name": "MediBridge",
+  "name": "MediBridge Healthcare Coordination Platform",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/emergency",
+  "background_color": "#F5F7F6",
+  "theme_color": "#102D3A",
+  "display": "standalone",
+  "orientation": "portrait"
+}

@@ -1,0 +1,17 @@
+{
+  "name": "medibridge-platform",
+  "version": "1.0.0",
+  "description": "MediBridge - Healthcare Coordination Platform (Visionet Techthon 2026)",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "test": "npm --prefix backend test",
+    "build": "npm --prefix frontend run build",
+    "seed": "npm --prefix backend run seed",
+    "seed:search": "npm --prefix backend run seed:search"
+  },
+  "author": "Roma R, Ragavi R, Rithika KP (Sri Shakthi Institute of Engineering and Technology)",
+  "license": "ISC"
+}
