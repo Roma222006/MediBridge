@@ -11,9 +11,12 @@ import {
   AlertTriangle,
   ArrowRight,
   ShieldCheck,
-  CheckCircle2,
   Calendar,
-  BedDouble
+  BedDouble,
+  Activity,
+  Phone,
+  Stethoscope,
+  Sparkles
 } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import DemoAccountSwitcher from '../components/DemoAccountSwitcher';
@@ -27,7 +30,6 @@ export default function SearchPage() {
   const [specialty, setSpecialty] = useState('');
   const [scheme, setScheme] = useState('');
   const [sortBy, setSortBy] = useState('distance');
-  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
 
   // Default coordinates: Coimbatore (11.0168, 76.9558)
   const [userLocation, setUserLocation] = useState({ lat: 11.0168, lng: 76.9558 });
@@ -244,7 +246,7 @@ export default function SearchPage() {
         </div>
       )}
 
-      {/* Hospital Results: Single-Column Dense List with Dividers */}
+      {/* Hospital Results: Spacious, Well-Structured Hospital Cards */}
       {loading ? (
         <div className="card" style={{ padding: 'var(--space-8)', textAlign: 'center' }}>
           <p style={{ color: 'var(--text-muted)' }}>Querying real-time capacity and active schedules across network...</p>
@@ -257,151 +259,227 @@ export default function SearchPage() {
           </Button>
         </div>
       ) : (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          {hospitals.map((hospital, idx) => (
-            <article
-              key={hospital.id}
-              style={{
-                padding: 'var(--space-4) var(--space-5)',
-                borderBottom: idx < hospitals.length - 1 ? '1px solid var(--border)' : 'none',
-                display: 'grid',
-                gridTemplateColumns: '1.4fr 1.6fr auto',
-                gap: 'var(--space-4)',
-                alignItems: 'center'
-              }}
-            >
-              {/* Left Block: Facility Info, Distance, Specialties */}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                  <h3 style={{ fontSize: 'var(--text-card)', margin: 0 }}>
-                    <Link to={`/hospital/${hospital.id}`} style={{ color: 'var(--color-heading)', textDecoration: 'none' }}>
-                      {hospital.name}
+        <div className="hospital-discovery-list">
+          {hospitals.map((hospital) => {
+            const generalAvailable = hospital.bedCapacity?.general?.available ?? 0;
+            const generalTotal = hospital.bedCapacity?.general?.total ?? 1;
+            const icuAvailable = hospital.bedCapacity?.icu?.available ?? 0;
+            const icuTotal = hospital.bedCapacity?.icu?.total ?? 1;
+
+            const generalPct = Math.min(100, Math.round((generalAvailable / Math.max(1, generalTotal)) * 100));
+            const icuPct = Math.min(100, Math.round((icuAvailable / Math.max(1, icuTotal)) * 100));
+
+            return (
+              <article key={hospital.id} className="hospital-card">
+                {/* 1. Header Zone: Identity, Metadata, Pricing & CTA */}
+                <div className="hospital-card-header">
+                  <div className="hospital-card-identity">
+                    <div className="hospital-title-row">
+                      <h3 className="hospital-name">
+                        <Link to={`/hospital/${hospital.id}`}>
+                          {hospital.name}
+                        </Link>
+                      </h3>
+                      <span className="badge badge-info hospital-type-badge">
+                        {hospital.type.replace('_', ' ').toUpperCase()}
+                      </span>
+                      {hospital.bedCapacity.isStale && (
+                        <span className="badge badge-warning">
+                          <Clock size={11} strokeWidth={1.75} aria-hidden="true" />
+                          <span>STALE DATA</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="hospital-meta-row">
+                      <span className="hospital-meta-item">
+                        <MapPin size={14} className="hospital-meta-icon" aria-hidden="true" />
+                        <span>
+                          {hospital.address.area ? `${hospital.address.area}, ` : ''}
+                          {hospital.address.city}, {hospital.address.district}
+                        </span>
+                      </span>
+                      <span className="hospital-meta-dot">&bull;</span>
+                      <span className="hospital-meta-item">
+                        <Phone size={14} className="hospital-meta-icon" aria-hidden="true" />
+                        <span>{hospital.phone}</span>
+                      </span>
+                      {hospital.distanceKm && (
+                        <>
+                          <span className="hospital-meta-dot">&bull;</span>
+                          <span className="hospital-meta-item hospital-meta-distance">
+                            <strong>{hospital.distanceKm} km</strong> away
+                          </span>
+                        </>
+                      )}
+                      <span className="hospital-meta-dot">&bull;</span>
+                      <span className="hospital-meta-item">
+                        <Stethoscope size={14} className="hospital-meta-icon" aria-hidden="true" />
+                        <span>
+                          {hospital.doctorsCount > 0
+                            ? `${hospital.doctorsCount} Doctor${hospital.doctorsCount > 1 ? 's' : ''}`
+                            : 'OPD Care'}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Header Action & Pricing */}
+                  <div className="hospital-card-action">
+                    <div className="hospital-fee-tag">
+                      <span className="hospital-fee-label">Consultation Fee</span>
+                      <span className="hospital-fee-value">
+                        {hospital.minPrice > 0 ? `From ₹${hospital.minPrice}` : 'Free (Govt Facility)'}
+                      </span>
+                    </div>
+                    <Link
+                      to={`/hospital/${hospital.id}`}
+                      className="btn btn-primary hospital-cta-btn"
+                    >
+                      <span>View Doctors & Book Slots</span>
+                      <ArrowRight size={15} strokeWidth={2} aria-hidden="true" />
                     </Link>
-                  </h3>
-                  <span className="badge badge-info">
-                    {hospital.type.replace('_', ' ')}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginTop: '4px', fontSize: 'var(--text-label-md)', color: 'var(--text-muted)' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                    <MapPin size={13} strokeWidth={1.75} aria-hidden="true" />
-                    <span>{hospital.address.city}, {hospital.address.district}</span>
-                  </span>
-                  <span>&bull;</span>
-                  <span>{hospital.distanceKm ? `${hospital.distanceKm} km away` : 'Coimbatore'}</span>
-                  <span>&bull;</span>
-                  <span>Phone: {hospital.phone}</span>
-                </div>
-
-                {/* Diagnostic Services Sample */}
-                {hospital.servicesSample && hospital.servicesSample.length > 0 && (
-                  <div style={{ marginTop: '6px', fontSize: 'var(--text-label)', color: 'var(--text-muted)' }}>
-                    <span>Key Diagnostics: </span>
-                    <span style={{ color: 'var(--text)' }}>
-                      {hospital.servicesSample.map(s => s.name).join(', ')}
-                    </span>
                   </div>
-                )}
-              </div>
+                </div>
 
-              {/* Right Block: Live Capacity, Stale Warning, Next Slot, Fee, Schemes */}
-              <div>
-                {/* Stale Warning Banner if >120m */}
+                {/* 2. Stale Capacity Warning Alert Banner */}
                 {hospital.bedCapacity.isStale && (
-                  <div
-                    style={{
-                      backgroundColor: 'var(--status-warning-bg)',
-                      borderLeft: '3px solid var(--status-warning-accent)',
-                      padding: '4px 8px',
-                      marginBottom: '8px',
-                      fontSize: 'var(--text-label)',
-                      color: 'var(--status-warning-text)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <AlertTriangle size={13} strokeWidth={1.75} aria-hidden="true" />
-                    <span>Reported capacity update exceeds 2 hours ({hospital.bedCapacity.general.minutesAgo} min ago). Verify before travel.</span>
+                  <div className="hospital-stale-alert" role="alert">
+                    <AlertTriangle size={16} strokeWidth={1.75} aria-hidden="true" />
+                    <span>
+                      <strong>Capacity Alert:</strong> Last reported update was {hospital.bedCapacity.general.minutesAgo} minutes ago (&gt;2 hours). Please confirm availability with casualty prior to travel.
+                    </span>
                   </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--space-3)' }}>
-                  {/* General Beds */}
-                  <div>
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      General Beds
+                {/* 3. Metrics Grid: General Beds, ICU Beds, Next Open Slot, Schemes */}
+                <div className="hospital-metrics-grid">
+                  {/* Metric Box 1: General Ward Beds */}
+                  <div className="hospital-metric-box">
+                    <div className="hospital-metric-header">
+                      <BedDouble size={14} className="hospital-metric-icon" aria-hidden="true" />
+                      <span className="hospital-metric-label">General Beds</span>
+                    </div>
+                    <div className="hospital-metric-value-row">
+                      <span className="hospital-metric-number">{generalAvailable}</span>
+                      <span className="hospital-metric-total">/ {generalTotal} open</span>
+                    </div>
+                    <div className="hospital-metric-progress">
+                      <div
+                        className="hospital-metric-progress-fill"
+                        style={{
+                          width: `${generalPct}%`,
+                          backgroundColor: generalAvailable > 10 ? 'var(--status-success-accent)' : 'var(--status-warning-accent)'
+                        }}
+                      />
+                    </div>
+                    <span className="hospital-metric-subtext">
+                      Updated {hospital.bedCapacity?.general?.minutesAgo ?? 0} min ago
                     </span>
-                    <div style={{ fontWeight: '600', fontSize: 'var(--text-body-staff)', color: 'var(--text)' }}>
-                      {hospital.bedCapacity.general.available} / {hospital.bedCapacity.general.total} open
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                      Updated {hospital.bedCapacity.general.minutesAgo} min ago
-                    </div>
                   </div>
 
-                  {/* ICU Beds */}
-                  <div>
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      ICU Beds
+                  {/* Metric Box 2: ICU Critical Care */}
+                  <div className="hospital-metric-box">
+                    <div className="hospital-metric-header">
+                      <Activity size={14} className="hospital-metric-icon" aria-hidden="true" />
+                      <span className="hospital-metric-label">ICU Critical Care</span>
+                    </div>
+                    <div className="hospital-metric-value-row">
+                      <span
+                        className="hospital-metric-number"
+                        style={{
+                          color: icuAvailable > 0 ? 'var(--status-success-accent)' : 'var(--status-critical-solid)'
+                        }}
+                      >
+                        {icuAvailable}
+                      </span>
+                      <span className="hospital-metric-total">/ {icuTotal} open</span>
+                    </div>
+                    <div className="hospital-metric-progress">
+                      <div
+                        className="hospital-metric-progress-fill"
+                        style={{
+                          width: `${icuPct}%`,
+                          backgroundColor: icuAvailable > 0 ? 'var(--status-success-accent)' : 'var(--status-critical-solid)'
+                        }}
+                      />
+                    </div>
+                    <span className="hospital-metric-subtext">
+                      {icuAvailable > 0 ? 'Trauma triage ready' : 'Critical triage full'}
                     </span>
-                    <div style={{ fontWeight: '600', fontSize: 'var(--text-body-staff)', color: hospital.bedCapacity.icu.available > 0 ? 'var(--status-success-text)' : 'var(--status-critical-text)' }}>
-                      {hospital.bedCapacity.icu.available} / {hospital.bedCapacity.icu.total} open
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                      Updated {hospital.bedCapacity.icu.minutesAgo} min ago
-                    </div>
                   </div>
 
-                  {/* Next Slot */}
-                  <div>
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      Next Open Slot
-                    </span>
-                    {hospital.nextAvailableSlot ? (
-                      <div style={{ fontWeight: '600', color: 'var(--color-primary)', fontSize: 'var(--text-body-staff)' }}>
-                        {hospital.nextAvailableSlot.date} {hospital.nextAvailableSlot.startTime}
-                      </div>
-                    ) : (
-                      <div style={{ color: 'var(--status-critical-text)', fontSize: 'var(--text-label)' }}>
-                        No slots open
-                      </div>
-                    )}
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                      Fee: {hospital.minPrice > 0 ? `₹${hospital.minPrice}` : 'Free (Govt)'}
+                  {/* Metric Box 3: Next Available Slot */}
+                  <div className="hospital-metric-box">
+                    <div className="hospital-metric-header">
+                      <Calendar size={14} className="hospital-metric-icon" aria-hidden="true" />
+                      <span className="hospital-metric-label">Next Open Slot</span>
                     </div>
+                    <div className="hospital-metric-value-row">
+                      {hospital.nextAvailableSlot ? (
+                        <span className="hospital-slot-badge">
+                          {hospital.nextAvailableSlot.date} {hospital.nextAvailableSlot.startTime}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 'var(--text-label-md)', color: 'var(--status-critical-text)', fontWeight: '600' }}>
+                          No slots open
+                        </span>
+                      )}
+                    </div>
+                    <span className="hospital-metric-subtext">
+                      {hospital.nextAvailableSlot ? (
+                        <span className="badge badge-neutral" style={{ fontSize: '10px', padding: '1px 5px' }}>
+                          {hospital.nextAvailableSlot.type.replace('_', ' ').toUpperCase()}
+                        </span>
+                      ) : (
+                        'Check alternative dates'
+                      )}
+                    </span>
                   </div>
 
-                  {/* Supported Schemes */}
-                  <div>
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      Schemes
+                  {/* Metric Box 4: Insurance & Welfare Schemes */}
+                  <div className="hospital-metric-box">
+                    <div className="hospital-metric-header">
+                      <ShieldCheck size={14} className="hospital-metric-icon" aria-hidden="true" />
+                      <span className="hospital-metric-label">Insurance & Schemes</span>
+                    </div>
+                    <div className="hospital-schemes-wrap">
+                      {hospital.schemesSupported && hospital.schemesSupported.length > 0 ? (
+                        hospital.schemesSupported.map((sch) => (
+                          <span key={sch} className="badge badge-neutral hospital-scheme-tag">
+                            {sch.replace('_', ' ').toUpperCase()}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Direct Cash / Card</span>
+                      )}
+                    </div>
+                    <span className="hospital-metric-subtext">
+                      Verified institutional desk
                     </span>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
-                      {hospital.schemesSupported.map((sch) => (
-                        <span key={sch} className="badge badge-neutral" style={{ fontSize: '10px', padding: '1px 5px' }}>
-                          {sch.replace('_', ' ').toUpperCase()}
+                  </div>
+                </div>
+
+                {/* 4. Footer Zone: Diagnostic Facilities & Scans */}
+                {hospital.servicesSample && hospital.servicesSample.length > 0 && (
+                  <div className="hospital-card-footer">
+                    <div className="hospital-footer-title">
+                      <Sparkles size={13} style={{ color: 'var(--color-primary)' }} aria-hidden="true" />
+                      <span>Key Diagnostics & Scans:</span>
+                    </div>
+                    <div className="hospital-services-chips">
+                      {hospital.servicesSample.map((srv) => (
+                        <span key={srv.id} className="hospital-service-chip">
+                          <span>{srv.name}</span>
+                          <span className="hospital-service-chip-price">₹{srv.price}</span>
                         </span>
                       ))}
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* Action Column: Single Magenta Button */}
-              <div style={{ textAlign: 'right' }}>
-                <Link
-                  to={`/hospital/${hospital.id}`}
-                  className="btn btn-dense btn-primary"
-                  style={{ textDecoration: 'none' }}
-                >
-                  <span>View Doctors & Book Slots</span>
-                  <ArrowRight size={14} strokeWidth={1.75} aria-hidden="true" />
-                </Link>
-              </div>
-            </article>
-          ))}
+                )}
+              </article>
+            );
+          })}
         </div>
       )}
     </div>

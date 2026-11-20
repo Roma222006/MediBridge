@@ -984,3 +984,375 @@ tr.selected td {
     grid-template-columns: 1fr;
   }
 }
+
+/* ====================================================================
+   HOSPITAL DISCOVERY & CAPACITY CARDS (Clean, spacious, structured)
+   ==================================================================== */
+.hospital-discovery-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.hospital-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  box-shadow: none;
+  transition: border-color var(--motion-duration) var(--motion-ease), box-shadow var(--motion-duration) var(--motion-ease);
+}
+
+.hospital-card:hover {
+  border-color: var(--accent-soft);
+  box-shadow: 0 4px 16px rgba(112, 43, 89, 0.06);
+}
+
+/* 1. Header Zone */
+.hospital-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.hospital-card-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.hospital-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.hospital-name {
+  font-family: var(--font-heading);
+  font-size: var(--text-section);
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.hospital-name a {
+  color: var(--color-heading);
+  text-decoration: none;
+  transition: color var(--motion-duration) var(--motion-ease);
+}
+
+.hospital-name a:hover {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.hospital-type-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.hospital-meta-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--text-label-md);
+  color: var(--text-muted);
+}
+
+.hospital-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hospital-meta-icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.hospital-meta-dot {
+  color: var(--border-control);
+  font-size: 10px;
+}
+
+.hospital-meta-distance {
+  color: var(--color-heading);
+  font-weight: 600;
+}
+
+/* Header Action & Pricing */
+.hospital-card-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.hospital-fee-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.hospital-fee-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}
+
+.hospital-fee-value {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.hospital-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  white-space: nowrap;
+  padding: 0 var(--space-4);
+  height: 40px;
+}
+
+/* 2. Stale Alert Notice */
+.hospital-stale-alert {
+  background-color: var(--status-warning-bg);
+  border: 1px solid var(--status-warning-accent);
+  border-left: 4px solid var(--status-warning-accent);
+  border-radius: var(--radius-control);
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-label-md);
+  color: var(--status-warning-text);
+  line-height: 1.4;
+}
+
+.hospital-stale-alert svg {
+  flex-shrink: 0;
+}
+
+/* 3. Metrics Grid (4 structured columns) */
+.hospital-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-3);
+}
+
+.hospital-metric-box {
+  background-color: var(--bg-app);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 104px;
+}
+
+.hospital-metric-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hospital-metric-icon {
+  color: var(--color-heading);
+  flex-shrink: 0;
+}
+
+.hospital-metric-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hospital-metric-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.hospital-metric-number {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-heading);
+  line-height: 1.1;
+}
+
+.hospital-metric-total {
+  font-size: var(--text-label-md);
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.hospital-metric-progress {
+  width: 100%;
+  height: 4px;
+  background-color: var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.hospital-metric-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width 0.3s ease;
+}
+
+.hospital-metric-subtext {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: auto;
+  line-height: 1.3;
+}
+
+.hospital-slot-badge {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  line-height: 1.2;
+}
+
+.hospital-schemes-wrap {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.hospital-scheme-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+}
+
+/* 4. Footer Zone: Diagnostic Procedures & Scans */
+.hospital-card-footer {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.hospital-footer-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-label-md);
+  font-weight: 600;
+  color: var(--color-heading);
+  white-space: nowrap;
+}
+
+.hospital-services-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.hospital-service-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-badge);
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.hospital-service-chip-price {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Responsive Breakpoints for Hospital Discovery */
+@media (max-width: 1024px) {
+  .hospital-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .hospital-card {
+    padding: var(--space-4);
+  }
+
+  .hospital-card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hospital-card-action {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-top: var(--space-2);
+  }
+
+  .hospital-cta-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .hospital-fee-tag {
+    align-items: flex-start;
+  }
+
+  .hospital-metrics-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-2);
+  }
+
+  .hospital-metric-box {
+    padding: 10px 12px;
+    min-height: 96px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hospital-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hospital-card-action {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hospital-fee-tag {
+    align-items: center;
+    margin-bottom: var(--space-2);
+  }
+}
