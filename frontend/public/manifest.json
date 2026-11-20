@@ -9,8 +9,8 @@
     }
   ],
   "start_url": "/emergency",
-  "background_color": "#F5F7F6",
-  "theme_color": "#102D3A",
+  "background_color": "#FCEFED",
+  "theme_color": "#702B59",
   "display": "standalone",
   "orientation": "portrait"
 }

@@ -1,77 +1,49 @@
+@import './tokens.css';
+
 :root {
-  /* Brand Palette (WCAG 2.2 AA compliant) */
-  --color-primary-navy: #102D3A;
-  --color-primary-navy-dark: #0A1E27;
-  --color-primary-navy-light: #1A3E4E;
+  /* Legacy alias mappings referencing tokens.css (Zero Hex Codes) */
+  --color-primary-navy: var(--color-heading);
+  --color-primary-navy-dark: var(--color-heading);
+  --color-primary-navy-light: var(--bg-subtle);
   
-  --color-teal: #147D78;
-  --color-teal-hover: #0F635F;
-  --color-teal-light: #E7F3F1;
+  --color-teal: var(--color-primary);
+  --color-teal-hover: var(--color-primary-hover);
+  --color-teal-light: var(--bg-subtle);
   
-  --color-sage: #D9EAE6;
-  --color-sage-subtle: #EDF5F3;
-  --color-bg-offwhite: #F5F7F6;
-  --color-surface-white: #FFFFFF;
+  --color-sage: var(--bg-subtle);
+  --color-sage-subtle: var(--bg-app);
+  --color-bg-offwhite: var(--bg-app);
+  --color-surface-white: var(--surface);
   
-  --color-accent-gold: #D5A45B;
-  --color-accent-gold-light: #FAF3E6;
-  --color-accent-gold-dark: #9E7432;
+  --color-accent-gold: var(--status-warning-accent);
+  --color-accent-gold-light: var(--status-warning-bg);
+  --color-accent-gold-dark: var(--status-warning-text);
   
-  /* Restrained Semantic Status Colors */
-  --color-status-success: #1C744F;
-  --color-status-success-bg: #E8F5EE;
-  --color-status-warning: #9E6B18;
-  --color-status-warning-bg: #FCF4E6;
-  --color-status-danger: #A32828;
-  --color-status-danger-bg: #FDEEEE;
-  --color-status-info: #1B587A;
-  --color-status-info-bg: #E9F3F8;
+  --color-status-success: var(--status-success-text);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-warning: var(--status-warning-text);
+  --color-status-warning-bg: var(--status-warning-bg);
+  --color-status-danger: var(--status-critical-text);
+  --color-status-danger-bg: var(--status-critical-bg);
+  --color-status-info: var(--status-info-text);
+  --color-status-info-bg: var(--status-info-bg);
 
-  /* Neutrals & Borders */
-  --color-text-main: #102D3A;
-  --color-text-secondary: #4A5B63;
-  --color-text-muted: #72848D;
-  --color-border: #DCE3E1;
-  --color-border-subtle: #E8ECEB;
-  --color-divider: #E4EBE9;
+  --color-text-main: var(--text);
+  --color-text-secondary: var(--text-muted);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border);
+  --color-divider: var(--border);
 
-  /* Typography */
-  --font-heading: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --radius-sm: var(--radius-badge);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-card);
 
-  /* Type Scale */
-  --text-xs: 0.75rem;    /* 12px */
-  --text-sm: 0.875rem;   /* 14px */
-  --text-base: 1rem;     /* 16px */
-  --text-lg: 1.125rem;   /* 18px */
-  --text-xl: 1.25rem;    /* 20px */
-  --text-2xl: 1.5rem;    /* 24px */
-  --text-3xl: 1.875rem;  /* 30px */
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-modal: var(--shadow-overlay);
 
-  /* Spacing Scale */
-  --space-1: 0.25rem;   /* 4px */
-  --space-2: 0.5rem;    /* 8px */
-  --space-3: 0.75rem;   /* 12px */
-  --space-4: 1rem;      /* 16px */
-  --space-5: 1.25rem;   /* 20px */
-  --space-6: 1.5rem;    /* 24px */
-  --space-8: 2rem;      /* 32px */
-  --space-10: 2.5rem;   /* 40px */
-  --space-12: 3rem;     /* 48px */
-
-  /* Border Radii (Subtle, professional) */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-pill: 9999px;
-
-  /* Elevation (Clean, non-decorative) */
-  --shadow-sm: 0 1px 2px rgba(16, 45, 58, 0.05);
-  --shadow-md: 0 2px 4px rgba(16, 45, 58, 0.08);
-  --shadow-lg: 0 4px 12px rgba(16, 45, 58, 0.12);
-  --shadow-modal: 0 8px 24px rgba(16, 45, 58, 0.18);
-
-  /* Transitions */
-  --transition-fast: 150ms ease-in-out;
-  --transition-normal: 250ms ease-in-out;
+  --transition-fast: var(--motion-duration) var(--motion-ease);
+  --transition-normal: var(--motion-duration) var(--motion-ease);
 }
