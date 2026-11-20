@@ -2,7 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import StatusBadge from '../components/StatusBadge';
-import { FileTextIcon, AlertTriangleIcon, CheckCircleIcon, ShieldCheckIcon } from '../components/Icons';
+import PageHeader from '../components/PageHeader';
+import Button from '../components/ui/Button';
+import { Tabs } from '../components/ui/Tabs';
+import {
+  Calendar,
+  FileText,
+  Shield,
+  Activity,
+  AlertTriangle,
+  Upload,
+  CheckCircle2,
+  Video,
+  FileCheck,
+  Lock,
+  ArrowRight
+} from 'lucide-react';
 
 export default function PatientDashboardPage() {
   const { user, activeProfile } = useAuth();
@@ -11,7 +26,7 @@ export default function PatientDashboardPage() {
   const [vaultRecords, setVaultRecords] = useState([]);
   const [consents, setConsents] = useState([]);
   const [accessLogs, setAccessLogs] = useState([]);
-  const [activeTab, setActiveTab] = useState('appointments'); // appointments, vault, logs
+  const [activeTab, setActiveTab] = useState('appointments');
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadTitle, setUploadTitle] = useState('');
   const [uploadCategory, setUploadCategory] = useState('lab_report');
@@ -56,7 +71,7 @@ export default function PatientDashboardPage() {
         choice,
         replacementSlotId: slotId
       });
-      setMsg({ type: 'success', text: `Reassignment successfully resolved with choice: ${choice}` });
+      setMsg({ type: 'success', text: `Reassignment resolved: ${choice.replace(/_/g, ' ')}` });
       loadData();
     } catch (err) {
       setMsg({ type: 'error', text: err.response?.data?.error?.message || 'Resolution failed.' });
@@ -92,35 +107,45 @@ export default function PatientDashboardPage() {
   const handleRevokeConsent = async (consentId) => {
     try {
       await api.patch(`/vault/consent/${consentId}/revoke`, { reason: 'Patient initiated immediate revocation' });
-      setMsg({ type: 'success', text: 'Consent revoked immediately. Doctor file access is now blocked.' });
+      setMsg({ type: 'success', text: 'Consent revoked immediately. Clinical access blocked.' });
       loadData();
     } catch (err) {
       setMsg({ type: 'error', text: 'Failed to revoke consent.' });
     }
   };
 
-  return (
-    <div className="main-content">
-      <div style={{ marginBottom: '20px' }}>
-        <h2>Patient Care Portal & Health Vault</h2>
-        <p style={{ marginTop: '4px' }}>
-          Active Profile: <strong>{activeProfile?.fullName}</strong> ({activeProfile?.relationship}) &bull; Manage appointments, consent permissions, and view append-only access history.
-        </p>
-      </div>
+  const tabsConfig = [
+    { id: 'appointments', label: 'My Appointments', count: appointments.length, icon: Calendar },
+    { id: 'vault', label: 'Health Vault', count: vaultRecords.length, icon: FileText },
+    { id: 'consents', label: 'Doctor Consents', count: consents.length, icon: Shield },
+    { id: 'logs', label: 'Access Audit Logs', count: accessLogs.length, icon: Activity }
+  ];
 
+  return (
+    <div>
+      <PageHeader
+        breadcrumbs={[{ label: 'Patient Services', href: '/patient-dashboard' }, { label: 'Care Portal' }]}
+        title="Patient Care Portal & Health Vault"
+        subtitle={`Active Profile: ${activeProfile?.fullName || user?.name} (${activeProfile?.relationship || 'Self'}) • Family ID: ${activeProfile?._id || ''}`}
+      />
+
+      {/* Message Banner */}
       {msg && (
         <div
+          className={msg.type === 'success' ? 'badge badge-success' : 'badge badge-danger'}
           style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
             padding: '10px 14px',
-            borderRadius: '4px',
-            marginBottom: '16px',
-            fontSize: '0.875rem',
-            backgroundColor: msg.type === 'success' ? '#E8F5EE' : '#FDEEEE',
-            color: msg.type === 'success' ? '#1C744F' : '#A32828',
-            border: `1px solid ${msg.type === 'success' ? '#1C744F' : '#A32828'}`
+            marginBottom: 'var(--space-4)',
+            width: '100%',
+            fontSize: 'var(--text-body-staff)',
+            borderRadius: 'var(--radius-card)'
           }}
         >
-          {msg.text}
+          {msg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+          <span>{msg.text}</span>
         </div>
       )}
 
@@ -128,48 +153,59 @@ export default function PatientDashboardPage() {
       {pendingReassignments.length > 0 && (
         <div
           style={{
-            backgroundColor: '#FAF3E6',
-            border: '2px solid #D5A45B',
-            borderRadius: '8px',
-            padding: '16px 20px',
-            marginBottom: '24px'
+            backgroundColor: 'var(--status-warning-bg)',
+            border: '1px solid var(--status-warning-accent)',
+            borderRadius: 'var(--radius-card)',
+            padding: 'var(--space-4) var(--space-5)',
+            marginBottom: 'var(--space-6)'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#9E6B18' }}>
-            <AlertTriangleIcon size={20} />
-            <h3 style={{ fontSize: '1.125rem', color: '#9E6B18' }}>
-              Action Required: Doctor Leave Announced & Reassignment Pending
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--status-warning-text)' }}>
+            <AlertTriangle size={20} strokeWidth={1.75} aria-hidden="true" />
+            <h3 style={{ fontSize: 'var(--text-card)', color: 'var(--status-warning-text)', margin: 0 }}>
+              Action Required: Attending Physician on Leave & Appointment Reassignment
             </h3>
           </div>
-          <p style={{ margin: '8px 0 16px 0', fontSize: '0.875rem', color: '#102D3A' }}>
-            Your attending physician has an unavoidable medical absence. MediBridge has atomically preserved your care schedule with two certified options:
+          <p style={{ margin: '8px 0 16px 0', fontSize: 'var(--text-body-staff)', color: 'var(--text)' }}>
+            Your doctor has an unavoidable medical absence. MediBridge has preserved your slot with two certified options:
           </p>
 
           {pendingReassignments.map((appt) => (
-            <div key={appt._id} style={{ backgroundColor: '#FFFFFF', padding: '16px', borderRadius: '6px', border: '1px solid #DCE3E1', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <div
+              key={appt._id}
+              style={{
+                backgroundColor: 'var(--surface)',
+                padding: 'var(--space-4)',
+                borderRadius: 'var(--radius-control)',
+                border: '1px solid var(--border)',
+                marginBottom: 'var(--space-3)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 'var(--space-3)', flexWrap: 'wrap', gap: '8px' }}>
                 <div>
-                  <strong>Appointment {appt.referenceNumber}</strong> &bull; {appt.hospitalId?.name}
-                  <div style={{ fontSize: '0.8125rem', color: '#72848D' }}>
+                  <strong style={{ color: 'var(--color-heading)' }}>Appointment {appt.referenceNumber}</strong> &bull; {appt.hospitalId?.name}
+                  <div style={{ fontSize: 'var(--text-label-md)', color: 'var(--text-muted)' }}>
                     Original Doctor: {appt.doctorId?.name} &bull; Scheduled: {appt.date} at {appt.startTime}
                   </div>
                 </div>
                 <StatusBadge status="REASSIGNMENT_PENDING" />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-3)' }}>
                 {/* Option 1: Suggested Specialist */}
-                <div style={{ border: '1px solid #147D78', borderRadius: '6px', padding: '12px', backgroundColor: '#EDF5F3' }}>
-                  <div style={{ fontWeight: '600', fontSize: '0.875rem', color: '#147D78' }}>
+                <div style={{ border: '1px solid var(--color-primary)', borderRadius: 'var(--radius-control)', padding: 'var(--space-3)', backgroundColor: 'var(--bg-subtle)' }}>
+                  <div style={{ fontWeight: '600', fontSize: 'var(--text-body-staff)', color: 'var(--color-heading)' }}>
                     Option 1: Suggested Specialist
                   </div>
-                  <div style={{ fontSize: '0.8125rem', marginTop: '4px' }}>
+                  <div style={{ fontSize: 'var(--text-label-md)', marginTop: '4px', color: 'var(--text)' }}>
                     {appt.reassignmentDetails?.suggestedDoctorId?.name || 'Dr. M. Revathi (Cardiology)'}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#72848D' }}>
+                  <div style={{ fontSize: 'var(--text-label)', color: 'var(--text-muted)' }}>
                     Slot: {appt.date} at 10:30 AM
                   </div>
-                  <button
+                  <Button
+                    variant="primary"
+                    size="sm"
                     onClick={() =>
                       handleResolveReassignment(
                         appt._id,
@@ -177,25 +213,26 @@ export default function PatientDashboardPage() {
                         appt.reassignmentDetails?.suggestedSlotId?._id || appt.reassignmentDetails?.suggestedSlotId
                       )
                     }
-                    className="btn btn-sm btn-primary"
                     style={{ marginTop: '10px', width: '100%' }}
                   >
                     Accept Specialist
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Option 2: Same Doctor Reschedule */}
-                <div style={{ border: '1px solid #DCE3E1', borderRadius: '6px', padding: '12px', backgroundColor: '#FFFFFF' }}>
-                  <div style={{ fontWeight: '600', fontSize: '0.875rem', color: '#102D3A' }}>
+                <div style={{ border: '1px solid var(--border-control)', borderRadius: 'var(--radius-control)', padding: 'var(--space-3)', backgroundColor: 'var(--surface)' }}>
+                  <div style={{ fontWeight: '600', fontSize: 'var(--text-body-staff)', color: 'var(--color-heading)' }}>
                     Option 2: Same Doctor Next Date
                   </div>
-                  <div style={{ fontSize: '0.8125rem', marginTop: '4px' }}>
+                  <div style={{ fontSize: 'var(--text-label-md)', marginTop: '4px', color: 'var(--text)' }}>
                     Keep {appt.doctorId?.name}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#72848D' }}>
+                  <div style={{ fontSize: 'var(--text-label)', color: 'var(--text-muted)' }}>
                     Rescheduled to next available open OPD
                   </div>
-                  <button
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() =>
                       handleResolveReassignment(
                         appt._id,
@@ -203,28 +240,28 @@ export default function PatientDashboardPage() {
                         appt.reassignmentDetails?.suggestedSlotId?._id || appt.reassignmentDetails?.suggestedSlotId
                       )
                     }
-                    className="btn btn-sm btn-secondary"
                     style={{ marginTop: '10px', width: '100%' }}
                   >
                     Reschedule Same Doctor
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Option 3: Urgent Emergency */}
-                <div style={{ border: '1px solid #A32828', borderRadius: '6px', padding: '12px', backgroundColor: '#FDEEEE' }}>
-                  <div style={{ fontWeight: '600', fontSize: '0.875rem', color: '#A32828' }}>
-                    Emergency Case?
+                <div style={{ border: '1px solid var(--status-critical-bg)', borderRadius: 'var(--radius-control)', padding: 'var(--space-3)', backgroundColor: 'var(--status-critical-bg)' }}>
+                  <div style={{ fontWeight: '600', fontSize: 'var(--text-body-staff)', color: 'var(--status-critical-text)' }}>
+                    Urgent / Emergency Case?
                   </div>
-                  <div style={{ fontSize: '0.75rem', marginTop: '4px', color: '#4A5B63' }}>
-                    For acute symptoms, cancel routine visit and access direct trauma care.
+                  <div style={{ fontSize: 'var(--text-label)', marginTop: '4px', color: 'var(--status-critical-text)' }}>
+                    Cancel routine visit and route directly to trauma triage.
                   </div>
-                  <button
+                  <Button
+                    variant="danger"
+                    size="sm"
                     onClick={() => handleResolveReassignment(appt._id, 'EMERGENCY_REDIRECT')}
-                    className="btn btn-sm btn-danger"
                     style={{ marginTop: '10px', width: '100%' }}
                   >
                     Emergency Redirect (108)
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -233,41 +270,7 @@ export default function PatientDashboardPage() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid #DCE3E1', marginBottom: '20px' }}>
-        <button
-          onClick={() => setActiveTab('appointments')}
-          className="btn"
-          style={{
-            backgroundColor: activeTab === 'appointments' ? '#102D3A' : 'transparent',
-            color: activeTab === 'appointments' ? '#FFFFFF' : '#4A5B63',
-            borderRadius: '4px 4px 0 0'
-          }}
-        >
-          My Appointments ({appointments.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('vault')}
-          className="btn"
-          style={{
-            backgroundColor: activeTab === 'vault' ? '#102D3A' : 'transparent',
-            color: activeTab === 'vault' ? '#FFFFFF' : '#4A5B63',
-            borderRadius: '4px 4px 0 0'
-          }}
-        >
-          Health Vault & Consents ({vaultRecords.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('logs')}
-          className="btn"
-          style={{
-            backgroundColor: activeTab === 'logs' ? '#102D3A' : 'transparent',
-            color: activeTab === 'logs' ? '#FFFFFF' : '#4A5B63',
-            borderRadius: '4px 4px 0 0'
-          }}
-        >
-          Patient Access Log ({accessLogs.length})
-        </button>
-      </div>
+      <Tabs tabs={tabsConfig} activeTab={activeTab} onChange={setActiveTab} />
 
       {/* Tab 1: Appointments Table */}
       {activeTab === 'appointments' && (
@@ -288,14 +291,14 @@ export default function PatientDashboardPage() {
             <tbody>
               {appointments.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '30px' }}>
-                    No appointments booked yet.
+                  <td colSpan="8" style={{ textAlign: 'center', padding: 'var(--space-8)' }}>
+                    <p className="empty-state-message">No appointments booked yet.</p>
                   </td>
                 </tr>
               ) : (
                 appointments.map((appt) => (
                   <tr key={appt._id}>
-                    <td style={{ fontWeight: '700', color: '#102D3A' }}>{appt.referenceNumber}</td>
+                    <td style={{ fontWeight: '700', color: 'var(--color-heading)' }}>{appt.referenceNumber}</td>
                     <td>{appt.patientProfileId?.fullName}</td>
                     <td>{appt.hospitalId?.name}</td>
                     <td>{appt.doctorId?.name || appt.serviceId?.name}</td>
@@ -306,8 +309,13 @@ export default function PatientDashboardPage() {
                     </td>
                     <td>
                       {appt.type === 'consultation_tele' && ['CONFIRMED', 'CHECKED_IN', 'IN_CONSULTATION'].includes(appt.status) && (
-                        <a href={`/teleconsult/room/${appt._id}`} className="btn btn-sm btn-primary" style={{ padding: '2px 8px', fontSize: '0.75rem' }}>
-                          Join Teleconsult
+                        <a
+                          href={`/teleconsult/room/${appt._id}`}
+                          className="btn btn-dense btn-primary"
+                          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <Video size={13} strokeWidth={1.75} aria-hidden="true" />
+                          <span>Join Teleconsult</span>
                         </a>
                       )}
                     </td>
@@ -323,9 +331,11 @@ export default function PatientDashboardPage() {
       {activeTab === 'vault' && (
         <div>
           {/* Upload Widget */}
-          <div className="card" style={{ marginBottom: '24px' }}>
-            <h4 style={{ marginBottom: '12px' }}>Upload Clinical Document to Vault</h4>
-            <form onSubmit={handleFileUpload} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr auto', gap: '12px', alignItems: 'flex-end' }}>
+          <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
+            <h3 style={{ fontSize: 'var(--text-card)', marginBottom: 'var(--space-3)' }}>
+              Upload Clinical Document to Health Vault
+            </h3>
+            <form onSubmit={handleFileUpload} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 2fr auto', gap: 'var(--space-3)', alignItems: 'flex-end' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label">Document Title</label>
                 <input
@@ -360,18 +370,21 @@ export default function PatientDashboardPage() {
                   accept=".pdf,.jpg,.jpeg,.png"
                   onChange={(e) => setUploadFile(e.target.files[0])}
                   required
+                  style={{ paddingTop: '6px' }}
                 />
               </div>
 
-              <button type="submit" disabled={uploading} className="btn btn-primary" style={{ height: '38px' }}>
+              <Button type="submit" variant="primary" loading={uploading} disabled={uploading} icon={Upload}>
                 {uploading ? 'Validating...' : 'Upload File'}
-              </button>
+              </Button>
             </form>
           </div>
 
           {/* Stored Records */}
-          <div className="card" style={{ marginBottom: '24px' }}>
-            <h4 style={{ marginBottom: '12px' }}>Stored Clinical Documents</h4>
+          <div className="card">
+            <h3 style={{ fontSize: 'var(--text-card)', marginBottom: 'var(--space-3)' }}>
+              Stored Clinical Documents
+            </h3>
             <div className="table-container">
               <table>
                 <thead>
@@ -380,73 +393,28 @@ export default function PatientDashboardPage() {
                     <th>Category</th>
                     <th>Version</th>
                     <th>Size</th>
-                    <th>SHA-256 Hash</th>
+                    <th>SHA-256 Checksum</th>
                     <th>Upload Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {vaultRecords.length === 0 ? (
                     <tr>
-                      <td colSpan="6" style={{ textAlign: 'center', padding: '24px' }}>No documents in vault.</td>
+                      <td colSpan="6" style={{ textAlign: 'center', padding: 'var(--space-6)' }}>
+                        <p className="empty-state-message">No clinical documents in vault.</p>
+                      </td>
                     </tr>
                   ) : (
                     vaultRecords.map((rec) => (
                       <tr key={rec._id}>
-                        <td style={{ fontWeight: '600' }}>{rec.title}</td>
+                        <td style={{ fontWeight: '600', color: 'var(--color-heading)' }}>{rec.title}</td>
                         <td style={{ textTransform: 'capitalize' }}>{rec.category.replace('_', ' ')}</td>
                         <td>v{rec.version}</td>
                         <td>{(rec.fileSizeBytes / 1024).toFixed(1)} KB</td>
-                        <td style={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>{rec.sha256Hash?.substring(0, 16)}...</td>
+                        <td style={{ fontFamily: 'monospace', fontSize: 'var(--text-label)' }}>
+                          {rec.sha256Hash?.substring(0, 16)}...
+                        </td>
                         <td>{new Date(rec.createdAt).toLocaleDateString()}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Active Consents */}
-          <div className="card">
-            <h4 style={{ marginBottom: '12px' }}>Active & Ephemeral Doctor Consent Grants</h4>
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Doctor</th>
-                    <th>Hospital</th>
-                    <th>Clinical Purpose</th>
-                    <th>Expires At</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {consents.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" style={{ textAlign: 'center', padding: '24px' }}>No active consent records.</td>
-                    </tr>
-                  ) : (
-                    consents.map((c) => (
-                      <tr key={c._id}>
-                        <td style={{ fontWeight: '600' }}>{c.grantedToDoctorId?.name}</td>
-                        <td>{c.grantedToHospitalId?.name || 'City Facility'}</td>
-                        <td>{c.purpose}</td>
-                        <td>{new Date(c.expiresAt).toLocaleString()}</td>
-                        <td>
-                          <StatusBadge status={c.status} />
-                        </td>
-                        <td>
-                          {c.status === 'ACTIVE' && (
-                            <button
-                              onClick={() => handleRevokeConsent(c._id)}
-                              className="btn btn-sm btn-danger"
-                              style={{ padding: '2px 8px', fontSize: '0.75rem' }}
-                            >
-                              Revoke Now
-                            </button>
-                          )}
-                        </td>
                       </tr>
                     ))
                   )}
@@ -457,14 +425,71 @@ export default function PatientDashboardPage() {
         </div>
       )}
 
-      {/* Tab 3: Patient Access History Log */}
+      {/* Tab 3: Ephemeral Consents */}
+      {activeTab === 'consents' && (
+        <div className="card">
+          <h3 style={{ fontSize: 'var(--text-card)', marginBottom: 'var(--space-3)' }}>
+            Active & Ephemeral Doctor Consent Grants (24h Window)
+          </h3>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Doctor</th>
+                  <th>Hospital</th>
+                  <th>Clinical Purpose</th>
+                  <th>Expires At</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {consents.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: 'var(--space-6)' }}>
+                      <p className="empty-state-message">No active consent records.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  consents.map((c) => (
+                    <tr key={c._id}>
+                      <td style={{ fontWeight: '600', color: 'var(--color-heading)' }}>{c.grantedToDoctorId?.name}</td>
+                      <td>{c.grantedToHospitalId?.name || 'City Facility'}</td>
+                      <td>{c.purpose}</td>
+                      <td>{new Date(c.expiresAt).toLocaleString()}</td>
+                      <td>
+                        <StatusBadge status={c.status} />
+                      </td>
+                      <td>
+                        {c.status === 'ACTIVE' && (
+                          <Button
+                            variant="danger"
+                            size="dense"
+                            onClick={() => handleRevokeConsent(c._id)}
+                          >
+                            Revoke Now
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 4: Patient Access History Log */}
       {activeTab === 'logs' && (
         <div className="card">
           <div className="card-header">
             <div>
-              <h4>Append-Only Patient Access History Log</h4>
-              <p style={{ fontSize: '0.8125rem', marginTop: '2px' }}>
-                Complete legal audit trail of who accessed your health records, clinical purpose, exact timestamp, and whether access was granted or denied.
+              <h3 style={{ fontSize: 'var(--text-card)', margin: 0 }}>
+                Append-Only Patient Access History Log
+              </h3>
+              <p style={{ fontSize: 'var(--text-label-md)', marginTop: '2px', color: 'var(--text-muted)' }}>
+                Complete legal audit trail of health record access events, purpose, exact timestamps, and access authorization decisions.
               </p>
             </div>
           </div>
@@ -477,28 +502,30 @@ export default function PatientDashboardPage() {
                   <th>Actor Role</th>
                   <th>Actor Name</th>
                   <th>Action</th>
-                  <th>Access Granted?</th>
+                  <th>Access Decision</th>
                   <th>Clinical Purpose / Denial Reason</th>
                 </tr>
               </thead>
               <tbody>
                 {accessLogs.length === 0 ? (
                   <tr>
-                    <td colSpan="6" style={{ textAlign: 'center', padding: '30px' }}>No access log events recorded yet.</td>
+                    <td colSpan="6" style={{ textAlign: 'center', padding: 'var(--space-6)' }}>
+                      <p className="empty-state-message">No access log events recorded yet.</p>
+                    </td>
                   </tr>
                 ) : (
                   accessLogs.map((log) => (
                     <tr key={log._id}>
-                      <td style={{ fontSize: '0.75rem' }}>{new Date(log.timestamp).toLocaleString()}</td>
-                      <td style={{ textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: '600' }}>{log.actorRole}</td>
-                      <td style={{ fontWeight: '600' }}>{log.actorName || 'User'}</td>
-                      <td style={{ fontSize: '0.75rem' }}>{log.action}</td>
+                      <td style={{ fontSize: 'var(--text-label)' }}>{new Date(log.timestamp).toLocaleString()}</td>
+                      <td style={{ textTransform: 'uppercase', fontSize: 'var(--text-label)', fontWeight: '600' }}>{log.actorRole}</td>
+                      <td style={{ fontWeight: '600', color: 'var(--color-heading)' }}>{log.actorName || 'User'}</td>
+                      <td style={{ fontSize: 'var(--text-label)' }}>{log.action}</td>
                       <td>
                         <span className={`badge ${log.accessGranted ? 'badge-success' : 'badge-danger'}`}>
                           {log.accessGranted ? 'ALLOWED' : 'DENIED'}
                         </span>
                       </td>
-                      <td style={{ fontSize: '0.8125rem' }}>
+                      <td style={{ fontSize: 'var(--text-label-md)' }}>
                         {log.clinicalPurpose || log.denialReason || 'Standard verification'}
                       </td>
                     </tr>

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { CheckCircleIcon, ShieldCheckIcon, AlertTriangleIcon } from './Icons';
+import { CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import Button from './ui/Button';
 
 export default function BookingReviewModal({ slot, hospital, doctor, service, onClose, onBookingSuccess }) {
   const { user, activeProfile } = useAuth();
@@ -69,80 +70,91 @@ export default function BookingReviewModal({ slot, hospital, doctor, service, on
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-booking-title">
+      <div className="modal-content" style={{ maxWidth: '580px' }}>
         {!confirmedBooking ? (
           <>
-            <div className="card-header">
-              <h3>Confirm Appointment Reservation</h3>
-              <button onClick={onClose} className="btn btn-sm btn-secondary">✕</button>
+            <div className="modal-header">
+              <h2 id="modal-booking-title" className="modal-title">
+                Confirm Appointment Reservation
+              </h2>
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn btn-tertiary"
+                aria-label="Close booking modal"
+                style={{ height: '32px', width: '32px', padding: 0 }}
+              >
+                <X size={18} strokeWidth={1.75} aria-hidden="true" />
+              </button>
             </div>
 
             {error && (
-              <div
-                style={{
-                  backgroundColor: '#FDEEEE',
-                  color: '#A32828',
-                  padding: '10px 14px',
-                  borderRadius: '4px',
-                  marginBottom: '16px',
-                  fontSize: '0.875rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                <AlertTriangleIcon size={18} />
-                <span>{error}</span>
+              <div className="error-state" style={{ marginBottom: 'var(--space-4)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertTriangle size={18} strokeWidth={1.75} aria-hidden="true" />
+                  <span>{error}</span>
+                </div>
               </div>
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-              <div style={{ backgroundColor: '#F5F7F6', padding: '12px', borderRadius: '6px' }}>
-                <span style={{ fontSize: '0.75rem', color: '#72848D', textTransform: 'uppercase', fontWeight: '600' }}>
-                  Patient Details
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+              {/* Patient Profile Card */}
+              <div style={{ backgroundColor: 'var(--bg-app)', padding: 'var(--space-3)', borderRadius: 'var(--radius-control)', border: '1px solid var(--border)' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px' }}>
+                  Patient Profile
                 </span>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                  <strong>{activeProfile?.fullName || 'Profile required'}</strong>
-                  <span>Age: {calculateAge(activeProfile?.dateOfBirth)} &bull; {activeProfile?.gender}</span>
+                  <strong style={{ color: 'var(--color-heading)' }}>{activeProfile?.fullName || 'Profile required'}</strong>
+                  <span style={{ fontSize: 'var(--text-body-staff)', color: 'var(--text-muted)' }}>
+                    Age: {calculateAge(activeProfile?.dateOfBirth)} &bull; {activeProfile?.gender}
+                  </span>
                 </div>
-                <div style={{ fontSize: '0.8125rem', color: '#4A5B63', marginTop: '2px' }}>
+                <div style={{ fontSize: 'var(--text-label-md)', color: 'var(--text-muted)', marginTop: '2px' }}>
                   Relationship: <span style={{ textTransform: 'capitalize' }}>{activeProfile?.relationship}</span> &bull; Phone: {activeProfile?.phone || user?.phone}
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div style={{ backgroundColor: '#F5F7F6', padding: '10px', borderRadius: '6px' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#72848D' }}>Facility</span>
-                  <div style={{ fontWeight: '600', fontSize: '0.875rem' }}>{hospital?.name}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#72848D' }}>{hospital?.address?.city}</div>
+              {/* Facility & Doctor Info */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                <div style={{ backgroundColor: 'var(--bg-app)', padding: 'var(--space-3)', borderRadius: 'var(--radius-control)', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Facility</span>
+                  <div style={{ fontWeight: '600', fontSize: 'var(--text-body-staff)', color: 'var(--color-heading)' }}>{hospital?.name}</div>
+                  <div style={{ fontSize: 'var(--text-label)', color: 'var(--text-muted)' }}>{hospital?.address?.city}</div>
                 </div>
 
-                <div style={{ backgroundColor: '#F5F7F6', padding: '10px', borderRadius: '6px' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#72848D' }}>Doctor / Service</span>
-                  <div style={{ fontWeight: '600', fontSize: '0.875rem' }}>{doctor?.name || service?.name}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#72848D' }}>{doctor?.specialty || service?.specialty}</div>
+                <div style={{ backgroundColor: 'var(--bg-app)', padding: 'var(--space-3)', borderRadius: 'var(--radius-control)', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Provider / Service</span>
+                  <div style={{ fontWeight: '600', fontSize: 'var(--text-body-staff)', color: 'var(--color-heading)' }}>{doctor?.name || service?.name}</div>
+                  <div style={{ fontSize: 'var(--text-label)', color: 'var(--text-muted)' }}>{doctor?.specialty || service?.specialty}</div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div style={{ backgroundColor: '#F5F7F6', padding: '10px', borderRadius: '6px' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#72848D' }}>Scheduled Date & Time</span>
-                  <div style={{ fontWeight: '600', fontSize: '0.875rem' }}>{slot?.date}</div>
-                  <div style={{ fontSize: '0.875rem', color: '#147D78', fontWeight: '600' }}>{slot?.startTime} - {slot?.endTime}</div>
+              {/* Schedule & Fee Info */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+                <div style={{ backgroundColor: 'var(--bg-app)', padding: 'var(--space-3)', borderRadius: 'var(--radius-control)', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Date & Time</span>
+                  <div style={{ fontWeight: '600', fontSize: 'var(--text-body-staff)', color: 'var(--text)' }}>{slot?.date}</div>
+                  <div style={{ fontSize: 'var(--text-body-staff)', color: 'var(--color-primary)', fontWeight: '600' }}>
+                    {slot?.startTime} - {slot?.endTime}
+                  </div>
                 </div>
 
-                <div style={{ backgroundColor: '#F5F7F6', padding: '10px', borderRadius: '6px' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#72848D' }}>Consultation Fee</span>
-                  <div style={{ fontSize: '1.125rem', fontWeight: '700', color: '#102D3A' }}>
+                <div style={{ backgroundColor: 'var(--bg-app)', padding: 'var(--space-3)', borderRadius: 'var(--radius-control)', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Consultation Fee</span>
+                  <div style={{ fontSize: 'var(--text-card)', fontWeight: '700', color: 'var(--color-heading)', marginTop: '2px' }}>
                     ₹{doctor?.consultationFee || service?.price || 0}
                   </div>
                 </div>
               </div>
 
-              <div className="form-group" style={{ marginTop: '8px' }}>
-                <label className="form-label">Healthcare Scheme / Insurance Coverage</label>
+              {/* Scheme Dropdown */}
+              <div className="form-group" style={{ marginTop: 'var(--space-2)' }}>
+                <label htmlFor="booking-scheme" className="form-label">
+                  Government / Insurer Scheme
+                </label>
                 <select
+                  id="booking-scheme"
                   value={scheme}
                   onChange={(e) => setScheme(e.target.value)}
                   className="form-select"
@@ -155,51 +167,51 @@ export default function BookingReviewModal({ slot, hospital, doctor, service, on
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button onClick={onClose} disabled={submitting} className="btn btn-secondary">
+            <div className="modal-actions">
+              <Button variant="secondary" onClick={onClose} disabled={submitting}>
                 Cancel
-              </button>
-              <button onClick={handleConfirm} disabled={submitting} className="btn btn-primary">
-                {submitting ? 'Reserving...' : 'Confirm Booking'}
-              </button>
+              </Button>
+              <Button variant="primary" onClick={handleConfirm} loading={submitting} disabled={submitting}>
+                {submitting ? 'Securing Slot...' : 'Confirm Booking'}
+              </Button>
             </div>
           </>
         ) : (
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ color: '#1C744F', marginBottom: '12px' }}>
-              <CheckCircleIcon size={56} />
+          <div style={{ textAlign: 'center', padding: 'var(--space-6) var(--space-4)' }}>
+            <div style={{ color: 'var(--status-success-accent)', marginBottom: 'var(--space-3)' }}>
+              <CheckCircle2 size={48} strokeWidth={1.75} aria-hidden="true" />
             </div>
-            <h2>Appointment Confirmed!</h2>
-            <p style={{ marginTop: '8px', color: '#4A5B63' }}>
-              Your appointment has been atomically secured and confirmed by the hospital.
+            <h2 className="modal-title" style={{ fontSize: 'var(--text-section)' }}>
+              Appointment Confirmed
+            </h2>
+            <p style={{ marginTop: 'var(--space-2)', color: 'var(--text-muted)', fontSize: 'var(--text-body-staff)' }}>
+              Your appointment slot has been atomically reserved and logged into hospital records.
             </p>
 
             <div
               style={{
-                backgroundColor: '#EDF5F3',
-                border: '1px solid #147D78',
-                borderRadius: '8px',
-                padding: '16px',
-                margin: '20px 0',
-                display: 'inline-block',
-                textAlign: 'left',
-                width: '100%'
+                backgroundColor: 'var(--bg-subtle)',
+                border: '1px solid var(--color-primary)',
+                borderRadius: 'var(--radius-card)',
+                padding: 'var(--space-4)',
+                margin: 'var(--space-5) 0',
+                textAlign: 'left'
               }}
             >
-              <div style={{ fontSize: '0.75rem', color: '#72848D', textTransform: 'uppercase' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Booking Reference Code
               </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#102D3A', letterSpacing: '1px' }}>
+              <div style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-heading)', letterSpacing: '1px', marginTop: '2px' }}>
                 {confirmedBooking.referenceNumber}
               </div>
-              <div style={{ fontSize: '0.8125rem', color: '#4A5B63', marginTop: '6px' }}>
-                Present this reference code upon arrival at the hospital check-in triage.
+              <div style={{ fontSize: 'var(--text-label-md)', color: 'var(--text-muted)', marginTop: '4px' }}>
+                Present this reference code upon arrival at the hospital reception.
               </div>
             </div>
 
-            <button onClick={onClose} className="btn btn-primary" style={{ width: '100%' }}>
+            <Button variant="primary" onClick={onClose} style={{ width: '100%' }}>
               Done
-            </button>
+            </Button>
           </div>
         )}
       </div>
