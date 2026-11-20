@@ -1,5 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
+import { Users } from 'lucide-react';
 
 export default function DemoAccountSwitcher() {
   const { login } = useAuth();
@@ -27,30 +28,18 @@ export default function DemoAccountSwitcher() {
   };
 
   return (
-    <div
-      style={{
-        backgroundColor: '#EDF5F3',
-        border: '1px dashed #147D78',
-        borderRadius: '6px',
-        padding: '10px 14px',
-        marginBottom: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '8px'
-      }}
-    >
-      <div style={{ fontSize: '0.8125rem', color: '#102D3A', fontWeight: '600' }}>
-        Live Demo Switcher (1-Click Role Access):
+    <div className="demo-account-switcher">
+      <div className="demo-switcher-label">
+        <Users size={14} strokeWidth={1.75} aria-hidden="true" style={{ color: 'var(--color-heading)' }} />
+        <span>Live Demo Switcher (1-Click Role Access):</span>
       </div>
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+      <div className="demo-switcher-buttons">
         {demoAccounts.map((acc) => (
           <button
             key={acc.email}
             onClick={() => handleQuickLogin(acc)}
             className="btn btn-sm btn-secondary"
-            style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+            style={{ height: '28px', fontSize: 'var(--text-label)', padding: '0 8px' }}
           >
             {acc.label}
           </button>
