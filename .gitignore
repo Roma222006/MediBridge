@@ -5,4 +5,5 @@ build/
 .env.local
 *.log
 coverage/
+backend/uploads/
 .DS_Store
