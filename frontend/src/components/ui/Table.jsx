@@ -65,3 +65,5 @@ export function Table({
     </div>
   );
 }
+
+export default Table;

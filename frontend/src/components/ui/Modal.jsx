@@ -6,6 +6,7 @@ export function Modal({
   onClose,
   title,
   children,
+  footer,
   maxWidth = '600px',
   destructive = false
 }) {
@@ -61,7 +62,14 @@ export function Modal({
         <div className="modal-body">
           {children}
         </div>
+        {footer && (
+          <div className="modal-footer" style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+export default Modal;

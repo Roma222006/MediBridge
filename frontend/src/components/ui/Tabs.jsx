@@ -31,3 +31,5 @@ export function Tabs({ tabs = [], activeTab, onChange, className = '' }) {
     </nav>
   );
 }
+
+export default Tabs;
