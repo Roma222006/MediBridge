@@ -726,21 +726,21 @@ tr.selected td {
   white-space: nowrap;
 }
 
-/* Success status: text #2F5A49 on #E6F1EC */
+/* Success status */
 .badge-success, .badge-confirmed, .badge-completed, .badge-verified {
   background-color: var(--status-success-bg);
   color: var(--status-success-text);
   border-color: var(--status-success-accent);
 }
 
-/* Warning status: text #8A5A00 on #FFF3D6 */
+/* Warning status */
 .badge-warning, .badge-reassignment-pending, .badge-unverified {
   background-color: var(--status-warning-bg);
   color: var(--status-warning-text);
   border-color: var(--status-warning-accent);
 }
 
-/* Critical status: text #B3261E on #FDECEA */
+/* Critical status */
 .badge-danger, .badge-critical, .badge-stale-data {
   background-color: var(--status-critical-bg);
   color: var(--status-critical-text);

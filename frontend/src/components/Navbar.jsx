@@ -78,15 +78,15 @@ export default function Navbar() {
             {/* Patient Family Profile Switcher */}
             {user?.role === 'patient' && profiles.length > 0 && (
               <li style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ fontSize: '0.75rem', color: '#A0B3BD' }}>Profile:</span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Profile:</span>
                 <select
                   value={activeProfile?._id || ''}
                   onChange={(e) => switchProfile(e.target.value)}
                   style={{
-                    backgroundColor: '#1A3E4E',
-                    color: '#FFFFFF',
-                    border: '1px solid #28556B',
-                    borderRadius: '4px',
+                    backgroundColor: 'var(--bg-app)',
+                    color: 'var(--color-heading)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)',
                     padding: '4px 8px',
                     fontSize: '0.8rem',
                     cursor: 'pointer'
@@ -106,10 +106,11 @@ export default function Navbar() {
                 <span
                   style={{
                     fontSize: '0.75rem',
-                    backgroundColor: '#1A3E4E',
+                    backgroundColor: 'var(--bg-app)',
                     padding: '3px 8px',
-                    borderRadius: '4px',
-                    color: '#D9EAE6'
+                    borderRadius: 'var(--radius-sm)',
+                    color: 'var(--color-heading)',
+                    border: '1px solid var(--border)'
                   }}
                 >
                   {user.role}
