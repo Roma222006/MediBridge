@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { PhoneIcon, AlertTriangleIcon, MapPinIcon, BedIcon } from '../components/Icons';
+import { Phone, AlertTriangle, MapPin, Bed, Activity, ShieldAlert, ArrowRight } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
+import Button from '../components/ui/Button';
 
 export default function EmergencyPage() {
   const [hospitals, setHospitals] = useState([]);
@@ -63,81 +65,121 @@ export default function EmergencyPage() {
   };
 
   return (
-    <div className="main-content" style={{ maxWidth: '900px' }}>
-      {/* 108 Emergency Banner */}
+    <div className="main-content emergency-mode-container" style={{ maxWidth: '960px', margin: '0 auto' }}>
+      <PageHeader
+        title="Emergency Mode & Trauma Dispatch"
+        subtitle="Zero-auth critical access: triage routing, nearest trauma centers, and immediate 108 emergency dial"
+        breadcrumbs={[
+          { label: 'Platform', path: '/' },
+          { label: 'Emergency Mode' }
+        ]}
+      />
+
+      {/* 108 Emergency High-Contrast Action Banner */}
       <div
         style={{
-          backgroundColor: '#A32828',
-          color: '#FFFFFF',
-          padding: '24px',
-          borderRadius: '8px',
+          backgroundColor: 'var(--status-critical-solid)',
+          color: 'var(--surface)',
+          padding: '28px 24px',
+          borderRadius: 'var(--radius-md)',
           textAlign: 'center',
-          marginBottom: '24px',
-          boxShadow: '0 4px 12px rgba(163, 40, 40, 0.3)'
+          marginBottom: '24px'
         }}
       >
-        <div style={{ fontSize: '1rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: '600' }}>
+        <div style={{ fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: '700', opacity: 0.95 }}>
           Life-Threatening Medical Emergency
         </div>
-        <h1 style={{ color: '#FFFFFF', fontSize: '2.5rem', margin: '8px 0' }}>Dial 108 (Toll Free)</h1>
-        <p style={{ color: '#FDEEEE', fontSize: '0.9375rem', marginBottom: '16px' }}>
-          Ambulance & Emergency Response Service &bull; Zero server dependency
+        <h1 style={{ color: 'var(--surface)', fontSize: '2.5rem', fontWeight: '800', margin: '8px 0', lineHeight: 1.15 }}>
+          Dial 108 (Toll Free)
+        </h1>
+        <p style={{ color: 'var(--surface)', fontSize: '0.9375rem', marginBottom: '20px', opacity: 0.9 }}>
+          Ambulance & Emergency Response Service &bull; Zero server dependency &bull; Instant dispatch
         </p>
 
         <a
           href="tel:108"
-          className="btn btn-lg"
           style={{
-            backgroundColor: '#FFFFFF',
-            color: '#A32828',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '10px',
+            backgroundColor: 'var(--surface)',
+            color: 'var(--status-critical-solid)',
             fontSize: '1.25rem',
-            padding: '12px 32px',
-            fontWeight: '800'
+            padding: '14px 36px',
+            borderRadius: 'var(--radius-sm)',
+            fontWeight: '800',
+            textDecoration: 'none',
+            letterSpacing: '0.02em',
+            border: '2px solid var(--surface)'
           }}
         >
-          <PhoneIcon size={24} /> Tap to Dial 108 Now
+          <Phone size={24} /> Tap to Dial 108 Now
         </a>
       </div>
 
       {/* Offline Alert if Network is Down */}
       {isOffline && (
         <div
+          role="alert"
           style={{
-            backgroundColor: '#FAF3E6',
-            border: '2px solid #D5A45B',
-            color: '#9E6B18',
+            backgroundColor: 'var(--status-warning-bg)',
+            border: '1px solid var(--status-warning-accent)',
+            color: 'var(--status-warning-text)',
             padding: '12px 16px',
-            borderRadius: '6px',
+            borderRadius: 'var(--radius-sm)',
             marginBottom: '20px',
             display: 'flex',
             alignItems: 'center',
-            gap: '10px'
+            gap: '10px',
+            fontSize: '0.875rem'
           }}
         >
-          <AlertTriangleIcon size={20} />
+          <AlertTriangle size={20} style={{ flexShrink: 0 }} />
           <span>
-            <strong>Offline Emergency Mode Active:</strong> You are currently disconnected from the internet. Displaying local cached emergency facilities.
+            <strong>Offline Emergency Mode Active:</strong> You are currently disconnected from the network. Displaying local cached emergency facilities.
           </span>
         </div>
       )}
 
       {/* Manual District Entry Fallback */}
-      <div className="card" style={{ marginBottom: '20px', padding: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+      <div
+        className="card"
+        style={{
+          backgroundColor: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-md)',
+          marginBottom: '20px',
+          padding: '16px 20px',
+          boxShadow: 'none'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <strong>Nearest Trauma & Casualty Centers</strong>
-            <div style={{ fontSize: '0.75rem', color: '#72848D' }}>
-              No login, patient profile, or payment required.
+            <div style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--color-heading)' }}>
+              Nearest Trauma & Casualty Centers
+            </div>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+              No login, patient profile, or payment required. Immediate public admission.
             </div>
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.8125rem', color: '#72848D' }}>Select District:</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: '500' }}>Select District:</span>
             <select
               className="form-select"
-              style={{ width: 'auto' }}
+              style={{
+                width: 'auto',
+                padding: '6px 12px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-control)',
+                backgroundColor: 'var(--surface)',
+                color: 'var(--text)',
+                fontSize: '0.875rem'
+              }}
               value={district}
               onChange={(e) => setDistrict(e.target.value)}
+              aria-label="Filter emergency facilities by district"
             >
               <option value="">Coimbatore (GPS Default)</option>
               <option value="Pollachi">Pollachi / Rural Taluk</option>
@@ -151,27 +193,35 @@ export default function EmergencyPage() {
 
       {/* Emergency Centers List */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#72848D' }}>Locating nearest trauma centers...</div>
+        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '0.9375rem' }}>
+          Locating nearest trauma centers...
+        </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {hospitals.map((h) => (
             <div
               key={h.id}
               className="card"
               style={{
-                borderLeft: '6px solid #147D78',
-                padding: '18px'
+                backgroundColor: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderLeft: '4px solid var(--status-critical-solid)',
+                borderRadius: 'var(--radius-md)',
+                padding: '20px',
+                boxShadow: 'none'
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <h3 style={{ fontSize: '1.25rem', color: '#102D3A' }}>{h.name}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', fontSize: '0.8125rem', color: '#72848D' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1875rem', fontWeight: '700', color: 'var(--color-heading)' }}>
+                    {h.name}
+                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '6px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <MapPinIcon size={14} /> {h.address?.city}, {h.address?.district}
+                      <MapPin size={14} /> {h.address?.city}, {h.address?.district}
                     </span>
                     {h.distanceKm && (
-                      <span style={{ fontWeight: '600', color: '#102D3A' }}>
+                      <span style={{ fontWeight: '700', color: 'var(--text)' }}>
                         &bull; {h.distanceKm} km away
                       </span>
                     )}
@@ -180,42 +230,67 @@ export default function EmergencyPage() {
 
                 <a
                   href={`tel:${h.emergencyPhone || h.phone || '108'}`}
-                  className="btn btn-danger"
-                  style={{ fontWeight: '700' }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: 'var(--status-critical-solid)',
+                    color: 'var(--surface)',
+                    fontSize: '0.875rem',
+                    fontWeight: '700',
+                    padding: '8px 16px',
+                    borderRadius: 'var(--radius-sm)',
+                    textDecoration: 'none'
+                  }}
                 >
-                  <PhoneIcon size={16} /> Call Casualty: {h.emergencyPhone || h.phone}
+                  <Phone size={15} /> Call Casualty: {h.emergencyPhone || h.phone}
                 </a>
               </div>
 
-              {/* Bed capacity disclaimer */}
+              {/* Reported bed capacity metrics with disclaimer */}
               <div
                 style={{
                   display: 'flex',
-                  gap: '16px',
-                  backgroundColor: '#F5F7F6',
-                  padding: '10px 14px',
-                  borderRadius: '6px',
-                  marginTop: '12px',
+                  gap: '20px',
+                  backgroundColor: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  padding: '12px 16px',
+                  borderRadius: 'var(--radius-sm)',
+                  marginTop: '16px',
                   alignItems: 'center',
                   flexWrap: 'wrap'
                 }}
               >
                 <div>
-                  <span style={{ fontSize: '0.75rem', color: '#72848D' }}>ICU Beds Reported</span>
-                  <div style={{ fontWeight: '700', fontSize: '1rem', color: h.bedCapacity?.icu?.available > 0 ? '#1C744F' : '#A32828' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    ICU Beds Reported
+                  </span>
+                  <div
+                    style={{
+                      fontWeight: '700',
+                      fontSize: '1.125rem',
+                      marginTop: '2px',
+                      color:
+                        (h.bedCapacity?.icu?.available || 0) > 0
+                          ? 'var(--status-success-text)'
+                          : 'var(--status-critical-text)'
+                    }}
+                  >
                     {h.bedCapacity?.icu?.available || 0} Open
                   </div>
                 </div>
 
                 <div>
-                  <span style={{ fontSize: '0.75rem', color: '#72848D' }}>General Beds Reported</span>
-                  <div style={{ fontWeight: '700', fontSize: '1rem', color: '#102D3A' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    General Beds Reported
+                  </span>
+                  <div style={{ fontWeight: '700', fontSize: '1.125rem', marginTop: '2px', color: 'var(--text)' }}>
                     {h.bedCapacity?.general?.available || 0} Open
                   </div>
                 </div>
 
-                <div style={{ fontSize: '0.75rem', color: '#9E6B18', marginLeft: 'auto', maxWidth: '340px' }}>
-                  <strong>Disclaimer:</strong> {h.bedCapacity?.disclaimer}
+                <div style={{ fontSize: '0.75rem', color: 'var(--status-warning-text)', marginLeft: 'auto', maxWidth: '380px', lineHeight: '1.4' }}>
+                  <strong>Reported Capacity:</strong> {h.bedCapacity?.disclaimer || 'Self-reported by facility. Confirm availability with casualty upon arrival.'}
                 </div>
               </div>
             </div>

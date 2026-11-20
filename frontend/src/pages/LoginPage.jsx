@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { HospitalIcon, AlertTriangleIcon } from '../components/Icons';
+import { Building2, AlertTriangle, ShieldCheck, ArrowRight, UserCheck } from 'lucide-react';
+import Input from '../components/ui/Input';
+import Button from '../components/ui/Button';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -44,43 +46,66 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="main-content" style={{ maxWidth: '480px', marginTop: '30px' }}>
-      <div className="card" style={{ padding: '32px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ display: 'inline-flex', padding: '10px', backgroundColor: '#EDF5F3', borderRadius: '50%', color: '#147D78' }}>
-            <HospitalIcon size={32} />
+    <div className="main-content" style={{ maxWidth: '480px', margin: '40px auto 60px' }}>
+      <div
+        className="card"
+        style={{
+          backgroundColor: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius-md)',
+          padding: '32px 28px',
+          boxShadow: 'none'
+        }}
+      >
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              padding: '12px',
+              backgroundColor: 'var(--bg-app)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--color-primary)',
+              border: '1px solid var(--border)'
+            }}
+          >
+            <Building2 size={32} />
           </div>
-          <h2 style={{ marginTop: '12px' }}>Sign in to MediBridge</h2>
-          <p style={{ fontSize: '0.875rem', marginTop: '4px' }}>
-            Authorized healthcare coordination & portal access
+          <h2 style={{ margin: '14px 0 0 0', fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+            Sign in to MediBridge
+          </h2>
+          <p style={{ margin: '6px 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            Authorized healthcare coordination & clinical portal access
           </p>
         </div>
 
         {error && (
           <div
+            role="alert"
             style={{
-              backgroundColor: '#FDEEEE',
-              color: '#A32828',
+              backgroundColor: 'var(--status-critical-bg)',
+              color: 'var(--status-critical-text)',
               padding: '10px 14px',
-              borderRadius: '4px',
-              marginBottom: '16px',
+              borderRadius: 'var(--radius-sm)',
+              marginBottom: '20px',
               fontSize: '0.875rem',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
+              gap: '8px',
+              border: '1px solid var(--status-critical-solid)'
             }}
           >
-            <AlertTriangleIcon size={18} />
+            <AlertTriangle size={18} style={{ flexShrink: 0 }} />
             <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">Email Address</label>
-            <input
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
+              Email Address
+            </label>
+            <Input
               type="email"
-              className="form-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="e.g. roma.patient@medibridge.org"
@@ -88,11 +113,12 @@ export default function LoginPage() {
             />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
+              Password
+            </label>
+            <Input
               type="password"
-              className="form-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password"
@@ -100,45 +126,56 @@ export default function LoginPage() {
             />
           </div>
 
-          <button
+          <Button
             type="submit"
             disabled={submitting}
-            className="btn btn-primary"
-            style={{ width: '100%', marginTop: '8px' }}
+            variant="primary"
+            style={{ width: '100%' }}
           >
-            {submitting ? 'Verifying...' : 'Sign In'}
-          </button>
+            {submitting ? 'Verifying Credentials...' : 'Sign In'}
+          </Button>
         </form>
 
-        <div style={{ marginTop: '24px', borderTop: '1px solid #DCE3E1', paddingTop: '16px' }}>
-          <span style={{ fontSize: '0.75rem', color: '#72848D', textTransform: 'uppercase', fontWeight: '600' }}>
-            Quick 1-Click Demo Login
-          </span>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '10px' }}>
-            <button
+        <div style={{ marginTop: '28px', borderTop: '1px solid var(--border)', paddingTop: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.04em' }}>
+              1-Click Demo Profiles
+            </span>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Demo, not verified</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => handleQuickDemo('roma.patient@medibridge.org', 'PatientPass123!')}
-              className="btn btn-sm btn-secondary"
             >
               Patient (Roma)
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => handleQuickDemo('dr.revathi@medibridge.org', 'DoctorPass123!')}
-              className="btn btn-sm btn-secondary"
             >
               Doctor (City)
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => handleQuickDemo('admin.kmch@medibridge.org', 'AdminPass123!')}
-              className="btn btn-sm btn-secondary"
             >
               Hospital Admin
-            </button>
-            <button
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
               onClick={() => handleQuickDemo('superadmin@medibridge.org', 'SuperAdmin123!')}
-              className="btn btn-sm btn-secondary"
             >
               Super Admin
-            </button>
+            </Button>
           </div>
         </div>
       </div>
