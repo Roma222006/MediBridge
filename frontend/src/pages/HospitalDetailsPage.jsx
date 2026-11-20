@@ -340,7 +340,7 @@ export default function HospitalDetailsPage() {
                       style={{
                         padding: '10px 8px',
                         borderRadius: 'var(--radius-control)',
-                        border: isAvailable ? '1px solid var(--color-primary)' : '1px solid var(--border)',
+                        border: isAvailable ? '1px solid var(--accent-soft)' : '1px solid var(--border)',
                         backgroundColor: isAvailable ? 'var(--surface)' : 'var(--bg-app)',
                         color: isAvailable ? 'var(--text)' : 'var(--text-muted)',
                         cursor: isAvailable ? 'pointer' : 'not-allowed',

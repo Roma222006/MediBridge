@@ -68,14 +68,14 @@ export default function EmergencyPage() {
     <div className="main-content emergency-mode-container" style={{ maxWidth: '960px', margin: '0 auto' }}>
       <PageHeader
         title="Emergency Mode & Trauma Dispatch"
-        subtitle="Zero-auth critical access: triage routing, nearest trauma centers, and immediate 108 emergency dial"
+        subtitle="Zero-auth critical access: triage routing, nearest trauma centers, and immediate 112 / 108 emergency response"
         breadcrumbs={[
           { label: 'Platform', path: '/' },
           { label: 'Emergency Mode' }
         ]}
       />
 
-      {/* 108 Emergency High-Contrast Action Banner */}
+      {/* 112 / 108 Emergency High-Contrast Action Banner */}
       <div
         style={{
           backgroundColor: 'var(--status-critical-solid)',
@@ -90,14 +90,14 @@ export default function EmergencyPage() {
           Life-Threatening Medical Emergency
         </div>
         <h1 style={{ color: 'var(--surface)', fontSize: '2.5rem', fontWeight: '800', margin: '8px 0', lineHeight: 1.15 }}>
-          Dial 108 (Toll Free)
+          Dial 112 / 108 (Toll Free)
         </h1>
         <p style={{ color: 'var(--surface)', fontSize: '0.9375rem', marginBottom: '20px', opacity: 0.9 }}>
           Ambulance & Emergency Response Service &bull; Zero server dependency &bull; Instant dispatch
         </p>
 
         <a
-          href="tel:108"
+          href="tel:112"
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -114,7 +114,7 @@ export default function EmergencyPage() {
             border: '2px solid var(--surface)'
           }}
         >
-          <Phone size={24} /> Tap to Dial 108 Now
+          <Phone size={24} /> Tap to Dial 112 Now
         </a>
       </div>
 

@@ -844,7 +844,7 @@ export default function AdminConsolePage() {
                           )}
                           {(ref.status === 'RECEIVED' || ref.status === 'UNDER_REVIEW') && (
                             <Button
-                              variant="primary"
+                              variant="success"
                               size="sm"
                               onClick={() => handleUpdateReferral(ref._id, 'accept')}
                             >

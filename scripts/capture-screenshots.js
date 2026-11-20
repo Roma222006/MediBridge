@@ -122,9 +122,9 @@ async function capture() {
 
   // 3. Start Backend Express App
   console.log('Starting backend server...');
-  const { app } = require('../backend/src/app');
+  const app = require('../backend/src/app');
   const backendServer = http.createServer(app);
-  await new Promise(r => backendServer.listen(5000, r));
+  await new Promise(r => backendServer.listen(5000, '127.0.0.1', r));
 
   // 4. Start Frontend Static Server (from frontend/dist)
   console.log('Starting frontend server...');

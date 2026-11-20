@@ -204,7 +204,7 @@ export default function PatientDashboardPage() {
                     Slot: {appt.date} at 10:30 AM
                   </div>
                   <Button
-                    variant="primary"
+                    variant="success"
                     size="sm"
                     onClick={() =>
                       handleResolveReassignment(

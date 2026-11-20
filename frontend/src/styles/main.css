@@ -221,10 +221,14 @@ a:hover {
 }
 
 .nav-link.active {
-  background-color: var(--bg-subtle);
-  color: var(--color-heading);
+  background-color: var(--color-heading);
+  color: var(--surface);
   font-weight: 600;
   border-left: 3px solid var(--color-primary);
+}
+
+.nav-link.active svg {
+  color: var(--surface);
 }
 
 .nav-link-emergency {
@@ -506,14 +510,15 @@ a:hover {
   border-color: var(--color-primary-pressed);
 }
 
-.btn-secondary {
+.btn-secondary, .btn-outline {
   background-color: var(--surface);
   color: var(--color-heading);
-  border-color: var(--border-control);
+  border-color: var(--accent-soft);
 }
 
-.btn-secondary:hover {
-  background-color: var(--bg-app);
+.btn-secondary:hover, .btn-outline:hover {
+  background-color: var(--bg-subtle);
+  border-color: var(--color-primary);
   color: var(--color-heading);
   text-decoration: none;
 }
@@ -530,6 +535,20 @@ a:hover {
   background-color: var(--bg-subtle);
 }
 
+/* Success: Healthcare Green #477B67 (Accept, Grant access, Verify buttons) */
+.btn-success {
+  background-color: var(--status-success-accent);
+  color: var(--surface);
+  border-color: var(--status-success-accent);
+}
+
+.btn-success:hover {
+  background-color: #3b6655;
+  border-color: #3b6655;
+  color: var(--surface);
+}
+
+/* Critical: Red #C0262D (Emergency 112, Reject, Revoke, Delete, errors) */
 .btn-danger {
   background-color: var(--status-critical-solid);
   color: var(--surface);
@@ -537,8 +556,8 @@ a:hover {
 }
 
 .btn-danger:hover {
-  background-color: var(--status-critical-text);
-  border-color: var(--status-critical-text);
+  background-color: #a81f25;
+  border-color: #a81f25;
   color: var(--surface);
 }
 
@@ -861,7 +880,7 @@ tr.selected td {
 }
 
 /* ====================================================================
-   TOASTS (White, 1px border, status icon, subtle shadow)
+   TOASTS (Deep Plum #702B59, white text, status icon, subtle shadow)
    ==================================================================== */
 .toast-container {
   position: fixed;
@@ -874,8 +893,8 @@ tr.selected td {
 }
 
 .toast {
-  background-color: var(--surface);
-  border: 1px solid var(--border);
+  background-color: var(--color-heading);
+  border: 1px solid var(--color-heading);
   border-radius: var(--radius-card);
   padding: var(--space-3) var(--space-4);
   box-shadow: var(--shadow-overlay);
@@ -883,8 +902,16 @@ tr.selected td {
   align-items: center;
   gap: var(--space-3);
   font-size: var(--text-body-staff);
-  color: var(--text);
+  color: var(--surface);
   min-width: 280px;
+}
+
+.toast svg {
+  color: var(--accent-soft);
+}
+
+.toast .btn-tertiary {
+  color: var(--surface);
 }
 
 /* ====================================================================

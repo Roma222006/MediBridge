@@ -70,8 +70,8 @@ export default function LoginPage() {
           >
             <Building2 size={32} />
           </div>
-          <h2 style={{ margin: '14px 0 0 0', fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-            Sign in to MediBridge
+          <h2 style={{ margin: '14px 0 0 0', fontSize: '1.5rem', fontWeight: '800' }}>
+            Sign in to <span style={{ color: 'var(--color-heading)' }}>Medi</span><span style={{ color: 'var(--color-primary)' }}>Bridge</span>
           </h2>
           <p style={{ margin: '6px 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             Authorized healthcare coordination & clinical portal access

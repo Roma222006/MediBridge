@@ -35,14 +35,14 @@ export default function Header({ onMenuClick }) {
       </div>
 
       <div className="header-right">
-        {/* Rapid 108 Action */}
+        {/* Rapid 112 / 108 Emergency Action */}
         <Link
           to="/emergency"
           className="btn btn-sm btn-danger"
           style={{ textDecoration: 'none' }}
         >
           <PhoneCall size={14} strokeWidth={1.75} aria-hidden="true" />
-          <span>Emergency (108)</span>
+          <span>Emergency 112</span>
         </Link>
 
         {/* Patient Profile Switcher */}

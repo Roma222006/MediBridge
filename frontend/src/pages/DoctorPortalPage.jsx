@@ -551,7 +551,7 @@ export default function DoctorPortalPage() {
                           )}
                           {(ref.status === 'RECEIVED' || ref.status === 'UNDER_REVIEW') && (
                             <Button
-                              variant="primary"
+                              variant="success"
                               size="sm"
                               onClick={() => handleUpdateReferral(ref._id, 'accept')}
                             >
@@ -617,7 +617,7 @@ export default function DoctorPortalPage() {
               required
             />
           </div>
-          <Button type="submit" variant="outline">
+          <Button type="submit" variant="success">
             Verify Consent & Fetch Records
           </Button>
         </form>

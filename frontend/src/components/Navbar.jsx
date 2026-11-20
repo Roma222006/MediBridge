@@ -22,9 +22,12 @@ export default function Navbar() {
 
       <nav className="navbar">
         <div className="navbar-inner">
-          <Link to="/" className="brand-logo">
+          <Link to="/" className="brand-logo" style={{ textDecoration: 'none' }}>
             <HospitalIcon size={24} />
-            <span>MediBridge</span>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: '800', letterSpacing: '-0.02em' }}>
+              <span style={{ color: 'var(--color-heading)' }}>Medi</span>
+              <span style={{ color: 'var(--color-primary)' }}>Bridge</span>
+            </span>
           </Link>
 
           <ul className="nav-links">

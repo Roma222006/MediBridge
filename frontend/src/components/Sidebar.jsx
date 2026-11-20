@@ -30,9 +30,12 @@ export default function Sidebar({ isOpen, onClose }) {
 
       <aside className={`sidebar ${isOpen ? 'open' : ''}`} aria-label="Main Navigation">
         <div className="sidebar-brand">
-          <Link to="/" className="brand-logo" onClick={onClose}>
+          <Link to="/" className="brand-logo" onClick={onClose} style={{ textDecoration: 'none' }}>
             <Hospital size={22} strokeWidth={1.75} aria-hidden="true" style={{ color: 'var(--color-primary)' }} />
-            <span>MediBridge</span>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: '800', letterSpacing: '-0.02em' }}>
+              <span style={{ color: 'var(--color-heading)' }}>Medi</span>
+              <span style={{ color: 'var(--color-primary)' }}>Bridge</span>
+            </span>
           </Link>
           <button
             type="button"
