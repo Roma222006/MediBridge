@@ -13,4 +13,16 @@ router.get('/session/:appointmentId/status', (req, res, next) =>
   teleconsultController.getSessionStatus(req, res, next)
 );
 
+router.get('/session/:appointmentId/notes', (req, res, next) =>
+  teleconsultController.getNotes(req, res, next)
+);
+
+router.post('/session/:appointmentId/notes', (req, res, next) =>
+  teleconsultController.saveNotes(req, res, next)
+);
+
+router.post('/session/:appointmentId/end', (req, res, next) =>
+  teleconsultController.endSession(req, res, next)
+);
+
 module.exports = router;

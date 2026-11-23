@@ -149,6 +149,19 @@ class ReferralController {
       next(err);
     }
   }
+
+  async withdrawReferral(req, res, next) {
+    try {
+      const referral = await referralService.withdrawReferral(
+        req.params.id,
+        req.user._id,
+        req.body?.reason
+      );
+      res.json({ success: true, message: 'Referral withdrawn.', data: referral });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new ReferralController();

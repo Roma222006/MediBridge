@@ -1,28 +1,15 @@
-const { MongoMemoryServer } = require('mongodb-memory-server');
 const mongoose = require('mongoose');
 
-let mongoServer;
-
 async function setupTestDB() {
-  if (process.env.TEST_MONGODB_URI) {
-    await mongoose.connect(process.env.TEST_MONGODB_URI);
+  const uri = process.env.TEST_MONGODB_URI || 'mongodb://127.0.0.1:27017/medibridge_test';
+  if (mongoose.connection.readyState === 1) {
     return;
   }
-  try {
-    mongoServer = await MongoMemoryServer.create();
-    const uri = mongoServer.getUri();
-    await mongoose.connect(uri);
-  } catch (err) {
-    const fallbackUri = 'mongodb://127.0.0.1:27017/medibridge_test';
-    await mongoose.connect(fallbackUri);
-  }
+  await mongoose.connect(uri);
 }
 
 async function teardownTestDB() {
   await mongoose.disconnect();
-  if (mongoServer) {
-    await mongoServer.stop();
-  }
 }
 
 async function clearTestDB() {

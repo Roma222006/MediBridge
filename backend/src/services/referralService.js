@@ -306,17 +306,59 @@ class ReferralService {
       throw err;
     }
 
+    let alternatives = alternativeHospitalIds;
+    if (!alternatives || alternatives.length === 0) {
+      // Automatically suggest up to 3 alternative verified hospitals
+      const altHospitals = await Hospital.find({
+        _id: { $ne: receivingHospitalId },
+        isVerified: true
+      })
+        .limit(3)
+        .select('_id name address');
+      alternatives = altHospitals.map((h) => h._id);
+    }
+
     const prev = referral.status;
     referral.status = 'REJECTED';
-    referral.alternativeHospitals = alternativeHospitalIds.map((hId) => ({
+    referral.alternativeHospitals = alternatives.map((hId) => ({
       hospitalId: hId,
-      suggestedReason: 'Alternative facility with reported bed/specialty capacity'
+      suggestedReason: 'Alternative verified facility with reported specialty capacity'
     }));
 
     referral.statusHistory.push({
       fromStatus: prev,
       toStatus: 'REJECTED',
       reason: reason || 'Capacity or resource limitation at receiving hospital',
+      changedBy: userId,
+      timestamp: new Date()
+    });
+
+    await referral.save();
+    return referral;
+  }
+
+  async withdrawReferral(referralId, userId, reason = 'Withdrawn by referring clinician') {
+    const referral = await Referral.findById(referralId);
+    if (!referral) {
+      const err = new Error('Referral not found.');
+      err.code = 'RESOURCE_NOT_FOUND';
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (['ACCEPTED', 'ARRIVED', 'COMPLETED', 'WITHDRAWN'].includes(referral.status)) {
+      const err = new Error(`Cannot withdraw referral in status '${referral.status}'.`);
+      err.code = 'VALIDATION_FAILED';
+      err.statusCode = 422;
+      throw err;
+    }
+
+    const prev = referral.status;
+    referral.status = 'WITHDRAWN';
+    referral.statusHistory.push({
+      fromStatus: prev,
+      toStatus: 'WITHDRAWN',
+      reason,
       changedBy: userId,
       timestamp: new Date()
     });

@@ -71,6 +71,15 @@ class VaultController {
         ipAddress: req.ip
       });
 
+      const io = req.app.get('io');
+      if (io && consent.grantedToDoctorId) {
+        io.to(`doctor:${consent.grantedToDoctorId}`).emit('consent_revoked', {
+          consentId: consent._id,
+          patientProfileId: consent.patientProfileId,
+          reason
+        });
+      }
+
       res.json({
         success: true,
         message: 'Consent revoked successfully. Immediate effect applied.',

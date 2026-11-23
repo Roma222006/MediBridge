@@ -15,5 +15,12 @@ router.get('/slots', (req, res, next) => adminController.getSlots(req, res, next
 router.post('/services', (req, res, next) => adminController.createService(req, res, next));
 router.get('/services', (req, res, next) => adminController.getServices(req, res, next));
 router.get('/audit-logs', (req, res, next) => adminController.getAuditLogs(req, res, next));
+router.get('/leave-requests', (req, res, next) => adminController.getDoctorLeaveRequests(req, res, next));
+router.patch('/leave-requests/:id/record', (req, res, next) =>
+  adminController.recordDoctorLeaveFromRequest(req, res, next)
+);
+router.patch('/leave-requests/:id/decline', (req, res, next) =>
+  adminController.declineDoctorLeaveRequest(req, res, next)
+);
 
 module.exports = router;

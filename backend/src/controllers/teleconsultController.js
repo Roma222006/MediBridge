@@ -158,6 +158,198 @@ class TeleconsultController {
       next(err);
     }
   }
+
+  async saveNotes(req, res, next) {
+    try {
+      const { appointmentId } = req.params;
+      const { content, isDraft, version, recommendInPerson, convertedToReferral } = req.body;
+      const user = req.user;
+
+      if (user.role !== 'doctor') {
+        return res.status(403).json({
+          success: false,
+          error: { code: 'FORBIDDEN', message: 'Only attending physicians can document consultation notes.' }
+        });
+      }
+
+      const doctor = await Doctor.findOne({ userId: user._id });
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'DOCTOR_NOT_FOUND', message: 'Doctor profile not found.' }
+        });
+      }
+
+      const appointment = await Appointment.findById(appointmentId);
+      if (!appointment) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'APPOINTMENT_NOT_FOUND', message: 'Appointment not found.' }
+        });
+      }
+
+      if (!appointment.doctorId || appointment.doctorId.toString() !== doctor._id.toString()) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Appointment not assigned to this doctor.' }
+        });
+      }
+
+      if (!isDraft && (!content || !content.trim())) {
+        return res.status(422).json({
+          success: false,
+          error: { code: 'VALIDATION_FAILED', message: 'Clinical notes content cannot be blank when finalizing consultation.' }
+        });
+      }
+
+      const ConsultationNote = require('../models/ConsultationNote');
+      let note = await ConsultationNote.findOne({ appointmentId, doctorId: doctor._id });
+
+      if (note) {
+        if (version !== undefined && note.version !== Number(version)) {
+          return res.status(409).json({
+            success: false,
+            error: { code: 'ALREADY_HANDLED', message: `Conflict: Note version mismatch (current v${note.version}, sent v${version}).` }
+          });
+        }
+        note.content = content || note.content;
+        note.isDraft = isDraft !== undefined ? isDraft : false;
+        note.version = (note.version || 1) + 1;
+        note.savedAt = new Date();
+        if (recommendInPerson !== undefined) note.recommendInPerson = recommendInPerson;
+        if (convertedToReferral !== undefined) note.convertedToReferral = convertedToReferral;
+        await note.save();
+      } else {
+        note = await ConsultationNote.create({
+          appointmentId: appointment._id,
+          doctorId: doctor._id,
+          patientProfileId: appointment.patientProfileId,
+          hospitalId: appointment.hospitalId,
+          content: content || '',
+          version: 1,
+          isDraft: isDraft !== undefined ? isDraft : false,
+          savedAt: new Date(),
+          recommendInPerson: !!recommendInPerson,
+          convertedToReferral: !!convertedToReferral
+        });
+      }
+
+      res.json({
+        success: true,
+        message: isDraft ? 'Draft autosaved' : 'Consultation notes committed',
+        data: note
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getNotes(req, res, next) {
+    try {
+      const { appointmentId } = req.params;
+      const user = req.user;
+
+      const doctor = await Doctor.findOne({ userId: user._id });
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'DOCTOR_NOT_FOUND', message: 'Doctor profile not found.' }
+        });
+      }
+
+      const ConsultationNote = require('../models/ConsultationNote');
+      const note = await ConsultationNote.findOne({ appointmentId, doctorId: doctor._id }).lean();
+
+      res.json({
+        success: true,
+        data: note || null
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async endSession(req, res, next) {
+    try {
+      const { appointmentId } = req.params;
+      const user = req.user;
+
+      const doctor = await Doctor.findOne({ userId: user._id });
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'DOCTOR_NOT_FOUND', message: 'Doctor profile not found.' }
+        });
+      }
+
+      const appointment = await Appointment.findById(appointmentId);
+      if (!appointment) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'APPOINTMENT_NOT_FOUND', message: 'Appointment not found.' }
+        });
+      }
+
+      if (!appointment.doctorId || appointment.doctorId.toString() !== doctor._id.toString()) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Appointment not assigned to this doctor.' }
+        });
+      }
+
+      // Hard safeguard: Consult cannot be ended until notes are saved (non-draft)
+      const ConsultationNote = require('../models/ConsultationNote');
+      const savedNote = await ConsultationNote.findOne({
+        appointmentId: appointment._id,
+        doctorId: doctor._id,
+        isDraft: false
+      });
+
+      if (!savedNote || !savedNote.content || !savedNote.content.trim()) {
+        return res.status(422).json({
+          success: false,
+          error: {
+            code: 'VALIDATION_FAILED',
+            message: 'Clinical safety requirement: Consultation notes must be saved and committed before concluding the consultation.'
+          }
+        });
+      }
+
+      if (appointment.status === 'IN_CONSULTATION' || appointment.status === 'CONFIRMED' || appointment.status === 'CHECKED_IN') {
+        appointment.status = 'COMPLETED';
+        appointment.version = (appointment.version || 0) + 1;
+        appointment.statusHistory.push({
+          fromStatus: 'IN_CONSULTATION',
+          toStatus: 'COMPLETED',
+          reason: 'Doctor concluded consultation after saving notes',
+          changedBy: user._id,
+          timestamp: new Date()
+        });
+        await appointment.save();
+      }
+
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`teleconsult:${appointment._id}`).emit('session_concluded', {
+          appointmentId: appointment._id,
+          concludedAt: new Date(),
+          status: 'COMPLETED'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Consultation concluded and marked completed.',
+        data: {
+          appointmentId: appointment._id,
+          status: appointment.status,
+          notesCommitted: true
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new TeleconsultController();

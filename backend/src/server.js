@@ -27,6 +27,10 @@ io.on('connection', (socket) => {
     socket.join(`hospital:${hospitalId}`);
   });
 
+  socket.on('subscribe_doctor', (doctorId) => {
+    socket.join(`doctor:${doctorId}`);
+  });
+
   socket.on('disconnect', () => {
     if (config.env !== 'test') {
       console.log(`[Socket.IO] Client disconnected: ${socket.id}`);

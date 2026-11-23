@@ -197,6 +197,108 @@ class AdminController {
       next(err);
     }
   }
+
+  async getDoctorLeaveRequests(req, res, next) {
+    try {
+      const hospitalId = req.user.hospitalId;
+      const DoctorLeaveRequest = require('../models/DoctorLeaveRequest');
+      const requests = await DoctorLeaveRequest.find({ hospitalId })
+        .populate('doctorId', 'name specialty regNumber')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      res.json({
+        success: true,
+        count: requests.length,
+        data: requests
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async recordDoctorLeaveFromRequest(req, res, next) {
+    try {
+      const { id } = req.params;
+      const hospitalId = req.user.hospitalId;
+      const DoctorLeaveRequest = require('../models/DoctorLeaveRequest');
+      const request = await DoctorLeaveRequest.findOne({ _id: id, hospitalId });
+
+      if (!request) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Doctor leave request not found.' }
+        });
+      }
+
+      if (request.status !== 'SUBMITTED') {
+        return res.status(422).json({
+          success: false,
+          error: { code: 'VALIDATION_FAILED', message: `Cannot record leave in status '${request.status}'.` }
+        });
+      }
+
+      const reassignmentService = require('../services/reassignmentService');
+      const io = req.app.get('io');
+      const leaveResult = await reassignmentService.recordDoctorLeave({
+        hospitalId,
+        doctorId: request.doctorId,
+        startDate: request.startDate,
+        endDate: request.endDate,
+        reason: request.reason,
+        recordedBy: req.user._id,
+        io
+      });
+
+      request.status = 'RECORDED_BY_ADMIN';
+      request.recordedEventId = leaveResult.leave.eventId;
+      request.reviewedBy = req.user._id;
+      request.reviewedAt = new Date();
+      await request.save();
+
+      res.json({
+        success: true,
+        message: 'Doctor leave recorded by administration and reassignment initiated.',
+        data: {
+          leaveRequest: request,
+          leaveDetails: leaveResult
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async declineDoctorLeaveRequest(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const hospitalId = req.user.hospitalId;
+      const DoctorLeaveRequest = require('../models/DoctorLeaveRequest');
+      const request = await DoctorLeaveRequest.findOne({ _id: id, hospitalId });
+
+      if (!request) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Doctor leave request not found.' }
+        });
+      }
+
+      request.status = 'DECLINED';
+      request.adminNotes = reason || 'Declined due to hospital coverage requirements';
+      request.reviewedBy = req.user._id;
+      request.reviewedAt = new Date();
+      await request.save();
+
+      res.json({
+        success: true,
+        message: 'Doctor leave request declined.',
+        data: request
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new AdminController();

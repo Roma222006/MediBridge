@@ -6,10 +6,10 @@ const rbacMiddleware = require('../middlewares/rbacMiddleware');
 
 router.use(authMiddleware);
 
-// Create referral
+// Create referral (Doctor ONLY)
 router.post(
   '/',
-  rbacMiddleware('doctor', 'hospital_admin'),
+  rbacMiddleware('doctor'),
   (req, res, next) => referralController.createReferral(req, res, next)
 );
 
@@ -47,6 +47,10 @@ router.patch('/:id/complete', rbacMiddleware('doctor', 'hospital_admin'), (req, 
 
 router.patch('/:id/reject', rbacMiddleware('doctor', 'hospital_admin'), (req, res, next) =>
   referralController.rejectReferral(req, res, next)
+);
+
+router.patch('/:id/withdraw', rbacMiddleware('doctor', 'patient'), (req, res, next) =>
+  referralController.withdrawReferral(req, res, next)
 );
 
 module.exports = router;

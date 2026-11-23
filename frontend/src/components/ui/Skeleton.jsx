@@ -43,3 +43,5 @@ export function TableSkeleton({ rows = 5, columns = 4 }) {
     </div>
   );
 }
+
+export default Skeleton;
