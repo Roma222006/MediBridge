@@ -189,7 +189,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 <li>
                   <Link
                     to="/doctor-portal"
-                    className={`nav-link ${isCurrent('/doctor-portal') ? 'active' : ''}`}
+                    className={`nav-link ${isCurrent('/doctor-portal') && !location.search ? 'active' : ''}`}
                     onClick={onClose}
                   >
                     <LayoutDashboard size={17} strokeWidth={1.75} />
@@ -198,22 +198,12 @@ export default function Sidebar({ isOpen, onClose }) {
                 </li>
                 <li>
                   <Link
-                    to="/patient-dashboard?tab=settings"
-                    className={`nav-link ${isCurrent('/patient-dashboard', 'settings') ? 'active' : ''}`}
+                    to="/doctor-portal?tab=desk"
+                    className={`nav-link ${isCurrent('/doctor-portal', 'desk') || isCurrent('/doctor-portal', 'appointments') ? 'active' : ''}`}
                     onClick={onClose}
                   >
-                    <UserCheck size={17} strokeWidth={1.75} />
-                    <span>My Profile</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/doctor-portal?tab=credentials"
-                    className={`nav-link ${isCurrent('/doctor-portal', 'credentials') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <ShieldCheck size={17} strokeWidth={1.75} />
-                    <span>Credentials & Verification</span>
+                    <Stethoscope size={17} strokeWidth={1.75} />
+                    <span>Appointments & Clinical Desk</span>
                   </Link>
                 </li>
                 <li>
@@ -224,26 +214,6 @@ export default function Sidebar({ isOpen, onClose }) {
                   >
                     <CalendarCheck size={17} strokeWidth={1.75} />
                     <span>Availability</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/doctor-portal?tab=appointments"
-                    className={`nav-link ${isCurrent('/doctor-portal', 'appointments') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <Calendar size={17} strokeWidth={1.75} />
-                    <span>Appointments</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/doctor-portal?tab=desk"
-                    className={`nav-link ${isCurrent('/doctor-portal', 'desk') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <Stethoscope size={17} strokeWidth={1.75} />
-                    <span>Clinical Desk</span>
                   </Link>
                 </li>
                 <li>
@@ -288,12 +258,22 @@ export default function Sidebar({ isOpen, onClose }) {
                 </li>
                 <li>
                   <Link
-                    to="/doctor-portal?tab=profile"
-                    className={`nav-link ${isCurrent('/doctor-portal', 'profile') ? 'active' : ''}`}
+                    to="/doctor-portal?tab=credentials"
+                    className={`nav-link ${isCurrent('/doctor-portal', 'credentials') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <ShieldCheck size={17} strokeWidth={1.75} />
+                    <span>Credentials & Verification</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/doctor-portal?tab=settings"
+                    className={`nav-link ${isCurrent('/doctor-portal', 'settings') || isCurrent('/doctor-portal', 'profile') ? 'active' : ''}`}
                     onClick={onClose}
                   >
                     <Settings size={17} strokeWidth={1.75} />
-                    <span>Settings</span>
+                    <span>Profile & Settings</span>
                   </Link>
                 </li>
               </ul>

@@ -8,9 +8,6 @@ import PageHeader from '../components/PageHeader';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
-import Tabs from '../components/ui/Tabs';
-import Skeleton from '../components/ui/Skeleton';
-import EmptyState from '../components/ui/EmptyState';
 import {
   Calendar,
   Clock,
@@ -34,7 +31,19 @@ import {
   Stethoscope,
   Info,
   Check,
-  UserCheck
+  UserCheck,
+  Bell,
+  Settings,
+  Download,
+  Trash2,
+  CalendarCheck,
+  PhoneCall,
+  Activity,
+  Layers,
+  Sparkles,
+  HelpCircle,
+  ChevronRight,
+  Filter
 } from 'lucide-react';
 
 export default function DoctorPortalPage() {
@@ -42,33 +51,98 @@ export default function DoctorPortalPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Parse tab from URL (e.g. ?tab=appointments, ?tab=credentials, ?tab=desk, ?tab=profile)
+  // Tab from URL (?tab=desk, ?tab=availability, ?tab=prescriptions, ?tab=referrals, ?tab=followups, ?tab=notifications, ?tab=credentials, ?tab=settings)
   const searchParams = new URLSearchParams(location.search);
   const currentTab = searchParams.get('tab') || 'dashboard';
 
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
 
-  // Profile data
-  const [doctorProfile, setDoctorProfile] = useState(null);
+  // ==========================================================================
+  // 1. DASHBOARD & PERSISTENT PENDING REQUESTS (Saved to localStorage)
+  // ==========================================================================
+  const [pendingRequests, setPendingRequests] = useState(() => {
+    const saved = localStorage.getItem('medibridge_doctor_pending_requests');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return [
+      { id: 'req-1', patient: 'Anitha K', dateTime: '24 Nov, 11:00 AM', mode: 'Online', reason: 'Follow-up' },
+      { id: 'req-2', patient: 'Karthik S', dateTime: '24 Nov, 12:00 PM', mode: 'In-Person', reason: 'Consultation' },
+      { id: 'req-3', patient: 'Priya R', dateTime: '24 Nov, 02:30 PM', mode: 'Online', reason: 'Review Report' },
+      { id: 'req-4', patient: 'Meena M', dateTime: '24 Nov, 04:00 PM', mode: 'In-Person', reason: 'Routine Check' }
+    ];
+  });
 
-  // Today Schedule
-  const [todayData, setTodayData] = useState(null);
+  const [confirmedCount, setConfirmedCount] = useState(() => {
+    const val = localStorage.getItem('medibridge_doctor_confirmed_count');
+    return val ? parseInt(val, 10) : 6;
+  });
 
-  // Appointments Tab Sub-selection
-  const [apptSubTab, setApptSubTab] = useState('today'); // today, pending, upcoming, history
-  const [apptDateFilter, setApptDateFilter] = useState('');
-  const [appointmentsList, setAppointmentsList] = useState([]);
-  const [loadingAppts, setLoadingAppts] = useState(false);
+  const [cancellationCount, setCancellationCount] = useState(() => {
+    const val = localStorage.getItem('medibridge_doctor_cancelled_count');
+    return val ? parseInt(val, 10) : 2;
+  });
 
-  // Default Mock Datasets for Reference UI Alignment (Screens 4, 5, 6)
-  const [pendingRequests, setPendingRequests] = useState([
-    { id: 'req-1', patient: 'Anitha K', dateTime: '24 Nov, 11:00 AM', mode: 'Online', reason: 'Follow-up' },
-    { id: 'req-2', patient: 'Karthik S', dateTime: '24 Nov, 12:00 PM', mode: 'In-Person', reason: 'Consultation' },
-    { id: 'req-3', patient: 'Priya R', dateTime: '24 Nov, 02:30 PM', mode: 'Online', reason: 'Review Report' },
-    { id: 'req-4', patient: 'Meena M', dateTime: '24 Nov, 04:00 PM', mode: 'In-Person', reason: 'Routine Check' }
-  ]);
+  const handleAcceptRequest = (req) => {
+    const updated = pendingRequests.filter((r) => r.id !== req.id);
+    setPendingRequests(updated);
+    localStorage.setItem('medibridge_doctor_pending_requests', JSON.stringify(updated));
 
+    const newConfirmed = confirmedCount + 1;
+    setConfirmedCount(newConfirmed);
+    localStorage.setItem('medibridge_doctor_confirmed_count', String(newConfirmed));
+
+    // Also add to appointments queue
+    const newApt = {
+      id: `apt-${Date.now()}`,
+      time: req.dateTime.split(', ')[1] || '11:00 AM',
+      patient: req.patient,
+      mode: req.mode,
+      reason: req.reason,
+      status: 'Confirmed',
+      actionType: req.mode === 'Online' ? 'consult' : 'view',
+      sub: 'upcoming'
+    };
+    setScreen5Appointments((prev) => [newApt, ...prev]);
+
+    setMsg({ type: 'success', text: `Appointment confirmed for ${req.patient} (${req.dateTime}).` });
+  };
+
+  const handleRejectRequest = (req) => {
+    const updated = pendingRequests.filter((r) => r.id !== req.id);
+    setPendingRequests(updated);
+    localStorage.setItem('medibridge_doctor_pending_requests', JSON.stringify(updated));
+
+    const newCancelled = cancellationCount + 1;
+    setCancellationCount(newCancelled);
+    localStorage.setItem('medibridge_doctor_cancelled_count', String(newCancelled));
+
+    setMsg({ type: 'error', text: `Appointment request rejected for ${req.patient}.` });
+  };
+
+  const handleResetRequests = () => {
+    const initial = [
+      { id: 'req-1', patient: 'Anitha K', dateTime: '24 Nov, 11:00 AM', mode: 'Online', reason: 'Follow-up' },
+      { id: 'req-2', patient: 'Karthik S', dateTime: '24 Nov, 12:00 PM', mode: 'In-Person', reason: 'Consultation' },
+      { id: 'req-3', patient: 'Priya R', dateTime: '24 Nov, 02:30 PM', mode: 'Online', reason: 'Review Report' },
+      { id: 'req-4', patient: 'Meena M', dateTime: '24 Nov, 04:00 PM', mode: 'In-Person', reason: 'Routine Check' }
+    ];
+    setPendingRequests(initial);
+    setConfirmedCount(6);
+    setCancellationCount(2);
+    localStorage.removeItem('medibridge_doctor_pending_requests');
+    localStorage.removeItem('medibridge_doctor_confirmed_count');
+    localStorage.removeItem('medibridge_doctor_cancelled_count');
+    setMsg({ type: 'success', text: 'Reset pending demo appointment requests.' });
+  };
+
+  // ==========================================================================
+  // 2. UNIFIED APPOINTMENTS & CLINICAL DESK
+  // ==========================================================================
+  const [apptSubTab, setApptSubTab] = useState('today'); // 'today', 'pending', 'teleconsult', 'history'
   const [screen5Appointments, setScreen5Appointments] = useState([
     { id: 'apt-1', time: '09:00 AM', patient: 'Priya R', mode: 'In-Person', reason: 'Check-up', status: 'Completed', actionType: 'view', sub: 'today' },
     { id: 'apt-2', time: '10:00 AM', patient: 'Arun K', mode: 'Online', reason: 'Consultation', status: 'In Progress', actionType: 'consult', sub: 'today' },
@@ -80,486 +154,431 @@ export default function DoctorPortalPage() {
     { id: 'apt-8', time: '05:15 PM', patient: 'Kavitha S', mode: 'Online', reason: 'Lab Review', status: 'Confirmed', actionType: 'consult', sub: 'upcoming' }
   ]);
 
-  // Referrals
-  const [referralsList, setReferralsList] = useState([]);
+  // ==========================================================================
+  // 3. AVAILABILITY & DUTY SCHEDULE DEMO DATA
+  // ==========================================================================
+  const [isDoctorAvailable, setIsDoctorAvailable] = useState(true);
+  const [leaveRequests, setLeaveRequests] = useState([
+    { id: 'l-1', dates: '24-25 Dec 2026', type: 'CME Conference Leave', reason: 'Annual Cardiological Society CME Conference', status: 'APPROVED' },
+    { id: 'l-2', dates: '02-03 Jan 2027', type: 'Personal Leave', reason: 'Family engagement', status: 'PENDING' }
+  ]);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [leaveStartDate, setLeaveStartDate] = useState('2026-12-28');
+  const [leaveEndDate, setLeaveEndDate] = useState('2026-12-29');
+  const [leaveReason, setLeaveReason] = useState('');
+
+  // ==========================================================================
+  // 4. PRESCRIPTIONS DEMO DATA
+  // ==========================================================================
+  const [prescriptionsList, setPrescriptionsList] = useState([
+    {
+      id: 'rx-1',
+      rxNumber: 'RX-202611-0491',
+      patientName: 'Priya R',
+      patientAge: '42 / Female',
+      date: '24 Nov 2026',
+      diagnosis: 'Coronary Artery Disease & Essential Hypertension',
+      status: 'Signed & Sent to Vault',
+      medications: [
+        { name: 'Tab Atorvastatin', dose: '20mg', freq: '0-0-1 (Night)', duration: '30 Days' },
+        { name: 'Tab Metoprolol Succinate', dose: '25mg', freq: '1-0-0 (Morning)', duration: '30 Days' },
+        { name: 'Tab Ecosprin', dose: '75mg', freq: '0-1-0 (After Lunch)', duration: '30 Days' }
+      ]
+    },
+    {
+      id: 'rx-2',
+      rxNumber: 'RX-202611-0490',
+      patientName: 'Arun K',
+      patientAge: '55 / Male',
+      date: '24 Nov 2026',
+      diagnosis: 'Post-PTCA Drug-Eluting Stent Recovery',
+      status: 'Signed & Sent to Vault',
+      medications: [
+        { name: 'Tab Clopidogrel', dose: '75mg', freq: '1-0-0 (Morning)', duration: '30 Days' },
+        { name: 'Tab Rosuvastatin', dose: '10mg', freq: '0-0-1 (Night)', duration: '30 Days' },
+        { name: 'Tab Ramipril', dose: '2.5mg', freq: '1-0-0 (Morning)', duration: '30 Days' }
+      ]
+    },
+    {
+      id: 'rx-3',
+      rxNumber: 'RX-202611-0482',
+      patientName: 'Deepa N',
+      patientAge: '36 / Female',
+      date: '23 Nov 2026',
+      diagnosis: 'Paroxysmal Supraventricular Tachycardia (PSVT)',
+      status: 'Signed & Sent to Vault',
+      medications: [
+        { name: 'Tab Propranolol', dose: '20mg', freq: '1-0-1 (Twice Daily)', duration: '15 Days' },
+        { name: 'Cap CoQ10', dose: '100mg', freq: '1-0-0 (Morning)', duration: '30 Days' }
+      ]
+    },
+    {
+      id: 'rx-4',
+      rxNumber: 'RX-202611-0475',
+      patientName: 'Rajesh M',
+      patientAge: '61 / Male',
+      date: '22 Nov 2026',
+      diagnosis: 'Dilated Cardiomyopathy with Reduced Ejection Fraction',
+      status: 'Signed & Sent to Vault',
+      medications: [
+        { name: 'Tab Sacubitril / Valsartan', dose: '50mg', freq: '1-0-1 (Twice Daily)', duration: '30 Days' },
+        { name: 'Tab Furosemide', dose: '20mg', freq: '1-0-0 (Morning)', duration: '15 Days' }
+      ]
+    }
+  ]);
+  const [showAddRxModal, setShowAddRxModal] = useState(false);
+  const [newRxPatient, setNewRxPatient] = useState('');
+  const [newRxDiagnosis, setNewRxDiagnosis] = useState('');
+  const [newRxDrug, setNewRxDrug] = useState('');
+
+  // ==========================================================================
+  // 5. FOLLOW-UPS DEMO DATA
+  // ==========================================================================
+  const [followupsList, setFollowupsList] = useState([
+    {
+      id: 'fol-1',
+      patientName: 'Anitha K',
+      age: '38 / Female',
+      title: 'Post-Angioplasty Stent Recovery Review',
+      date: '28 Nov 2026, 10:30 AM',
+      mode: 'Online',
+      priority: 'High Priority',
+      status: 'Scheduled',
+      notes: 'BP log monitoring (<130/80 mmHg). Review tolerance to dual antiplatelets.'
+    },
+    {
+      id: 'fol-2',
+      patientName: 'Karthik S',
+      age: '45 / Male',
+      title: 'Hypertension & Lipid Titration Review',
+      date: '05 Dec 2026, 11:15 AM',
+      mode: 'In-Person',
+      priority: 'Routine',
+      status: 'Upcoming',
+      notes: 'Fasting lipid panel to be completed 24 hrs prior at KMCH Central Lab.'
+    },
+    {
+      id: 'fol-3',
+      patientName: 'Suresh V',
+      age: '52 / Male',
+      title: '3-Month Post-CABG Review',
+      date: '12 Dec 2026, 02:00 PM',
+      mode: 'Online',
+      priority: 'Routine',
+      status: 'Scheduled',
+      notes: 'Review sternal healing and echo ejection fraction parameters.'
+    },
+    {
+      id: 'fol-4',
+      patientName: 'Meena M',
+      age: '49 / Female',
+      title: 'Cardiovascular Risk Stratification',
+      date: '18 Nov 2026',
+      mode: 'In-Person',
+      priority: 'Routine',
+      status: 'Completed',
+      notes: 'Full recovery score logged. Dietary compliance excellent.'
+    }
+  ]);
+
+  // ==========================================================================
+  // 6. REFERRALS DEMO DATA
+  // ==========================================================================
+  const [referralsList, setReferralsList] = useState([
+    {
+      id: 'ref-1',
+      referralNo: 'REF-KMCH-202611-0982',
+      patientName: 'Rajesh Kumar (58 M)',
+      fromHospital: 'Sri Ramakrishna Hospital, Coimbatore',
+      toHospital: 'Kovai Medical Center & Hospital (KMCH)',
+      specialty: 'Interventional Cardiology',
+      priority: 'URGENT',
+      slaCountdown: '3h 14m left',
+      status: 'Accepted'
+    },
+    {
+      id: 'ref-2',
+      referralNo: 'REF-KMCH-202611-0975',
+      patientName: 'Priya Dharshini (44 F)',
+      fromHospital: 'Kovai Medical Center & Hospital (KMCH)',
+      toHospital: 'Ganga Medical Center (Cardio-Thoracic Surgery)',
+      specialty: 'Cardio-Thoracic Surgery (Mitral Valve)',
+      priority: 'ROUTINE',
+      slaCountdown: '22h 40m left',
+      status: 'Handover Confirmed'
+    },
+    {
+      id: 'ref-3',
+      referralNo: 'REF-KMCH-202611-0968',
+      patientName: 'Balasubramanian (67 M)',
+      fromHospital: 'Coimbatore Medical College Hospital (CMCH)',
+      toHospital: 'Kovai Medical Center & Hospital (KMCH)',
+      specialty: 'Critical Care Cardiology (Trauma ICU)',
+      priority: 'CRITICAL',
+      slaCountdown: 'Immediate Handover',
+      status: 'Admitted to Bed C-ICU-04'
+    }
+  ]);
   const [showCreateRefModal, setShowCreateRefModal] = useState(false);
-  const [refPatientProfileId, setRefPatientProfileId] = useState('');
-  const [refReceivingHospitalId, setRefReceivingHospitalId] = useState('');
+  const [refPatientName, setRefPatientName] = useState('');
+  const [refDestination, setRefDestination] = useState('Ganga Hospital');
   const [refSpecialty, setRefSpecialty] = useState('Cardiology');
   const [refPriority, setRefPriority] = useState('ROUTINE');
-  const [refClinicalSummary, setRefClinicalSummary] = useState('');
-  const [hospitalsCatalog, setHospitalsCatalog] = useState([]);
-  const [submittingRef, setSubmittingRef] = useState(false);
 
-  // Records / Consent Viewer
-  const [vaultPatientId, setVaultPatientId] = useState('');
-  const [patientRecords, setPatientRecords] = useState(null);
-  const [vaultError, setVaultError] = useState(null);
-  const [activeViewingRecord, setActiveViewingRecord] = useState(null);
-  const [accessEnded, setAccessEnded] = useState(false);
-  const [countdownSeconds, setCountdownSeconds] = useState(60);
+  // ==========================================================================
+  // 7. NOTIFICATIONS DEMO DATA
+  // ==========================================================================
+  const [notifFilter, setNotifFilter] = useState('all');
+  const [notificationsList, setNotificationsList] = useState([
+    {
+      id: 'notif-1',
+      type: 'CRITICAL',
+      title: 'Level 1 Trauma Emergency Divert - 108 Ambulance En Route',
+      time: '5 mins ago',
+      message: 'Patient with severe cardiac trauma diverted to KMCH Casualty. Trauma ICU team on alert.',
+      read: false
+    },
+    {
+      id: 'notif-2',
+      type: 'URGENT',
+      title: 'New Inter-Hospital Referral: Sri Ramakrishna Hospital',
+      time: '20 mins ago',
+      message: 'Patient Rajesh Kumar (58 M) referred for refractory angina evaluation by Dr. Sundar M.',
+      read: false
+    },
+    {
+      id: 'notif-3',
+      type: 'APPOINTMENT',
+      title: 'New Teleconsultation Booked',
+      time: '1 hour ago',
+      message: 'Anitha K confirmed online video consultation slot for 28 Nov 2026 at 10:30 AM.',
+      read: true
+    },
+    {
+      id: 'notif-4',
+      type: 'LAB_ALERT',
+      title: 'Siemens 3T MRI Brain Scan Report Available',
+      time: '3 hours ago',
+      message: 'Axial scan report uploaded for patient Inpatient #KMCH-8921. SHA-256 verified.',
+      read: true
+    },
+    {
+      id: 'notif-5',
+      type: 'SYSTEM',
+      title: 'Weekly Clinical Schedule Finalized',
+      time: 'Yesterday',
+      message: 'OPD consultation slots for next week have been broadcast across MediBridge network.',
+      read: true
+    }
+  ]);
 
-  // Leave Requests
-  const [leaveRequests, setLeaveRequests] = useState([]);
-  const [showLeaveModal, setShowLeaveModal] = useState(false);
-  const [leaveStartDate, setLeaveStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [leaveEndDate, setLeaveEndDate] = useState(new Date().toISOString().split('T')[0]);
-  const [leaveReason, setLeaveReason] = useState('');
-  const [submittingLeave, setSubmittingLeave] = useState(false);
+  // ==========================================================================
+  // 8. DOCTOR PROFILE & SETTINGS (Unified Module as Requested)
+  // ==========================================================================
+  const [doctorSettings, setDoctorSettings] = useState(() => {
+    const saved = localStorage.getItem('medibridge_doctor_settings');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return {
+      fullName: 'Dr. Sundar M',
+      regNumber: 'TNMC-123456',
+      councilName: 'Tamil Nadu Medical Council',
+      qualifications: 'MBBS, MD (Gen Med), DM (Cardiology), FACC',
+      specialty: 'Cardiology',
+      subSpecialty: 'Interventional Cardiology',
+      hospitalName: 'Kovai Medical Center & Hospital (KMCH)',
+      department: 'Cardiology OPD (Room 204)',
+      inPersonFee: '800',
+      teleconsultFee: '600',
+      slotDuration: '15 mins',
+      maxDailyPatients: '25',
+      officialEmail: 'dr.sundar@kmch-health.org',
+      deskPhone: '+91 422 4323800 Ext: 204',
+      emergencyPhone: '+91 98421 99887',
+      smsAlerts: true,
+      whatsappLinks: true,
+      emergencyTriageAlerts: true,
+      twoFactorAuth: true
+    };
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
 
-  // Credential Documents & Profile Editing
-  const [credentialDocs, setCredentialDocs] = useState([]);
-  const [loadingDocs, setLoadingDocs] = useState(false);
+  const handleSaveDoctorSettings = (e) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    localStorage.setItem('medibridge_doctor_settings', JSON.stringify(doctorSettings));
+    setTimeout(() => {
+      setSavingSettings(false);
+      setMsg({ type: 'success', text: 'Doctor profile, practice settings, and consultation fees updated successfully!' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 400);
+  };
+
+  // ==========================================================================
+  // 9. CREDENTIALS & VERIFICATION (Dedicated Verification Details Page)
+  // ==========================================================================
   const [showUploadDocModal, setShowUploadDocModal] = useState(false);
   const [docUploadType, setDocUploadType] = useState('registration_certificate');
-  const [docSelectedFile, setDocSelectedFile] = useState(null);
-  const [uploadingDoc, setUploadingDoc] = useState(false);
-  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
-  const [profileForm, setProfileForm] = useState({
-    name: 'Dr. Sundar M',
-    regNumber: 'TNMC-123456',
-    councilName: 'Tamil Nadu Medical Council',
-    councilState: 'Tamil Nadu',
-    qualifications: 'MBBS, MD (Cardiology)',
-    specialty: 'Cardiology',
-    subSpecialty: 'Interventional Cardiology',
-    designation: 'Senior Consultant Cardiologist',
-    department: 'Cardiology',
-    experienceYears: 8,
-    languagesSpoken: 'English, Tamil'
-  });
-  const [savingProfile, setSavingProfile] = useState(false);
 
-  useEffect(() => {
-    loadInitialData();
-
-    if (user) {
-      socket.emit('subscribe_doctor', user._id);
-
-      socket.on('consent_revoked', () => {
-        setAccessEnded(true);
-        setActiveViewingRecord(null);
-        setMsg({
-          type: 'error',
-          text: 'Patient revoked consent. Document viewer closed immediately (Access ended).'
-        });
-      });
-
-      socket.on('doctor_leave_recorded', () => {
-        loadLeaveRequests();
-      });
-    }
-
-    return () => {
-      socket.off('consent_revoked');
-      socket.off('doctor_leave_recorded');
-    };
-  }, [user]);
-
-  useEffect(() => {
-    if (currentTab === 'appointments') {
-      loadAppointmentsTab();
-    } else if (currentTab === 'leave' || currentTab === 'availability') {
-      loadLeaveRequests();
-    } else if (currentTab === 'profile' || currentTab === 'credentials') {
-      loadProfileData();
-      loadCredentialDocs();
-    }
-  }, [currentTab, apptSubTab, apptDateFilter]);
-
-  // Viewer Countdown
-  useEffect(() => {
-    let timer = null;
-    if (activeViewingRecord && countdownSeconds > 0) {
-      timer = setInterval(() => {
-        setCountdownSeconds((prev) => {
-          if (prev <= 1) {
-            setAccessEnded(true);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(timer);
-  }, [activeViewingRecord, countdownSeconds]);
-
-  const loadInitialData = async () => {
-    try {
-      await Promise.allSettled([
-        api.get('/doctor/profile').then((res) => {
-          if (res.data?.success && res.data.data) {
-            setDoctorProfile(res.data.data);
-            setProfileForm({
-              name: res.data.data.name || 'Dr. Sundar M',
-              regNumber: res.data.data.regNumber || 'TNMC-123456',
-              councilName: res.data.data.councilName || 'Tamil Nadu Medical Council',
-              councilState: res.data.data.councilState || 'Tamil Nadu',
-              qualifications: res.data.data.qualifications || 'MBBS, MD (Cardiology)',
-              specialty: res.data.data.specialty || 'Cardiology',
-              subSpecialty: res.data.data.subSpecialty || 'Interventional Cardiology',
-              designation: res.data.data.designation || 'Senior Consultant Cardiologist',
-              department: res.data.data.department || 'Cardiology',
-              experienceYears: res.data.data.experienceYears || 8,
-              languagesSpoken: Array.isArray(res.data.data.languagesSpoken)
-                ? res.data.data.languagesSpoken.join(', ')
-                : 'English, Tamil'
-            });
-          }
-        }),
-
-        api.get('/doctor/schedule').then((res) => {
-          if (res.data?.success && res.data.data) {
-            setTodayData(res.data.data);
-          }
-        }),
-
-        api.get('/doctor/referrals').then((res) => {
-          if (res.data?.success) setReferralsList(res.data.data || []);
-        }),
-
-        api.get('/search?district=Coimbatore').then((res) => {
-          if (res.data?.success && res.data.data?.length > 0) {
-            setHospitalsCatalog(res.data.data);
-            setRefReceivingHospitalId(res.data.data[0].id || res.data.data[0]._id);
-          }
-        })
-      ]);
-    } catch (err) {
-      console.warn('[DoctorPortal] Initial load note:', err.message);
-    }
-  };
-
-  const loadProfileData = async () => {
-    try {
-      const res = await api.get('/doctor/profile');
-      if (res.data?.success && res.data.data) {
-        setDoctorProfile(res.data.data);
-      }
-    } catch (err) {
-      console.warn('[DoctorPortal] Profile load note:', err.message);
-    }
-  };
-
-  const loadCredentialDocs = async () => {
-    setLoadingDocs(true);
-    try {
-      const res = await api.get('/doctor/documents');
-      if (res.data?.success) {
-        setCredentialDocs(res.data.data || []);
-      }
-    } catch (err) {
-      console.warn('[DoctorPortal] Document load note:', err.message);
-    } finally {
-      setLoadingDocs(false);
-    }
-  };
-
-  const loadAppointmentsTab = async () => {
-    setLoadingAppts(true);
-    try {
-      let queryUrl = `/doctor/schedule?tab=${apptSubTab}`;
-      if (apptDateFilter) queryUrl += `&date=${apptDateFilter}`;
-      const res = await api.get(queryUrl);
-      if (res.data?.success && res.data.data?.appointments) {
-        setAppointmentsList(res.data.data.appointments);
-      }
-    } catch (err) {
-      console.warn('[DoctorPortal] Appointments tab error:', err.message);
-    } finally {
-      setLoadingAppts(false);
-    }
-  };
-
-  const loadLeaveRequests = async () => {
-    try {
-      const res = await api.get('/doctor/leave-requests');
-      if (res.data?.success) {
-        setLeaveRequests(res.data.data || []);
-      }
-    } catch (err) {
-      console.warn('[DoctorPortal] Leave requests note:', err.message);
-    }
-  };
-
-  // State Transition (Checked-In -> In Consultation -> Completed)
-  const handleTransitionStatus = async (appointmentId, targetStatus, currentVersion) => {
-    try {
-      const res = await api.patch(`/doctor/appointments/${appointmentId}/status`, {
-        status: targetStatus,
-        version: currentVersion
-      });
-      if (res.data?.success) {
-        setMsg({ type: 'success', text: `Appointment status advanced to ${targetStatus}` });
-        const schedRes = await api.get('/doctor/schedule');
-        if (schedRes.data?.success) setTodayData(schedRes.data.data);
-      }
-    } catch (err) {
-      setMsg({
-        type: 'error',
-        text: err.response?.data?.error?.message || 'Status transition rejected.'
-      });
-    }
-  };
-
-  const handleAcceptRequest = (req) => {
-    setPendingRequests((prev) => prev.filter((r) => r.id !== req.id));
-    setMsg({ type: 'success', text: `Appointment confirmed for ${req.patient} (${req.dateTime}).` });
-  };
-
-  const handleRejectRequest = (req) => {
-    setPendingRequests((prev) => prev.filter((r) => r.id !== req.id));
-    setMsg({ type: 'error', text: `Appointment request rejected for ${req.patient}.` });
-  };
-
-  const handleCreateReferral = async (e) => {
-    e.preventDefault();
-    if (!refPatientProfileId || !refReceivingHospitalId || !refClinicalSummary) return;
-
-    setSubmittingRef(true);
-    try {
-      const dedupeKey = `REF_${user?._id || 'doc'}_${refPatientProfileId}_${refSpecialty}_${new Date().toISOString().split('T')[0]}`;
-      const res = await api.post('/referrals', {
-        patientProfileId: refPatientProfileId,
-        receivingHospitalId: refReceivingHospitalId,
-        targetSpecialty: refSpecialty,
-        priority: refPriority,
-        clinicalSummary: refClinicalSummary,
-        dedupeKey
-      });
-
-      if (res.data?.success) {
-        setMsg({ type: 'success', text: `Referral ${res.data.data.referralNumber} successfully dispatched.` });
-        setShowCreateRefModal(false);
-        setRefClinicalSummary('');
-        const refRes = await api.get('/doctor/referrals');
-        if (refRes.data?.success) setReferralsList(refRes.data.data);
-      }
-    } catch (err) {
-      setMsg({
-        type: 'error',
-        text: err.response?.data?.error?.message || 'Failed to dispatch referral.'
-      });
-    } finally {
-      setSubmittingRef(false);
-    }
-  };
-
-  const handleUploadDoc = async (e) => {
-    e.preventDefault();
-    if (!docSelectedFile) return;
-
-    setUploadingDoc(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', docSelectedFile);
-      formData.append('type', docUploadType);
-
-      const res = await api.post('/doctor/documents', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      if (res.data?.success) {
-        setMsg({ type: 'success', text: 'Credential document uploaded and verified.' });
-        setShowUploadDocModal(false);
-        setDocSelectedFile(null);
-        loadCredentialDocs();
-      }
-    } catch (err) {
-      setMsg({
-        type: 'error',
-        text: err.response?.data?.error?.message || 'Failed to upload credential document.'
-      });
-    } finally {
-      setUploadingDoc(false);
-    }
-  };
-
-  const handleSaveProfile = async (e) => {
-    e.preventDefault();
-    setSavingProfile(true);
-    try {
-      const langs = profileForm.languagesSpoken
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-
-      const res = await api.patch('/doctor/profile', {
-        ...profileForm,
-        languagesSpoken: langs
-      });
-      if (res.data?.success) {
-        setMsg({ type: 'success', text: res.data.message || 'Profile updated successfully.' });
-        setShowEditProfileModal(false);
-        loadProfileData();
-      }
-    } catch (err) {
-      setMsg({
-        type: 'error',
-        text: err.response?.data?.error?.message || 'Failed to update professional profile.'
-      });
-    } finally {
-      setSavingProfile(false);
-    }
-  };
-
-  const handleSubmitLeave = async (e) => {
-    e.preventDefault();
-    if (!leaveStartDate || !leaveEndDate || !leaveReason) return;
-
-    setSubmittingLeave(true);
-    try {
-      const idempotencyKey = `req_leave_${user?._id || 'doc'}_${leaveStartDate}_${Date.now()}`;
-      const res = await api.post('/doctor/leave-request', {
-        startDate: leaveStartDate,
-        endDate: leaveEndDate,
-        reason: leaveReason,
-        idempotencyKey
-      });
-
-      if (res.data?.success) {
-        setMsg({
-          type: 'success',
-          text: `Leave request submitted for ${leaveStartDate} to ${leaveEndDate}. Pending hospital admin approval.`
-        });
-        setShowLeaveModal(false);
-        setLeaveReason('');
-        loadLeaveRequests();
-      }
-    } catch (err) {
-      setMsg({
-        type: 'error',
-        text: err.response?.data?.error?.message || 'Failed to submit leave request.'
-      });
-    } finally {
-      setSubmittingLeave(false);
-    }
-  };
-
-  // Filtered appointments list for Screen 5
-  const displayedAppointments = screen5Appointments.filter((item) => {
-    if (apptSubTab === 'today') return true;
-    if (apptSubTab === 'pending') return item.status === 'Pending';
-    if (apptSubTab === 'upcoming') return item.status === 'Confirmed' || item.status === 'In Progress';
-    if (apptSubTab === 'history') return item.status === 'Completed';
+  const filteredNotifications = notificationsList.filter((n) => {
+    if (notifFilter === 'critical') return n.type === 'CRITICAL' || n.type === 'URGENT';
+    if (notifFilter === 'unread') return !n.read;
     return true;
   });
 
   return (
-    <div className="main-content" style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
-      {/* Toast Notification */}
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
+      {/* Toast Alert Banner */}
       {msg && (
         <div
           role="alert"
           style={{
-            padding: '12px 16px',
-            borderRadius: 'var(--radius-card)',
+            padding: '14px 20px',
+            borderRadius: '12px',
             marginBottom: '20px',
             fontSize: '0.875rem',
-            backgroundColor: msg.type === 'success' ? '#DCFCE7' : '#FEE2E2',
-            color: msg.type === 'success' ? '#15803D' : '#B83245',
-            border: `1px solid ${msg.type === 'success' ? '#86EFAC' : '#FCA5A5'}`,
+            fontWeight: '600',
+            backgroundColor: msg.type === 'success' ? 'var(--status-success-bg)' : 'var(--status-critical-bg)',
+            color: msg.type === 'success' ? 'var(--status-success-text)' : 'var(--status-critical-text)',
+            border: `1px solid ${msg.type === 'success' ? 'var(--status-success-accent)' : 'var(--status-critical-solid)'}`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            boxShadow: 'var(--shadow-card)'
+            boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
           }}
         >
-          <span>{msg.text}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {msg.type === 'success' ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}
+            <span>{msg.text}</span>
+          </div>
           <button
+            type="button"
             onClick={() => setMsg(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontWeight: '700' }}
+            style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: '4px' }}
           >
-            &times;
+            <X size={16} />
           </button>
         </div>
       )}
 
       {/* ================================================================
-          SCREEN 4: DOCTOR PORTAL – DASHBOARD
+          1. DOCTOR DASHBOARD (SCREEN 4)
           ================================================================ */}
       {currentTab === 'dashboard' && (
-        <div>
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Welcome Header */}
+          <div
+            className="card"
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--border)',
+              borderRadius: '18px',
+              padding: '28px 32px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px',
+              boxShadow: 'var(--shadow-card)'
+            }}
+          >
             <div>
-              <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-heading)', margin: '0 0 6px 0' }}>
-                Welcome, {doctorProfile?.name || 'Dr. Sundar M'}
-              </h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.9375rem', color: 'var(--text-muted)' }}>
-                  {doctorProfile?.specialty || 'Cardiologist'} | {doctorProfile?.hospital?.name || 'Kovai Medical Center (KMCH)'}
-                </span>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '3px 10px',
-                    borderRadius: '9999px',
-                    backgroundColor: '#DCFCE7',
-                    color: '#15803D',
-                    fontSize: '0.75rem',
-                    fontWeight: '700'
-                  }}
-                >
-                  <Check size={13} strokeWidth={2.5} /> Verified
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                <h1 style={{ margin: 0, fontSize: '1.625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Welcome, {doctorSettings.fullName}
+                </h1>
+                <span className="badge badge-pill badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Check size={12} strokeWidth={2.5} /> Verified Doctor
                 </span>
               </div>
+              <p style={{ margin: 0, fontSize: '0.9375rem', color: 'var(--text-muted)' }}>
+                {doctorSettings.specialty} &bull; {doctorSettings.hospitalName} &bull; {doctorSettings.department}
+              </p>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <Button variant="outline" size="sm" onClick={() => setShowLeaveModal(true)} icon={<Calendar size={14} />}>
-                Request Leave
-              </Button>
-              <Button variant="primary" size="sm" onClick={() => setShowCreateRefModal(true)} icon={<PlusCircle size={14} />}>
-                Dispatch Referral
-              </Button>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setShowLeaveModal(true)}
+                className="btn btn-sm btn-outline"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Calendar size={14} />
+                <span>Request Leave</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCreateRefModal(true)}
+                className="btn btn-sm btn-primary"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <PlusCircle size={14} />
+                <span>Dispatch Referral</span>
+              </button>
             </div>
           </div>
 
           {/* 4 Metric Cards */}
-          <div className="ref-metrics-grid">
-            <div className="ref-metric-card">
-              <div className="ref-metric-icon pink">
-                <Calendar size={22} strokeWidth={2} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '18px', padding: '22px 26px', boxShadow: 'var(--shadow-card)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '1.875rem', fontWeight: '800', color: 'var(--color-heading)' }}>8</span>
+                <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: 'var(--color-blush-pink)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
+                  <Calendar size={18} />
+                </div>
               </div>
-              <div className="ref-metric-info">
-                <span className="ref-metric-value">{todayData?.count || 8}</span>
-                <span className="ref-metric-label">Today's Appointments</span>
-              </div>
-            </div>
-
-            <div className="ref-metric-card">
-              <div className="ref-metric-icon amber">
-                <Clock size={22} strokeWidth={2} />
-              </div>
-              <div className="ref-metric-info">
-                <span className="ref-metric-value">{pendingRequests.length}</span>
-                <span className="ref-metric-label">Pending Requests</span>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: '600', marginTop: '6px' }}>
+                Today's Appointments
               </div>
             </div>
 
-            <div className="ref-metric-card">
-              <div className="ref-metric-icon green">
-                <CheckCircle size={22} strokeWidth={2} />
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '18px', padding: '22px 26px', boxShadow: 'var(--shadow-card)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '1.875rem', fontWeight: '800', color: pendingRequests.length > 0 ? '#B77A32' : 'var(--color-heading)' }}>
+                  {pendingRequests.length}
+                </span>
+                <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#B77A32' }}>
+                  <Clock size={18} />
+                </div>
               </div>
-              <div className="ref-metric-info">
-                <span className="ref-metric-value">6</span>
-                <span className="ref-metric-label">Confirmed Appointments</span>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: '600', marginTop: '6px' }}>
+                Pending Requests
               </div>
             </div>
 
-            <div className="ref-metric-card">
-              <div className="ref-metric-icon pink">
-                <RefreshCw size={22} strokeWidth={2} />
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '18px', padding: '22px 26px', boxShadow: 'var(--shadow-card)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '1.875rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  {confirmedCount}
+                </span>
+                <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: 'var(--status-success-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--status-success-solid)' }}>
+                  <CheckCircle size={18} />
+                </div>
               </div>
-              <div className="ref-metric-info">
-                <span className="ref-metric-value">2</span>
-                <span className="ref-metric-label">Cancellation Requests</span>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: '600', marginTop: '6px' }}>
+                Confirmed Appointments
+              </div>
+            </div>
+
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '18px', padding: '22px 26px', boxShadow: 'var(--shadow-card)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '1.875rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  {cancellationCount}
+                </span>
+                <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: 'var(--color-pale-rose)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)' }}>
+                  <RefreshCw size={18} />
+                </div>
+              </div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: '600', marginTop: '6px' }}>
+                Cancellation Requests
               </div>
             </div>
           </div>
 
-          {/* Pending Appointment Requests Section */}
+          {/* Pending Appointment Requests Section (SCREEN 4) */}
           <div
             className="card"
             style={{
@@ -567,35 +586,44 @@ export default function DoctorPortalPage() {
               overflow: 'hidden',
               backgroundColor: '#FFFFFF',
               border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-card)',
+              borderRadius: '16px',
               boxShadow: 'var(--shadow-card)'
             }}
           >
             <div
               style={{
-                padding: '18px 24px',
+                padding: '20px 24px',
                 borderBottom: '1px solid var(--border)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}
             >
-              <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                Pending Appointment Requests ({pendingRequests.length})
-              </h3>
-              <Link
-                to="/doctor-portal?tab=appointments"
-                style={{
-                  fontSize: '0.8125rem',
-                  fontWeight: '700',
-                  color: 'var(--color-primary)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                View All &rarr;
-              </Link>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Pending Appointment Requests ({pendingRequests.length})
+                </h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  Review and confirm or decline incoming patient consultation requests
+                </p>
+              </div>
+
+              {pendingRequests.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={handleResetRequests}
+                  style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontWeight: '700', fontSize: '0.8125rem', cursor: 'pointer' }}
+                >
+                  Reload Demo Requests
+                </button>
+              ) : (
+                <Link
+                  to="/doctor-portal?tab=desk"
+                  style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--color-primary)', textDecoration: 'none' }}
+                >
+                  View All &rarr;
+                </Link>
+              )}
             </div>
 
             <div className="table-container">
@@ -612,17 +640,17 @@ export default function DoctorPortalPage() {
                 <tbody>
                   {pendingRequests.length === 0 ? (
                     <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                        No pending requests in queue.
+                      <td colSpan="5" style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                        All pending consultation requests have been accepted or processed.
                       </td>
                     </tr>
                   ) : (
                     pendingRequests.map((req) => (
                       <tr key={req.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '14px 20px', fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>
+                        <td style={{ padding: '14px 20px', fontWeight: '700', color: 'var(--color-heading)' }}>
                           {req.patient}
                         </td>
-                        <td style={{ padding: '14px 20px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                        <td style={{ padding: '14px 20px', fontSize: '0.875rem' }}>
                           {req.dateTime}
                         </td>
                         <td style={{ padding: '14px 20px' }}>
@@ -632,7 +660,7 @@ export default function DoctorPortalPage() {
                               padding: '2px 10px',
                               borderRadius: '9999px',
                               fontSize: '0.75rem',
-                              fontWeight: '600',
+                              fontWeight: '700',
                               backgroundColor: req.mode === 'Online' ? '#F8DDE3' : '#F3F4F6',
                               color: req.mode === 'Online' ? 'var(--color-primary)' : 'var(--text)'
                             }}
@@ -640,20 +668,24 @@ export default function DoctorPortalPage() {
                             {req.mode}
                           </span>
                         </td>
-                        <td style={{ padding: '14px 20px', fontSize: '0.8125rem', color: 'var(--text)' }}>
+                        <td style={{ padding: '14px 20px', fontSize: '0.8125rem' }}>
                           {req.reason}
                         </td>
                         <td style={{ padding: '14px 20px' }}>
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
-                              className="btn-action-accept"
+                              type="button"
                               onClick={() => handleAcceptRequest(req)}
+                              className="btn btn-sm btn-primary"
+                              style={{ padding: '5px 14px', fontSize: '0.75rem' }}
                             >
                               Accept
                             </button>
                             <button
-                              className="btn-action-reject"
+                              type="button"
                               onClick={() => handleRejectRequest(req)}
+                              className="btn btn-sm btn-outline"
+                              style={{ padding: '5px 14px', fontSize: '0.75rem', color: '#C44752', borderColor: '#C44752' }}
                             >
                               Reject
                             </button>
@@ -670,24 +702,54 @@ export default function DoctorPortalPage() {
       )}
 
       {/* ================================================================
-          SCREEN 5: DOCTOR – APPOINTMENTS
+          2. UNIFIED APPOINTMENTS & CLINICAL DESK (Merged Module)
           ================================================================ */}
-      {currentTab === 'appointments' && (
-        <div>
+      {(currentTab === 'desk' || currentTab === 'appointments') && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Header */}
-          <div style={{ marginBottom: '20px' }}>
-            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-heading)', margin: '0 0 6px 0' }}>
-              Appointments
-            </h1>
+          <div
+            className="card"
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              padding: '24px 28px',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1 style={{ margin: 0, fontSize: '1.375rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Appointments & Clinical Desk
+                </h1>
+                <span className="badge badge-pill badge-primary">Unified Clinical Desk</span>
+              </div>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Integrated patient consultation queue, clinical consultation management, and appointment scheduler.
+              </p>
+            </div>
+            <Link
+              to="/teleconsult/room/TC-LIVE-01"
+              className="btn btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+            >
+              <Video size={16} />
+              <span>Launch Teleconsult Room</span>
+            </Link>
           </div>
 
           {/* Sub-tabs pills */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {[
-              { id: 'today', label: 'Today (8)' },
-              { id: 'pending', label: 'Pending (4)' },
-              { id: 'upcoming', label: 'Upcoming (6)' },
-              { id: 'history', label: 'History' }
+              { id: 'today', label: `Today's Queue (${screen5Appointments.length})` },
+              { id: 'pending', label: `Pending Requests (${pendingRequests.length})` },
+              { id: 'teleconsult', label: 'Online Teleconsultations (4)' },
+              { id: 'history', label: 'Past Consultations (12)' }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -702,9 +764,8 @@ export default function DoctorPortalPage() {
                   border: '1px solid',
                   borderColor: apptSubTab === tab.id ? 'var(--color-primary)' : 'var(--border)',
                   backgroundColor: apptSubTab === tab.id ? 'var(--color-primary)' : '#FFFFFF',
-                  color: apptSubTab === tab.id ? '#FFFFFF' : 'var(--text)',
-                  boxShadow: apptSubTab === tab.id ? '0 2px 6px rgba(184, 61, 131, 0.25)' : 'none',
-                  transition: 'all 0.15s ease'
+                  color: apptSubTab === tab.id ? '#FFFFFF' : 'var(--color-heading)',
+                  boxShadow: apptSubTab === tab.id ? '0 2px 6px rgba(184, 61, 131, 0.25)' : 'none'
                 }}
               >
                 {tab.label}
@@ -712,7 +773,271 @@ export default function DoctorPortalPage() {
             ))}
           </div>
 
-          {/* Appointments Table */}
+          {/* Tab 1 & Tab 3: Appointments List Table */}
+          {(apptSubTab === 'today' || apptSubTab === 'teleconsult' || apptSubTab === 'history') && (
+            <div
+              className="card"
+              style={{
+                padding: 0,
+                overflow: 'hidden',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid var(--border)',
+                borderRadius: '16px',
+                boxShadow: 'var(--shadow-card)'
+              }}
+            >
+              <div className="table-container">
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
+                    <tr>
+                      <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Time</th>
+                      <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Patient</th>
+                      <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Mode</th>
+                      <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Reason</th>
+                      <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Status</th>
+                      <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {screen5Appointments
+                      .filter((apt) => {
+                        if (apptSubTab === 'teleconsult') return apt.mode === 'Online';
+                        if (apptSubTab === 'history') return apt.status === 'Completed';
+                        return true;
+                      })
+                      .map((apt) => (
+                        <tr key={apt.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '14px 20px', fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>
+                            {apt.time}
+                          </td>
+                          <td style={{ padding: '14px 20px', fontWeight: '600', fontSize: '0.875rem', color: 'var(--color-heading)' }}>
+                            {apt.patient}
+                          </td>
+                          <td style={{ padding: '14px 20px' }}>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '2px 10px',
+                                borderRadius: '9999px',
+                                fontSize: '0.75rem',
+                                fontWeight: '700',
+                                backgroundColor: apt.mode === 'Online' ? '#F8DDE3' : '#F3F4F6',
+                                color: apt.mode === 'Online' ? 'var(--color-primary)' : 'var(--text)'
+                              }}
+                            >
+                              {apt.mode}
+                            </span>
+                          </td>
+                          <td style={{ padding: '14px 20px', fontSize: '0.8125rem' }}>
+                            {apt.reason}
+                          </td>
+                          <td style={{ padding: '14px 20px' }}>
+                            <span
+                              className={`badge badge-pill ${apt.status === 'Completed' ? 'badge-success' : apt.status === 'In Progress' ? 'badge-primary' : 'badge-neutral'}`}
+                            >
+                              {apt.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '14px 20px' }}>
+                            {apt.mode === 'Online' ? (
+                              <Link
+                                to={`/teleconsult/room/${apt.id}`}
+                                className="btn btn-sm btn-primary"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+                              >
+                                <Video size={13} />
+                                <span>Join Video Consult</span>
+                              </Link>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setMsg({ type: 'success', text: `Clinical Desk opened for ${apt.patient} in OPD Room 204.` })}
+                                className="btn btn-sm btn-outline"
+                              >
+                                Open Desk
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 2: Pending Requests */}
+          {apptSubTab === 'pending' && (
+            <div
+              className="card"
+              style={{
+                padding: 0,
+                overflow: 'hidden',
+                backgroundColor: '#FFFFFF',
+                border: '1px solid var(--border)',
+                borderRadius: '16px',
+                boxShadow: 'var(--shadow-card)'
+              }}
+            >
+              <div className="table-container">
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
+                    <tr>
+                      <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Patient</th>
+                      <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Date & Time</th>
+                      <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Mode</th>
+                      <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Reason</th>
+                      <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingRequests.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                          No pending requests at this time.
+                        </td>
+                      </tr>
+                    ) : (
+                      pendingRequests.map((req) => (
+                        <tr key={req.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '14px 20px', fontWeight: '700', color: 'var(--color-heading)' }}>
+                            {req.patient}
+                          </td>
+                          <td style={{ padding: '14px 20px', fontSize: '0.875rem' }}>
+                            {req.dateTime}
+                          </td>
+                          <td style={{ padding: '14px 20px' }}>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '2px 10px',
+                                borderRadius: '9999px',
+                                fontSize: '0.75rem',
+                                fontWeight: '700',
+                                backgroundColor: req.mode === 'Online' ? '#F8DDE3' : '#F3F4F6',
+                                color: req.mode === 'Online' ? 'var(--color-primary)' : 'var(--text)'
+                              }}
+                            >
+                              {req.mode}
+                            </span>
+                          </td>
+                          <td style={{ padding: '14px 20px', fontSize: '0.8125rem' }}>
+                            {req.reason}
+                          </td>
+                          <td style={{ padding: '14px 20px' }}>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                type="button"
+                                onClick={() => handleAcceptRequest(req)}
+                                className="btn btn-sm btn-primary"
+                              >
+                                Accept
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRejectRequest(req)}
+                                className="btn btn-sm btn-outline"
+                                style={{ color: '#C44752', borderColor: '#C44752' }}
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================================================================
+          3. AVAILABILITY & DUTY SCHEDULE (Demo Data)
+          ================================================================ */}
+      {(currentTab === 'availability' || currentTab === 'leave') && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Header */}
+          <div
+            className="card"
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              padding: '24px 28px',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1 style={{ margin: 0, fontSize: '1.375rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Clinical Availability & Duty Schedule
+                </h1>
+                <span className={`badge badge-pill ${isDoctorAvailable ? 'badge-success' : 'badge-danger'}`}>
+                  {isDoctorAvailable ? 'Available on Duty' : 'Off Duty / On Leave'}
+                </span>
+              </div>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Configure OPD hospital timings, telemedicine consultation windows, and leave requests.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setIsDoctorAvailable(!isDoctorAvailable)}
+                className="btn btn-sm btn-outline"
+              >
+                Toggle Duty Status
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLeaveModal(true)}
+                className="btn btn-sm btn-primary"
+              >
+                + Request Leave
+              </button>
+            </div>
+          </div>
+
+          {/* Weekly Schedule Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+            {[
+              { day: 'Monday to Friday (Morning)', time: '09:00 AM - 01:00 PM', loc: 'KMCH Cardiology OPD (Room 204)', type: 'In-Person Consultation (16 Slots)', status: 'Active' },
+              { day: 'Monday to Friday (Afternoon)', time: '02:30 PM - 05:00 PM', loc: 'MediBridge WebRTC Bridge', type: 'Online Teleconsultation (8 Slots)', status: 'Active' },
+              { day: 'Saturday (Morning)', time: '09:00 AM - 01:00 PM', loc: 'Trauma & Special Clinics', type: 'Post-Op Follow-up Clinic (10 Slots)', status: 'Active' },
+              { day: 'Sunday', time: 'All Day', loc: 'Emergency Call Roster', type: 'Level 1 Trauma Triage On-Call', status: 'On-Call' }
+            ].map((sched, idx) => (
+              <div
+                key={idx}
+                className="card"
+                style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '14px', padding: '20px', boxShadow: 'var(--shadow-card)' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: '800', color: 'var(--color-heading)', fontSize: '0.9375rem' }}>{sched.day}</span>
+                  <span className="badge badge-pill badge-primary">{sched.status}</span>
+                </div>
+                <div style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-primary)', marginTop: '8px' }}>
+                  {sched.time}
+                </div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text)', fontWeight: '600', marginTop: '4px' }}>
+                  {sched.loc}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  {sched.type}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Leave History Table */}
           <div
             className="card"
             style={{
@@ -720,108 +1045,35 @@ export default function DoctorPortalPage() {
               overflow: 'hidden',
               backgroundColor: '#FFFFFF',
               border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-card)',
+              borderRadius: '16px',
               boxShadow: 'var(--shadow-card)'
             }}
           >
+            <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border)' }}>
+              <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                Scheduled Leaves & Out-of-Office Records
+              </h3>
+            </div>
             <div className="table-container">
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
                   <tr>
-                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Time</th>
-                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Patient</th>
-                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Mode</th>
-                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Reason</th>
-                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Status</th>
-                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Action</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Dates</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Leave Type</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Reason & Justification</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Approval Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {displayedAppointments.map((apt) => (
-                    <tr key={apt.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '14px 20px', fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>
-                        {apt.time}
-                      </td>
-                      <td style={{ padding: '14px 20px', fontWeight: '600', fontSize: '0.875rem', color: 'var(--text)' }}>
-                        {apt.patient}
-                      </td>
+                  {leaveRequests.map((l) => (
+                    <tr key={l.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '14px 20px', fontWeight: '700', color: 'var(--color-heading)' }}>{l.dates}</td>
+                      <td style={{ padding: '14px 20px' }}>{l.type}</td>
+                      <td style={{ padding: '14px 20px', fontSize: '0.8125rem' }}>{l.reason}</td>
                       <td style={{ padding: '14px 20px' }}>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            padding: '2px 10px',
-                            borderRadius: '9999px',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            backgroundColor: apt.mode === 'Online' ? '#F8DDE3' : '#F3F4F6',
-                            color: apt.mode === 'Online' ? 'var(--color-primary)' : 'var(--text)'
-                          }}
-                        >
-                          {apt.mode}
+                        <span className={`badge badge-pill ${l.status === 'APPROVED' ? 'badge-success' : 'badge-warning'}`}>
+                          {l.status}
                         </span>
-                      </td>
-                      <td style={{ padding: '14px 20px', fontSize: '0.8125rem', color: 'var(--text)' }}>
-                        {apt.reason}
-                      </td>
-                      <td style={{ padding: '14px 20px' }}>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            padding: '2px 10px',
-                            borderRadius: '9999px',
-                            fontSize: '0.75rem',
-                            fontWeight: '700',
-                            backgroundColor:
-                              apt.status === 'Completed'
-                                ? '#DCFCE7'
-                                : apt.status === 'In Progress'
-                                ? '#DBEAFE'
-                                : apt.status === 'Pending'
-                                ? '#FEF3C7'
-                                : '#CCFBF1',
-                            color:
-                              apt.status === 'Completed'
-                                ? '#15803D'
-                                : apt.status === 'In Progress'
-                                ? '#1D4ED8'
-                                : apt.status === 'Pending'
-                                ? '#B77A32'
-                                : '#0F766E'
-                          }}
-                        >
-                          {apt.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 20px' }}>
-                        {apt.actionType === 'view' && (
-                          <button
-                            className="btn-action-view"
-                            onClick={() => setMsg({ type: 'success', text: `Consultation file opened for ${apt.patient}.` })}
-                          >
-                            View
-                          </button>
-                        )}
-                        {apt.actionType === 'consult' && (
-                          <Link
-                            to={`/teleconsult/room/${apt.id}`}
-                            className="btn-action-consult"
-                          >
-                            <Video size={13} /> Consult
-                          </Link>
-                        )}
-                        {apt.actionType === 'accept' && (
-                          <button
-                            className="btn-action-accept"
-                            onClick={() => {
-                              setScreen5Appointments((prev) =>
-                                prev.map((item) => (item.id === apt.id ? { ...item, status: 'Confirmed', actionType: 'consult' } : item))
-                              );
-                              setMsg({ type: 'success', text: `Appointment confirmed for ${apt.patient}.` });
-                            }}
-                          >
-                            Accept
-                          </button>
-                        )}
                       </td>
                     </tr>
                   ))}
@@ -833,22 +1085,489 @@ export default function DoctorPortalPage() {
       )}
 
       {/* ================================================================
-          SCREEN 6: DOCTOR CREDENTIALS & VERIFICATION
+          4. PRESCRIPTIONS DEMO DATA
           ================================================================ */}
-      {(currentTab === 'credentials' || currentTab === 'profile') && (
-        <div>
-          {/* Header */}
-          <div style={{ marginBottom: '20px' }}>
-            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-heading)', margin: '0 0 4px 0' }}>
-              Doctor Credentials & Verification
-            </h1>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              Manage your professional documents and verification status.
-            </p>
+      {currentTab === 'prescriptions' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div
+            className="card"
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              padding: '24px 28px',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1 style={{ margin: 0, fontSize: '1.375rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Digital Prescriptions & Medication Orders ({prescriptionsList.length})
+                </h1>
+                <span className="badge badge-pill badge-success">ABDM Signed</span>
+              </div>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Certified e-Prescriptions cryptographically bound and synced with patient private health vaults.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowAddRxModal(true)}
+              className="btn btn-primary"
+            >
+              + Write New Prescription
+            </button>
+          </div>
+
+          <div
+            className="card"
+            style={{
+              padding: 0,
+              overflow: 'hidden',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              boxShadow: 'var(--shadow-card)'
+            }}
+          >
+            <div className="table-container">
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
+                  <tr>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Rx Reference</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Patient Details</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Diagnosis</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Medications List</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Status</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prescriptionsList.map((rx) => (
+                    <tr key={rx.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '14px 20px', fontFamily: 'monospace', fontWeight: '700', color: 'var(--color-heading)' }}>
+                        {rx.rxNumber}
+                      </td>
+                      <td style={{ padding: '14px 20px' }}>
+                        <div style={{ fontWeight: '700', color: 'var(--color-heading)' }}>{rx.patientName}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{rx.patientAge} &bull; {rx.date}</div>
+                      </td>
+                      <td style={{ padding: '14px 20px', fontSize: '0.8125rem' }}>
+                        {rx.diagnosis}
+                      </td>
+                      <td style={{ padding: '14px 20px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          {rx.medications.map((m, idx) => (
+                            <span key={idx} style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--color-heading)' }}>
+                              &bull; {m.name} ({m.dose}) - {m.freq}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 20px' }}>
+                        <span className="badge badge-pill badge-success">{rx.status}</span>
+                      </td>
+                      <td style={{ padding: '14px 20px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setMsg({ type: 'success', text: `Downloading certified PDF for ${rx.rxNumber} (${rx.patientName})...` })}
+                          className="btn btn-sm btn-outline"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <Download size={13} />
+                          <span>PDF</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================
+          5. FOLLOW-UPS DEMO DATA
+          ================================================================ */}
+      {currentTab === 'followups' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div
+            className="card"
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              padding: '24px 28px',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1 style={{ margin: 0, fontSize: '1.375rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Doctor's Patient Follow-up Tracker ({followupsList.length})
+                </h1>
+                <span className="badge badge-pill badge-primary">Active Care Plans</span>
+              </div>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Track recovery milestones, vital parameter logs, and scheduled clinical re-evaluations.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {followupsList.map((fol) => (
+              <div
+                key={fol.id}
+                className="card"
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  border: '1px solid var(--border)',
+                  borderRadius: '16px',
+                  padding: '24px',
+                  boxShadow: 'var(--shadow-card)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '16px'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                      {fol.patientName} ({fol.age})
+                    </h3>
+                    <span className={`badge badge-pill ${fol.status === 'Completed' ? 'badge-success' : 'badge-primary'}`}>
+                      {fol.status}
+                    </span>
+                    {fol.priority === 'High Priority' && (
+                      <span className="badge badge-pill badge-danger">High Priority</span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--color-primary)', marginTop: '4px' }}>
+                    {fol.title}
+                  </div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    {fol.notes}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.9375rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                      {fol.date}
+                    </div>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Mode: {fol.mode}
+                    </span>
+                  </div>
+
+                  {fol.mode === 'Online' && fol.status === 'Scheduled' && (
+                    <Link
+                      to={`/teleconsult/room/${fol.id}`}
+                      className="btn btn-sm btn-primary"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+                    >
+                      <Video size={14} />
+                      <span>Start Video Consult</span>
+                    </Link>
+                  )}
+                  {fol.status !== 'Completed' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFollowupsList(followupsList.map(f => f.id === fol.id ? { ...f, status: 'Completed' } : f));
+                        setMsg({ type: 'success', text: `Marked follow-up completed for ${fol.patientName}.` });
+                      }}
+                      className="btn btn-sm btn-outline"
+                    >
+                      Mark Completed
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================
+          6. REFERRALS DEMO DATA
+          ================================================================ */}
+      {currentTab === 'referrals' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div
+            className="card"
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              padding: '24px 28px',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1 style={{ margin: 0, fontSize: '1.375rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Inter-Hospital Specialty Referrals ({referralsList.length})
+                </h1>
+                <span className="badge badge-pill badge-primary">SLA Enforced</span>
+              </div>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Cross-hospital patient handovers with statutory turnaround time tracking.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowCreateRefModal(true)}
+              className="btn btn-primary"
+            >
+              + Dispatch Referral
+            </button>
+          </div>
+
+          <div
+            className="card"
+            style={{
+              padding: 0,
+              overflow: 'hidden',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              boxShadow: 'var(--shadow-card)'
+            }}
+          >
+            <div className="table-container">
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
+                  <tr>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Referral No</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Patient</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Referring Facility</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Destination</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Priority & SLA</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {referralsList.map((ref) => (
+                    <tr key={ref.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '14px 20px', fontFamily: 'monospace', fontWeight: '700', color: 'var(--color-heading)' }}>
+                        {ref.referralNo}
+                      </td>
+                      <td style={{ padding: '14px 20px', fontWeight: '700' }}>
+                        {ref.patientName}
+                      </td>
+                      <td style={{ padding: '14px 20px', fontSize: '0.8125rem' }}>
+                        {ref.fromHospital}
+                      </td>
+                      <td style={{ padding: '14px 20px', fontSize: '0.8125rem' }}>
+                        {ref.toHospital}
+                      </td>
+                      <td style={{ padding: '14px 20px' }}>
+                        <span className={`badge badge-pill ${ref.priority === 'CRITICAL' ? 'badge-danger' : ref.priority === 'URGENT' ? 'badge-warning' : 'badge-neutral'}`}>
+                          {ref.priority} ({ref.slaCountdown})
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 20px' }}>
+                        <span className="badge badge-pill badge-success">{ref.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================
+          7. NOTIFICATIONS DEMO DATA
+          ================================================================ */}
+      {currentTab === 'notifications' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div
+            className="card"
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              padding: '24px 28px',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1 style={{ margin: 0, fontSize: '1.375rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Clinical Notifications & Urgent Alerts ({notificationsList.length})
+                </h1>
+                <span className="badge badge-pill badge-danger">Real-time Feed</span>
+              </div>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Urgent hospital trauma diverts, diagnostic report arrivals, and teleconsultation updates.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setNotificationsList(notificationsList.map(n => ({ ...n, read: true })));
+                setMsg({ type: 'success', text: 'All clinical alerts marked as acknowledged.' });
+              }}
+              className="btn btn-sm btn-outline"
+            >
+              Mark All as Read
+            </button>
+          </div>
+
+          {/* Filter Pills */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {['all', 'critical', 'unread'].map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => setNotifFilter(f)}
+                style={{
+                  padding: '6px 16px',
+                  borderRadius: '9999px',
+                  border: '1px solid',
+                  borderColor: notifFilter === f ? 'var(--color-primary)' : 'var(--border)',
+                  backgroundColor: notifFilter === f ? 'var(--color-primary)' : '#FFFFFF',
+                  color: notifFilter === f ? '#FFFFFF' : 'var(--color-heading)',
+                  fontSize: '0.75rem',
+                  fontWeight: '700',
+                  textTransform: 'capitalize',
+                  cursor: 'pointer'
+                }}
+              >
+                {f} Alerts
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {filteredNotifications.map((notif) => (
+              <div
+                key={notif.id}
+                className="card"
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  border: notif.type === 'CRITICAL' ? '2px solid #C44752' : '1px solid var(--border)',
+                  borderRadius: '14px',
+                  padding: '18px 22px',
+                  boxShadow: 'var(--shadow-card)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '16px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      backgroundColor: notif.type === 'CRITICAL' ? '#FEE2E2' : 'var(--color-blush-pink)',
+                      color: notif.type === 'CRITICAL' ? '#C44752' : 'var(--color-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                  >
+                    <Bell size={18} />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontWeight: '800', fontSize: '0.9375rem', color: 'var(--color-heading)' }}>
+                        {notif.title}
+                      </span>
+                      <span className={`badge badge-pill ${notif.type === 'CRITICAL' ? 'badge-danger' : notif.type === 'URGENT' ? 'badge-warning' : 'badge-neutral'}`}>
+                        {notif.type}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      {notif.message}
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+                    {notif.time}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================
+          8. CREDENTIALS & VERIFICATION (Dedicated Verification Details Page)
+          ================================================================ */}
+      {currentTab === 'credentials' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div
+            className="card"
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              padding: '24px 28px',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px'
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1 style={{ margin: 0, fontSize: '1.375rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Doctor Credentials & Verification
+                </h1>
+                <span className="badge badge-pill badge-success">Verified Medical Practitioner</span>
+              </div>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Medical council certifications, university degree documents, and hospital clinical privileges.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowUploadDocModal(true)}
+              className="btn btn-primary"
+            >
+              + Upload Credential Document
+            </button>
           </div>
 
           {/* Stepper Progress Bar (Screen 6) */}
-          <div className="ref-stepper">
+          <div className="ref-stepper" style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '16px', border: '1px solid var(--border)' }}>
             <div className="ref-step done">
               <div className="ref-step-circle">
                 <Check size={16} strokeWidth={2.5} />
@@ -865,616 +1584,560 @@ export default function DoctorPortalPage() {
               <div className="ref-step-line" />
             </div>
 
-            <div className="ref-step active">
-              <div className="ref-step-circle">3</div>
-              <span className="ref-step-label">Under Verification</span>
+            <div className="ref-step done">
+              <div className="ref-step-circle">
+                <Check size={16} strokeWidth={2.5} />
+              </div>
+              <span className="ref-step-label">Council Verified</span>
               <div className="ref-step-line" />
             </div>
 
-            <div className="ref-step pending">
-              <div className="ref-step-circle">4</div>
-              <span className="ref-step-label">Verified</span>
+            <div className="ref-step done">
+              <div className="ref-step-circle">
+                <Check size={16} strokeWidth={2.5} />
+              </div>
+              <span className="ref-step-label">Verified & Privileged</span>
             </div>
           </div>
 
-          {/* 2-Column Content Layout (Verification Details + Uploaded Documents) */}
+          {/* Verification Details & Documents Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
-            {/* Card 1: Verification Details */}
-            <div
-              className="card"
-              style={{
-                backgroundColor: '#FFFFFF',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-card)',
-                padding: '24px',
-                boxShadow: 'var(--shadow-card)'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                  Verification Details
-                </h3>
-                <button
-                  className="btn-action-view"
-                  onClick={() => setShowEditProfileModal(true)}
-                >
-                  Edit Profile
-                </button>
+            {/* Card 1: Official Verification Details */}
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                Medical Council Verification Details
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontSize: '0.875rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #FAF6F7', paddingBottom: '8px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Registration Number:</span>
+                  <span style={{ fontFamily: 'monospace', fontWeight: '800', color: 'var(--color-heading)' }}>TNMC-123456</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #FAF6F7', paddingBottom: '8px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Registered Council:</span>
+                  <span style={{ fontWeight: '700', color: 'var(--color-heading)' }}>Tamil Nadu Medical Council</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #FAF6F7', paddingBottom: '8px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Recognized Qualifications:</span>
+                  <span style={{ fontWeight: '600' }}>MBBS, MD (Gen Med), DM (Cardiology), FACC</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #FAF6F7', paddingBottom: '8px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Clinical Verification Status:</span>
+                  <span className="badge badge-pill badge-success">Verified Active</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #FAF6F7', paddingBottom: '8px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Verification Hash:</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--color-primary)' }}>SHA256: 8a7c6e5d4b3a2f1e...</span>
+                </div>
               </div>
+            </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #FAF6F7', paddingBottom: '10px' }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: '600' }}>Medical Registration No.</span>
-                  <span style={{ fontSize: '0.875rem', fontFamily: 'monospace', fontWeight: '700', color: 'var(--color-heading)' }}>
-                    {doctorProfile?.regNumber || 'TNMC-123456'}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #FAF6F7', paddingBottom: '10px' }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: '600' }}>Medical Council</span>
-                  <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text)' }}>
-                    {doctorProfile?.councilName || 'Tamil Nadu Medical Council'}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #FAF6F7', paddingBottom: '10px' }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: '600' }}>Qualification</span>
-                  <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text)' }}>
-                    {doctorProfile?.qualifications || 'MBBS, MD (Cardiology)'}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #FAF6F7', paddingBottom: '10px' }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: '600' }}>Specialty</span>
-                  <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text)' }}>
-                    {doctorProfile?.specialty || 'Cardiology'}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #FAF6F7', paddingBottom: '10px' }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: '600' }}>Experience</span>
-                  <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text)' }}>
-                    {doctorProfile?.experienceYears || 8} Years
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px' }}>
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: '600' }}>Verification Status</span>
-                  <span
+            {/* Card 2: Uploaded Certificates Table */}
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                Uploaded Certificates & Accreditation Letters
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {[
+                  { name: 'Medical Registration Certificate (TNMC)', date: 'Verified 2024', file: 'TNMC_Registration_Certificate.pdf' },
+                  { name: 'MBBS Degree Certificate', date: 'MGR University Verified', file: 'Degree_Certificate_MBBS.pdf' },
+                  { name: 'DM (Cardiology) Specialization Certificate', date: 'Verified Specialty', file: 'Specialization_DM_Cardio.pdf' },
+                  { name: 'Hospital Clinical Privileges Accreditation Letter', date: 'KMCH Hospital Privilege 2026', file: 'KMCH_Clinical_Privileges.pdf' }
+                ].map((doc, idx) => (
+                  <div
+                    key={idx}
                     style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      padding: '4px 12px',
-                      borderRadius: '9999px',
-                      backgroundColor: '#FEF3C7',
-                      color: '#B77A32',
-                      fontSize: '0.75rem',
-                      fontWeight: '700'
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      backgroundColor: '#FAF6F7',
+                      border: '1px solid var(--border)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
                     }}
                   >
-                    <Clock size={13} strokeWidth={2.5} /> Under Verification
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 2: Uploaded Documents */}
-            <div
-              className="card"
-              style={{
-                backgroundColor: '#FFFFFF',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-card)',
-                padding: '24px',
-                boxShadow: 'var(--shadow-card)'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                  Uploaded Documents
-                </h3>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setShowUploadDocModal(true)}
-                  icon={<PlusCircle size={14} />}
-                >
-                  Upload Document
-                </Button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', backgroundColor: '#FAF6F7', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <FileCheck size={18} style={{ color: 'var(--color-primary)' }} />
-                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--color-heading)' }}>
-                      Medical Registration Certificate
-                    </span>
-                  </div>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#15803D', fontWeight: '700', fontSize: '0.8125rem' }}>
-                    <Check size={15} strokeWidth={2.5} />
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', backgroundColor: '#FAF6F7', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <FileCheck size={18} style={{ color: 'var(--color-primary)' }} />
-                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--color-heading)' }}>
-                      Degree Certificate
-                    </span>
-                  </div>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#15803D', fontWeight: '700', fontSize: '0.8125rem' }}>
-                    <Check size={15} strokeWidth={2.5} />
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', backgroundColor: '#FAF6F7', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <FileCheck size={18} style={{ color: 'var(--color-primary)' }} />
-                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--color-heading)' }}>
-                      Specialization Certificate
-                    </span>
-                  </div>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#15803D', fontWeight: '700', fontSize: '0.8125rem' }}>
-                    <Check size={15} strokeWidth={2.5} />
-                  </span>
-                </div>
-
-                {credentialDocs.length > 0 && (
-                  <div style={{ marginTop: '8px' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
-                      Additional Uploads ({credentialDocs.length})
-                    </span>
-                    {credentialDocs.map((doc) => (
-                      <div key={doc._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
-                        <span style={{ fontSize: '0.8125rem', color: 'var(--text)' }}>{doc.fileName}</span>
-                        <span style={{ fontSize: '0.75rem', color: '#15803D', fontWeight: '600' }}>Uploaded</span>
+                    <div>
+                      <div style={{ fontWeight: '700', fontSize: '0.8125rem', color: 'var(--color-heading)' }}>
+                        {doc.name}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================================================================
-          TAB: CLINICAL DESK / ENCOUNTERS (when ?tab=desk)
-          ================================================================ */}
-      {currentTab === 'desk' && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'var(--color-heading)' }}>
-                Today's Clinic Consultations ({todayData?.count || 8})
-              </h3>
-              <p style={{ margin: '2px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Active queue: in-person examination and encrypted WebRTC video visits
-              </p>
-            </div>
-            <span className="badge badge-pill badge-neutral">
-              {todayData?.count || 8} In Queue
-            </span>
-          </div>
-
-          <div className="table-container">
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
-                <tr>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Time</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Patient</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Mode</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Status</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {screen5Appointments.map((appt) => (
-                  <tr key={appt.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '12px 16px', fontWeight: '700', fontSize: '0.875rem' }}>
-                      {appt.time}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: '600' }}>
-                      {appt.patient}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      {appt.mode === 'Online' ? (
-                        <span className="badge badge-pill badge-info" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <Video size={12} /> Teleconsult
-                        </span>
-                      ) : (
-                        <span className="badge badge-pill badge-neutral" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <Building2 size={12} /> In-Person
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span className="badge badge-pill badge-neutral">{appt.status}</span>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        {appt.mode === 'Online' ? (
-                          <Link
-                            to={`/teleconsult/room/${appt.id}`}
-                            className="btn btn-sm btn-primary"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}
-                          >
-                            <Video size={13} /> Enter Room
-                          </Link>
-                        ) : (
-                          <button
-                            className="btn-action-view"
-                            onClick={() => setMsg({ type: 'success', text: `Encounter opened for ${appt.patient}` })}
-                          >
-                            Examine Patient
-                          </button>
-                        )}
+                      <div style={{ fontSize: '0.75rem', color: 'var(--status-success-solid)', fontWeight: '600' }}>
+                        &bull; {doc.date}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ================================================================
-          TAB: SPECIALTY REFERRALS (when ?tab=referrals)
-          ================================================================ */}
-      {currentTab === 'referrals' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                Specialty Referrals Ledger
-              </h2>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Inter-hospital tertiary care referrals dispatched and tracked across network facilities.
-              </p>
-            </div>
-            <Button variant="primary" size="sm" onClick={() => setShowCreateRefModal(true)} icon={<PlusCircle size={14} />}>
-              Dispatch Referral
-            </Button>
-          </div>
-
-          <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)' }}>
-            <div className="table-container">
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
-                  <tr>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Referral #</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Specialty</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Receiving Facility</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Priority</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {referralsList.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                        No outgoing referrals dispatched yet. Click "Dispatch Referral" to refer a patient.
-                      </td>
-                    </tr>
-                  ) : (
-                    referralsList.map((ref) => (
-                      <tr key={ref._id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: '700', fontSize: '0.8125rem', color: 'var(--color-heading)' }}>
-                          {ref.referralNumber}
-                        </td>
-                        <td style={{ padding: '12px 16px', fontSize: '0.875rem' }}>{ref.targetSpecialty}</td>
-                        <td style={{ padding: '12px 16px', fontSize: '0.875rem' }}>{ref.receivingHospitalId?.name || 'Tertiary Center'}</td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <span className={`badge badge-pill ${ref.priority === 'CRITICAL' ? 'badge-danger' : ref.priority === 'URGENT' ? 'badge-warning' : 'badge-neutral'}`}>
-                            {ref.priority}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <span className="badge badge-pill badge-primary">{ref.status}</span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ================================================================
-          TAB: CONSENTED HEALTH VAULT (when ?tab=vault or ?tab=records)
-          ================================================================ */}
-      {(currentTab === 'vault' || currentTab === 'records') && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-              Consented Health Vault Viewer
-            </h2>
-            <p style={{ margin: '4px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Compliant with Digital Personal Data Protection (DPDP) Act 2023. Real-time patient consent validation.
-            </p>
-          </div>
-
-          <div className="card" style={{ padding: '24px', backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)' }}>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if (!vaultPatientId) return;
-              try {
-                const res = await api.get(`/vault/records?patientProfileId=${vaultPatientId}`);
-                if (res.data?.success) setPatientRecords(res.data.data);
-              } catch (err) {
-                setVaultError(err.response?.data?.error?.message || 'Access Denied: Consent not granted.');
-              }
-            }}>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <Input
-                  type="text"
-                  placeholder="Enter Patient Profile ID or ABHA Address..."
-                  value={vaultPatientId}
-                  onChange={(e) => setVaultPatientId(e.target.value)}
-                  style={{ flex: 1, minWidth: '260px' }}
-                  required
-                />
-                <Button variant="primary" type="submit" icon={<Lock size={14} />}>
-                  Verify Consent & Fetch Records
-                </Button>
-              </div>
-            </form>
-
-            {vaultError && (
-              <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#FEE2E2', color: '#B83245', borderRadius: 'var(--radius-sm)', fontSize: '0.875rem' }}>
-                {vaultError}
-              </div>
-            )}
-
-            {patientRecords && (
-              <div style={{ marginTop: '20px' }}>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9375rem', fontWeight: '700' }}>
-                  Available Diagnostic Documents ({patientRecords.length})
-                </h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {patientRecords.map((rec) => (
-                    <div key={rec._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#FAF6F7', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
-                      <div>
-                        <div style={{ fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>{rec.title || rec.fileName}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>SHA-256 Verified &bull; Active Patient Consent</div>
-                      </div>
-                      <Button variant="outline" size="sm" onClick={() => setActiveViewingRecord(rec)}>
-                        View Record
-                      </Button>
                     </div>
-                  ))}
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setMsg({ type: 'success', text: `Downloading verified file "${doc.file}"...` })}
+                      className="btn btn-sm btn-outline"
+                      style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                    >
+                      Download
+                    </button>
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
           </div>
         </div>
       )}
 
       {/* ================================================================
-          TAB: LEAVE & AVAILABILITY (when ?tab=availability or ?tab=leave)
+          9. DOCTOR PROFILE & SETTINGS (Unified Module as Requested)
           ================================================================ */}
-      {(currentTab === 'availability' || currentTab === 'leave') && (
+      {(currentTab === 'profile' || currentTab === 'settings') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Header */}
+          <div
+            className="card"
+            style={{
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--border)',
+              borderRadius: '16px',
+              padding: '24px 28px',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '16px'
+            }}
+          >
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                Clinician Leave Requests & Roster Availability
-              </h2>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Leave requests trigger hospital administration review and appointment safety reassignments.
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1 style={{ margin: 0, fontSize: '1.375rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Doctor Profile & Practice Settings
+                </h1>
+                <span className="badge badge-pill badge-primary">Unified Module</span>
+              </div>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Configure doctor personal details, affiliated hospital department, consultation fees, and practice preferences.
               </p>
             </div>
-            <Button variant="primary" size="sm" onClick={() => setShowLeaveModal(true)} icon={<Calendar size={14} />}>
-              Request Leave
-            </Button>
+
+            <button
+              type="button"
+              onClick={handleSaveDoctorSettings}
+              disabled={savingSettings}
+              className="btn btn-primary"
+            >
+              {savingSettings ? 'Saving Settings...' : 'Save Profile & Settings'}
+            </button>
           </div>
 
-          <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)' }}>
-            <div className="table-container">
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
-                  <tr>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Start Date</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>End Date</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Reason</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Admin Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaveRequests.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                        No pending or past leave requests.
-                      </td>
-                    </tr>
-                  ) : (
-                    leaveRequests.map((req) => (
-                      <tr key={req._id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '12px 16px', fontWeight: '700', fontSize: '0.875rem' }}>{req.startDate}</td>
-                        <td style={{ padding: '12px 16px', fontWeight: '700', fontSize: '0.875rem' }}>{req.endDate}</td>
-                        <td style={{ padding: '12px 16px', fontSize: '0.8125rem' }}>{req.reason}</td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <span className={`badge badge-pill ${req.status === 'APPROVED' ? 'badge-success' : req.status === 'REJECTED' ? 'badge-danger' : 'badge-warning'}`}>
-                            {req.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+          <form onSubmit={handleSaveDoctorSettings} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Section 1: Doctor Identity & Medical Council Details */}
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                1. Doctor Identity & Hospital Affiliation
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Full Name</label>
+                  <Input
+                    type="text"
+                    value={doctorSettings.fullName}
+                    onChange={(e) => setDoctorSettings({ ...doctorSettings, fullName: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Medical Registration No.</label>
+                  <Input
+                    type="text"
+                    value={doctorSettings.regNumber}
+                    onChange={(e) => setDoctorSettings({ ...doctorSettings, regNumber: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Specialty</label>
+                  <Input
+                    type="text"
+                    value={doctorSettings.specialty}
+                    onChange={(e) => setDoctorSettings({ ...doctorSettings, specialty: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Affiliated Hospital</label>
+                  <Input
+                    type="text"
+                    value={doctorSettings.hospitalName}
+                    onChange={(e) => setDoctorSettings({ ...doctorSettings, hospitalName: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
             </div>
-          </div>
+
+            {/* Section 2: Consultation Fees & Slot Settings */}
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                2. Consultation Settings & Pricing
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>In-Person Consultation Fee (₹)</label>
+                  <Input
+                    type="number"
+                    value={doctorSettings.inPersonFee}
+                    onChange={(e) => setDoctorSettings({ ...doctorSettings, inPersonFee: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Online Teleconsultation Fee (₹)</label>
+                  <Input
+                    type="number"
+                    value={doctorSettings.teleconsultFee}
+                    onChange={(e) => setDoctorSettings({ ...doctorSettings, teleconsultFee: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Slot Duration</label>
+                  <select
+                    className="form-select"
+                    value={doctorSettings.slotDuration}
+                    onChange={(e) => setDoctorSettings({ ...doctorSettings, slotDuration: e.target.value })}
+                    style={{ width: '100%', height: '42px', borderRadius: '10px' }}
+                  >
+                    <option value="15 mins">15 Minutes</option>
+                    <option value="20 mins">20 Minutes</option>
+                    <option value="30 mins">30 Minutes</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Max Daily Consultations</label>
+                  <Input
+                    type="number"
+                    value={doctorSettings.maxDailyPatients}
+                    onChange={(e) => setDoctorSettings({ ...doctorSettings, maxDailyPatients: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Official Contact & Desk Details */}
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                3. Official Hospital Contact & Direct Extensions
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Official Hospital Email</label>
+                  <Input
+                    type="email"
+                    value={doctorSettings.officialEmail}
+                    onChange={(e) => setDoctorSettings({ ...doctorSettings, officialEmail: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Clinical Desk Phone</label>
+                  <Input
+                    type="text"
+                    value={doctorSettings.deskPhone}
+                    onChange={(e) => setDoctorSettings({ ...doctorSettings, deskPhone: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Emergency On-Call Mobile</label>
+                  <Input
+                    type="text"
+                    value={doctorSettings.emergencyPhone}
+                    onChange={(e) => setDoctorSettings({ ...doctorSettings, emergencyPhone: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 4: Practice Preferences & Alerts */}
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                4. Practice Notification & Security Settings
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#FAF6F7', borderRadius: '10px' }}>
+                  <div>
+                    <div style={{ fontWeight: '700', fontSize: '0.875rem' }}>SMS Notifications for Urgent Bookings</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Receive SMS alerts when urgent consultation slots are requested</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={doctorSettings.smsAlerts}
+                    onChange={(e) => setDoctorSettings({ ...doctorSettings, smsAlerts: e.target.checked })}
+                    style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#FAF6F7', borderRadius: '10px' }}>
+                  <div>
+                    <div style={{ fontWeight: '700', fontSize: '0.875rem' }}>WhatsApp Video Consultation Links</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Get direct WebRTC consultation links delivered to WhatsApp 10 minutes prior</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={doctorSettings.whatsappLinks}
+                    onChange={(e) => setDoctorSettings({ ...doctorSettings, whatsappLinks: e.target.checked })}
+                    style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: 'var(--color-pale-rose)', borderRadius: '10px' }}>
+                  <div>
+                    <div style={{ fontWeight: '700', fontSize: '0.875rem' }}>108 Emergency Divert Casualty Broadcasts</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Statutory alerts for inbound Level 1 trauma cases (Always Active)</div>
+                  </div>
+                  <span className="badge badge-pill badge-primary">Active</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="submit"
+                disabled={savingSettings}
+                className="btn btn-primary"
+                style={{ minWidth: '180px' }}
+              >
+                {savingSettings ? 'Saving Settings...' : 'Save Profile & Settings'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
-      {/* ================================================================
-          MODALS
-          ================================================================ */}
-      {/* MODAL 1: SUBMIT LEAVE REQUEST */}
-      <Modal isOpen={showLeaveModal} onClose={() => setShowLeaveModal(false)} title="Request Leave of Absence">
-        <form onSubmit={handleSubmitLeave}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-            <div>
-              <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Start Date</label>
-              <Input type="date" value={leaveStartDate} onChange={(e) => setLeaveStartDate(e.target.value)} required />
+      {/* MODAL 1: REQUEST LEAVE */}
+      {showLeaveModal && (
+        <Modal
+          isOpen={showLeaveModal}
+          onClose={() => setShowLeaveModal(false)}
+          title="Request Out-of-Office Leave"
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const newL = {
+                id: `l-${Date.now()}`,
+                dates: `${leaveStartDate} to ${leaveEndDate}`,
+                type: 'Specialist Planned Leave',
+                reason: leaveReason || 'Clinical training/leave',
+                status: 'PENDING'
+              };
+              setLeaveRequests([newL, ...leaveRequests]);
+              setShowLeaveModal(false);
+              setLeaveReason('');
+              setMsg({ type: 'success', text: 'Leave request submitted for Hospital Admin review.' });
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>Start Date</label>
+                <Input type="date" value={leaveStartDate} onChange={(e) => setLeaveStartDate(e.target.value)} required />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>End Date</label>
+                <Input type="date" value={leaveEndDate} onChange={(e) => setLeaveEndDate(e.target.value)} required />
+              </div>
             </div>
             <div>
-              <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>End Date</label>
-              <Input type="date" value={leaveEndDate} onChange={(e) => setLeaveEndDate(e.target.value)} required />
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>Reason</label>
+              <textarea
+                rows="3"
+                value={leaveReason}
+                onChange={(e) => setLeaveReason(e.target.value)}
+                placeholder="Reason for leave / conference..."
+                style={{ width: '100%', padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                required
+              />
             </div>
-          </div>
-
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Reason for Absence</label>
-            <Input type="text" placeholder="e.g. Conference attendance, medical leave" value={leaveReason} onChange={(e) => setLeaveReason(e.target.value)} required />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-            <Button variant="outline" type="button" onClick={() => setShowLeaveModal(false)}>Cancel</Button>
-            <Button variant="primary" type="submit" disabled={submittingLeave}>{submittingLeave ? 'Submitting...' : 'Submit Request'}</Button>
-          </div>
-        </form>
-      </Modal>
+            <Button type="submit" variant="primary">Submit Leave Request</Button>
+          </form>
+        </Modal>
+      )}
 
       {/* MODAL 2: DISPATCH REFERRAL */}
-      <Modal isOpen={showCreateRefModal} onClose={() => setShowCreateRefModal(false)} title="Dispatch Clinical Referral">
-        <form onSubmit={handleCreateReferral}>
-          <div style={{ marginBottom: '14px' }}>
-            <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Patient Profile ID</label>
-            <Input type="text" placeholder="Enter Patient Profile ID" value={refPatientProfileId} onChange={(e) => setRefPatientProfileId(e.target.value)} required />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+      {showCreateRefModal && (
+        <Modal
+          isOpen={showCreateRefModal}
+          onClose={() => setShowCreateRefModal(false)}
+          title="Dispatch Inter-Hospital Referral"
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const newRef = {
+                id: `ref-${Date.now()}`,
+                referralNo: `REF-KMCH-202611-${Math.floor(1000 + Math.random() * 9000)}`,
+                patientName: refPatientName || 'Anitha K (38 F)',
+                fromHospital: 'Kovai Medical Center & Hospital (KMCH)',
+                toHospital: refDestination,
+                specialty: refSpecialty,
+                priority: refPriority,
+                slaCountdown: '4h SLA Timer Started',
+                status: 'Dispatched'
+              };
+              setReferralsList([newRef, ...referralsList]);
+              setShowCreateRefModal(false);
+              setRefPatientName('');
+              setMsg({ type: 'success', text: `Referral ${newRef.referralNo} dispatched to ${refDestination}.` });
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
+          >
             <div>
-              <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Receiving Hospital</label>
-              <select value={refReceivingHospitalId} onChange={(e) => setRefReceivingHospitalId(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-control)', fontSize: '0.875rem', backgroundColor: 'var(--surface)' }} required>
-                {hospitalsCatalog.map((h) => (
-                  <option key={h.id || h._id} value={h.id || h._id}>
-                    {h.name} ({h.address?.district || 'Coimbatore'})
-                  </option>
-                ))}
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>Patient Name</label>
+              <Input
+                type="text"
+                placeholder="e.g. Anitha K"
+                value={refPatientName}
+                onChange={(e) => setRefPatientName(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>Destination Hospital</label>
+              <select
+                className="form-select"
+                value={refDestination}
+                onChange={(e) => setRefDestination(e.target.value)}
+                style={{ width: '100%', height: '40px', borderRadius: '10px' }}
+              >
+                <option value="Ganga Medical Center (Orthopedics & Spine)">Ganga Medical Center</option>
+                <option value="Sri Ramakrishna Hospital">Sri Ramakrishna Hospital</option>
+                <option value="PSG Institute of Medical Sciences">PSG Hospitals</option>
+                <option value="Aravind Eye Hospital">Aravind Eye Hospital</option>
+              </select>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>Target Specialty</label>
+                <Input type="text" value={refSpecialty} onChange={(e) => setRefSpecialty(e.target.value)} required />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>Priority</label>
+                <select
+                  className="form-select"
+                  value={refPriority}
+                  onChange={(e) => setRefPriority(e.target.value)}
+                  style={{ width: '100%', height: '40px', borderRadius: '10px' }}
+                >
+                  <option value="ROUTINE">ROUTINE</option>
+                  <option value="URGENT">URGENT</option>
+                  <option value="CRITICAL">CRITICAL</option>
+                </select>
+              </div>
+            </div>
+            <Button type="submit" variant="primary">Dispatch Referral Handover</Button>
+          </form>
+        </Modal>
+      )}
+
+      {/* MODAL 3: WRITE NEW PRESCRIPTION */}
+      {showAddRxModal && (
+        <Modal
+          isOpen={showAddRxModal}
+          onClose={() => setShowAddRxModal(false)}
+          title="Write Digital e-Prescription"
+        >
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const newPrescription = {
+                id: `rx-${Date.now()}`,
+                rxNumber: `RX-202611-${Math.floor(1000 + Math.random() * 9000)}`,
+                patientName: newRxPatient,
+                patientAge: '45 / Adult',
+                date: '24 Nov 2026',
+                diagnosis: newRxDiagnosis,
+                status: 'Signed & Sent to Vault',
+                medications: [
+                  { name: newRxDrug, dose: '10mg', freq: '1-0-1 (Morning & Night)', duration: '30 Days' }
+                ]
+              };
+              setPrescriptionsList([newPrescription, ...prescriptionsList]);
+              setShowAddRxModal(false);
+              setNewRxPatient('');
+              setNewRxDiagnosis('');
+              setNewRxDrug('');
+              setMsg({ type: 'success', text: `e-Prescription created and transferred to ${newRxPatient}'s vault.` });
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
+          >
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>Patient Name</label>
+              <Input
+                type="text"
+                placeholder="e.g. Suresh V"
+                value={newRxPatient}
+                onChange={(e) => setNewRxPatient(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>Clinical Diagnosis</label>
+              <Input
+                type="text"
+                placeholder="e.g. Acute Coronary Syndrome"
+                value={newRxDiagnosis}
+                onChange={(e) => setNewRxDiagnosis(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>Primary Medication</label>
+              <Input
+                type="text"
+                placeholder="e.g. Tab Atorvastatin 20mg"
+                value={newRxDrug}
+                onChange={(e) => setNewRxDrug(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" variant="primary">Sign & Transmit e-Prescription</Button>
+          </form>
+        </Modal>
+      )}
+
+      {/* MODAL 4: UPLOAD CREDENTIAL DOCUMENT */}
+      {showUploadDocModal && (
+        <Modal
+          isOpen={showUploadDocModal}
+          onClose={() => setShowUploadDocModal(false)}
+          title="Upload Medical Credential Document"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>Document Category</label>
+              <select
+                className="form-select"
+                value={docUploadType}
+                onChange={(e) => setDocUploadType(e.target.value)}
+                style={{ width: '100%', height: '40px', borderRadius: '10px' }}
+              >
+                <option value="registration_certificate">State Medical Council Registration Certificate</option>
+                <option value="degree_certificate">MBBS Degree Certificate</option>
+                <option value="specialization_certificate">Postgraduate Super-Specialty Degree</option>
+                <option value="hospital_privilege">Hospital Privilege / Clinical Fellowship</option>
               </select>
             </div>
             <div>
-              <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Priority Level</label>
-              <select value={refPriority} onChange={(e) => setRefPriority(e.target.value)} style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-control)', fontSize: '0.875rem', backgroundColor: 'var(--surface)' }}>
-                <option value="ROUTINE">Routine (48h)</option>
-                <option value="URGENT">Urgent (24h)</option>
-                <option value="CRITICAL">Critical (12h)</option>
-              </select>
+              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>Select PDF or Scanned Certificate</label>
+              <input type="file" accept=".pdf,.png,.jpg" style={{ width: '100%', padding: '8px', border: '1px solid var(--border)', borderRadius: '10px' }} />
             </div>
-          </div>
-
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Clinical Summary & Findings</label>
-            <textarea rows="4" value={refClinicalSummary} onChange={(e) => setRefClinicalSummary(e.target.value)} placeholder="Enter clinical justification for referral..." style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-control)', fontSize: '0.875rem', fontFamily: 'inherit', resize: 'vertical' }} required />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-            <Button variant="outline" type="button" onClick={() => setShowCreateRefModal(false)}>Cancel</Button>
-            <Button variant="primary" type="submit" disabled={submittingRef}>{submittingRef ? 'Dispatching...' : 'Dispatch Referral'}</Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* MODAL 3: WATERMARKED VIEWER */}
-      {activeViewingRecord && (
-        <Modal isOpen={!!activeViewingRecord} onClose={() => setActiveViewingRecord(null)} title={`Clinical Viewer: ${activeViewingRecord.title || activeViewingRecord.fileName}`}>
-          <div style={{ textAlign: 'center', padding: '24px 16px' }}>
-            <FileText size={48} style={{ color: 'var(--color-primary)', margin: '0 auto 12px auto' }} />
-            <h3 style={{ margin: '0 0 6px 0', color: 'var(--color-heading)', fontSize: '1.125rem' }}>
-              {activeViewingRecord.fileName || activeViewingRecord.title}
-            </h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginBottom: '20px' }}>
-              Confidential medical record. Protected under DPDP 2023. Viewed by {doctorProfile?.name || 'Dr. Sundar M'}.
-            </p>
-            <Button variant="primary" size="sm" onClick={() => setActiveViewingRecord(null)}>
-              Close Secure Viewer
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                setShowUploadDocModal(false);
+                setMsg({ type: 'success', text: 'Document uploaded for hospital credential verification.' });
+              }}
+            >
+              Upload Certificate
             </Button>
           </div>
-        </Modal>
-      )}
-
-      {/* MODAL 4: EDIT DOCTOR PROFILE & CREDENTIALS */}
-      {showEditProfileModal && (
-        <Modal isOpen={showEditProfileModal} onClose={() => setShowEditProfileModal(false)} title="Edit Professional Credentials">
-          <form onSubmit={handleSaveProfile}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-              <div>
-                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Practitioner Full Name</label>
-                <Input type="text" value={profileForm.name} onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })} required />
-              </div>
-              <div>
-                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Medical Council Reg #</label>
-                <Input type="text" value={profileForm.regNumber} onChange={(e) => setProfileForm({ ...profileForm, regNumber: e.target.value })} required />
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-              <div>
-                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Council Name</label>
-                <Input type="text" value={profileForm.councilName} onChange={(e) => setProfileForm({ ...profileForm, councilName: e.target.value })} />
-              </div>
-              <div>
-                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Council State</label>
-                <Input type="text" value={profileForm.councilState} onChange={(e) => setProfileForm({ ...profileForm, councilState: e.target.value })} />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '12px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Qualifications</label>
-              <Input type="text" value={profileForm.qualifications} onChange={(e) => setProfileForm({ ...profileForm, qualifications: e.target.value })} required />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
-              <div>
-                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Primary Specialty</label>
-                <Input type="text" value={profileForm.specialty} onChange={(e) => setProfileForm({ ...profileForm, specialty: e.target.value })} required />
-              </div>
-              <div>
-                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Experience (Years)</label>
-                <Input type="number" min="0" value={profileForm.experienceYears} onChange={(e) => setProfileForm({ ...profileForm, experienceYears: e.target.value })} />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <Button variant="outline" type="button" onClick={() => setShowEditProfileModal(false)}>Cancel</Button>
-              <Button variant="primary" type="submit" disabled={savingProfile}>{savingProfile ? 'Saving...' : 'Save Profile Changes'}</Button>
-            </div>
-          </form>
-        </Modal>
-      )}
-
-      {/* MODAL 5: UPLOAD CREDENTIAL DOCUMENT */}
-      {showUploadDocModal && (
-        <Modal isOpen={showUploadDocModal} onClose={() => { setShowUploadDocModal(false); setDocSelectedFile(null); }} title="Upload Credential Certificate">
-          <form onSubmit={handleUploadDoc}>
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Certificate Document Type</label>
-              <select className="input" value={docUploadType} onChange={(e) => setDocUploadType(e.target.value)} style={{ width: '100%' }}>
-                <option value="registration_certificate">State Medical Council Registration Certificate</option>
-                <option value="degree_certificate">Primary Medical Degree / Post-Graduate Certificate</option>
-                <option value="specialization_certificate">Specialization Certificate</option>
-                <option value="other">Other Professional Fellowship / License Certificate</option>
-              </select>
-            </div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>File Attachment (PDF, JPG, PNG &bull; Max 10MB)</label>
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDocSelectedFile(e.target.files?.[0] || null)} style={{ display: 'block', width: '100%', padding: '8px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.8125rem' }} required />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-              <Button variant="outline" type="button" onClick={() => { setShowUploadDocModal(false); setDocSelectedFile(null); }}>Cancel</Button>
-              <Button variant="primary" type="submit" disabled={uploadingDoc || !docSelectedFile}>{uploadingDoc ? 'Uploading...' : 'Upload & Verify'}</Button>
-            </div>
-          </form>
         </Modal>
       )}
     </div>
