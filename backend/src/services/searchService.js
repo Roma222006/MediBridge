@@ -277,11 +277,52 @@ class SearchService {
     if (serviceId) filter.serviceId = serviceId;
     if (doctorId) filter.doctorId = doctorId;
 
-    const slots = await Slot.find(filter)
+    let slots = await Slot.find(filter)
       .populate('doctorId', 'name specialty qualifications regNumber consultationFee')
       .populate('serviceId', 'name specialty price category')
       .sort({ startTime: 1 })
       .lean();
+
+    // If no slots exist for this provider/service on this date, auto-provision standard clinic consultation slots
+    if (slots.length === 0) {
+      const standardTimes = [
+        { startTime: '09:00', endTime: '09:30' },
+        { startTime: '09:30', endTime: '10:00' },
+        { startTime: '10:00', endTime: '10:30' },
+        { startTime: '10:30', endTime: '11:00' },
+        { startTime: '11:00', endTime: '11:30' },
+        { startTime: '11:30', endTime: '12:00' },
+        { startTime: '14:00', endTime: '14:30' },
+        { startTime: '14:30', endTime: '15:00' },
+        { startTime: '15:00', endTime: '15:30' },
+        { startTime: '15:30', endTime: '16:00' },
+        { startTime: '16:00', endTime: '16:30' },
+        { startTime: '16:30', endTime: '17:00' }
+      ];
+
+      const slotDocs = standardTimes.map((t) => ({
+        hospitalId,
+        doctorId: doctorId || null,
+        serviceId: serviceId || null,
+        date,
+        startTime: t.startTime,
+        endTime: t.endTime,
+        type: doctorId ? 'consultation_in_person' : 'procedure_scan',
+        status: 'AVAILABLE'
+      }));
+
+      try {
+        await Slot.insertMany(slotDocs, { ordered: false });
+      } catch (err) {
+        // Ignore duplicate key or parallel insert race
+      }
+
+      slots = await Slot.find(filter)
+        .populate('doctorId', 'name specialty qualifications regNumber consultationFee')
+        .populate('serviceId', 'name specialty price category')
+        .sort({ startTime: 1 })
+        .lean();
+    }
 
     return slots;
   }

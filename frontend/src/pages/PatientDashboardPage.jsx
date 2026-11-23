@@ -212,12 +212,14 @@ export default function PatientDashboardPage() {
             style={{
               backgroundColor: '#FFFFFF',
               border: '1px solid var(--border)',
-              borderRadius: '12px',
-              padding: '24px 28px',
+              borderRadius: '18px',
+              padding: '28px 32px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              boxShadow: '0 2px 8px rgba(112, 43, 89, 0.03)'
+              boxShadow: 'var(--shadow-card)',
+              flexWrap: 'wrap',
+              gap: '16px'
             }}
           >
             <div>
@@ -258,7 +260,7 @@ export default function PatientDashboardPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
               gap: '16px'
             }}
           >
@@ -268,9 +270,9 @@ export default function PatientDashboardPage() {
               style={{
                 backgroundColor: '#FFFFFF',
                 border: '1px solid var(--border)',
-                borderRadius: '12px',
-                padding: '20px 24px',
-                boxShadow: '0 2px 8px rgba(112, 43, 89, 0.03)'
+                borderRadius: '18px',
+                padding: '22px 26px',
+                boxShadow: 'var(--shadow-card)'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -279,9 +281,9 @@ export default function PatientDashboardPage() {
                 </span>
                 <div
                   style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '12px',
                     backgroundColor: 'var(--color-blush-pink)',
                     display: 'flex',
                     alignItems: 'center',
@@ -303,9 +305,9 @@ export default function PatientDashboardPage() {
               style={{
                 backgroundColor: '#FFFFFF',
                 border: '1px solid var(--border)',
-                borderRadius: '12px',
-                padding: '20px 24px',
-                boxShadow: '0 2px 8px rgba(112, 43, 89, 0.03)'
+                borderRadius: '18px',
+                padding: '22px 26px',
+                boxShadow: 'var(--shadow-card)'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -314,14 +316,14 @@ export default function PatientDashboardPage() {
                 </span>
                 <div
                   style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    backgroundColor: '#FFF3E0',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '12px',
+                    backgroundColor: '#FEF3C7',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: 'var(--color-warning-amber)'
+                    color: '#B77A32'
                   }}
                 >
                   <Hourglass size={18} strokeWidth={1.75} />
@@ -338,9 +340,9 @@ export default function PatientDashboardPage() {
               style={{
                 backgroundColor: '#FFFFFF',
                 border: '1px solid var(--border)',
-                borderRadius: '12px',
-                padding: '20px 24px',
-                boxShadow: '0 2px 8px rgba(112, 43, 89, 0.03)'
+                borderRadius: '18px',
+                padding: '22px 26px',
+                boxShadow: 'var(--shadow-card)'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -349,9 +351,9 @@ export default function PatientDashboardPage() {
                 </span>
                 <div
                   style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '12px',
                     backgroundColor: 'var(--color-blush-pink)',
                     display: 'flex',
                     alignItems: 'center',
@@ -373,9 +375,9 @@ export default function PatientDashboardPage() {
               style={{
                 backgroundColor: '#FFFFFF',
                 border: '1px solid var(--border)',
-                borderRadius: '12px',
-                padding: '20px 24px',
-                boxShadow: '0 2px 8px rgba(112, 43, 89, 0.03)'
+                borderRadius: '18px',
+                padding: '22px 26px',
+                boxShadow: 'var(--shadow-card)'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -384,9 +386,9 @@ export default function PatientDashboardPage() {
                 </span>
                 <div
                   style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '12px',
                     backgroundColor: 'var(--color-blush-pink)',
                     display: 'flex',
                     alignItems: 'center',
@@ -417,16 +419,16 @@ export default function PatientDashboardPage() {
               style={{
                 backgroundColor: '#FFFFFF',
                 border: '1px solid var(--border)',
-                borderRadius: '12px',
-                padding: '24px',
-                boxShadow: '0 2px 8px rgba(112, 43, 89, 0.03)'
+                borderRadius: '18px',
+                padding: '26px 28px',
+                boxShadow: 'var(--shadow-card)'
               }}
             >
               <h3
                 style={{
                   margin: '0 0 16px 0',
                   fontSize: '1rem',
-                  fontWeight: '700',
+                  fontWeight: '800',
                   color: 'var(--color-heading)'
                 }}
               >
@@ -438,17 +440,17 @@ export default function PatientDashboardPage() {
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: '16px',
-                  padding: '16px',
+                  padding: '18px 20px',
                   backgroundColor: 'var(--color-pale-rose)',
-                  borderRadius: '10px',
+                  borderRadius: '14px',
                   border: '1px solid var(--border)'
                 }}
               >
                 <div
                   style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '10px',
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '12px',
                     backgroundColor: 'var(--color-blush-pink)',
                     display: 'flex',
                     alignItems: 'center',
@@ -461,10 +463,10 @@ export default function PatientDashboardPage() {
                 </div>
 
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  <div style={{ fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
                     {nextAppointment?.doctorId?.name || 'Dr. Sundar M'}
                   </div>
-                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: '600', marginTop: '2px' }}>
                     {nextAppointment?.doctorId?.specialty || 'Cardiologist'}
                   </div>
                   <div style={{ fontSize: '0.8125rem', fontWeight: '600', color: 'var(--color-heading)', marginTop: '6px' }}>
@@ -474,15 +476,15 @@ export default function PatientDashboardPage() {
                     {nextAppointment?.hospitalId?.name || 'Kovai Medical Center (KMCH)'}
                   </div>
 
-                  <div style={{ marginTop: '14px' }}>
+                  <div style={{ marginTop: '16px' }}>
                     <Link
                       to="/patient-dashboard?tab=appointments"
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '6px',
-                        padding: '6px 14px',
-                        borderRadius: '6px',
+                        padding: '7px 18px',
+                        borderRadius: '9999px',
                         border: '1px solid var(--color-primary)',
                         backgroundColor: '#FFFFFF',
                         color: 'var(--color-primary)',
@@ -504,16 +506,16 @@ export default function PatientDashboardPage() {
               style={{
                 backgroundColor: '#FFFFFF',
                 border: '1px solid var(--border)',
-                borderRadius: '12px',
-                padding: '24px',
-                boxShadow: '0 2px 8px rgba(112, 43, 89, 0.03)'
+                borderRadius: '18px',
+                padding: '26px 28px',
+                boxShadow: 'var(--shadow-card)'
               }}
             >
               <h3
                 style={{
                   margin: '0 0 16px 0',
                   fontSize: '1rem',
-                  fontWeight: '700',
+                  fontWeight: '800',
                   color: 'var(--color-heading)'
                 }}
               >
@@ -527,17 +529,17 @@ export default function PatientDashboardPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    borderRadius: '8px',
+                    padding: '12px 18px',
+                    borderRadius: '12px',
                     border: '1px solid var(--border)',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: '#FAF6F7',
                     color: 'var(--color-heading)',
                     textDecoration: 'none',
-                    fontWeight: '600',
+                    fontWeight: '700',
                     fontSize: '0.875rem'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <CalendarPlus size={18} style={{ color: 'var(--color-primary)' }} />
                     <span>Book Appointment</span>
                   </div>
@@ -550,17 +552,17 @@ export default function PatientDashboardPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    borderRadius: '8px',
+                    padding: '12px 18px',
+                    borderRadius: '12px',
                     border: '1px solid var(--border)',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: '#FAF6F7',
                     color: 'var(--color-heading)',
                     textDecoration: 'none',
-                    fontWeight: '600',
+                    fontWeight: '700',
                     fontSize: '0.875rem'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <Building2 size={18} style={{ color: 'var(--color-primary)' }} />
                     <span>Find a Hospital</span>
                   </div>
@@ -574,18 +576,18 @@ export default function PatientDashboardPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    borderRadius: '8px',
+                    padding: '12px 18px',
+                    borderRadius: '12px',
                     border: '1px solid var(--border)',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: '#FAF6F7',
                     color: 'var(--color-heading)',
                     cursor: 'pointer',
-                    fontWeight: '600',
+                    fontWeight: '700',
                     fontSize: '0.875rem',
                     textAlign: 'left'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <Upload size={18} style={{ color: 'var(--color-primary)' }} />
                     <span>Upload Medical Record</span>
                   </div>
@@ -598,9 +600,9 @@ export default function PatientDashboardPage() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border)',
+                    padding: '12px 18px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(184, 50, 69, 0.2)',
                     backgroundColor: 'var(--status-critical-bg)',
                     color: 'var(--status-critical-text)',
                     textDecoration: 'none',
@@ -608,7 +610,7 @@ export default function PatientDashboardPage() {
                     fontSize: '0.875rem'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <AlertTriangle size={18} style={{ color: 'var(--status-critical-solid)' }} />
                     <span>Emergency Access (108)</span>
                   </div>

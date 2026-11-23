@@ -38,11 +38,11 @@ export default function SearchPage() {
       if (query) params.query = query;
 
       const res = await api.get('/search', { params });
-      if (res.data.success) {
+      if (res.data?.success) {
         setHospitals(res.data.data || []);
       }
     } catch (err) {
-      console.error('[Search] Error loading facilities:', err.message);
+      console.warn('[Search] Error loading facilities:', err.message);
     } finally {
       setLoading(false);
     }
@@ -52,30 +52,32 @@ export default function SearchPage() {
     fetchHospitals();
   }, [selectedDistrict]);
 
-  // Real-time bed updates via Socket.IO
+  // Real-time bed updates
   useEffect(() => {
-    const handleBedUpdate = ({ hospitalId, bedCapacity }) => {
-      setHospitals((prev) =>
-        prev.map((h) => {
-          if (h.id === hospitalId) {
-            return {
-              ...h,
-              bedCapacity: {
-                ...h.bedCapacity,
-                general: { ...h.bedCapacity.general, available: bedCapacity.general.available },
-                icu: { ...h.bedCapacity.icu, available: bedCapacity.icu.available }
-              }
-            };
-          }
-          return h;
-        })
-      );
-    };
+    if (socket) {
+      const handleBedUpdate = ({ hospitalId, bedCapacity }) => {
+        setHospitals((prev) =>
+          prev.map((h) => {
+            if (h.id === hospitalId) {
+              return {
+                ...h,
+                bedCapacity: {
+                  ...h.bedCapacity,
+                  general: { ...h.bedCapacity.general, available: bedCapacity.general.available },
+                  icu: { ...h.bedCapacity.icu, available: bedCapacity.icu.available }
+                }
+              };
+            }
+            return h;
+          })
+        );
+      };
 
-    socket.on('hospital_bed_changed', handleBedUpdate);
-    return () => {
-      socket.off('hospital_bed_changed', handleBedUpdate);
-    };
+      socket.on('hospital_bed_changed', handleBedUpdate);
+      return () => {
+        socket.off('hospital_bed_changed', handleBedUpdate);
+      };
+    }
   }, []);
 
   const handleSearchSubmit = (e) => {
@@ -84,13 +86,13 @@ export default function SearchPage() {
   };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
-      {/* Header (Exact Match to Screen 3) */}
-      <div style={{ marginBottom: '20px' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '28px 20px 48px 20px' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '22px' }}>
         <h1
           style={{
             margin: '0 0 6px 0',
-            fontSize: '1.625rem',
+            fontSize: '1.75rem',
             fontWeight: '800',
             color: 'var(--color-heading)',
             fontFamily: 'var(--font-heading)'
@@ -99,27 +101,28 @@ export default function SearchPage() {
           Discover Hospitals
         </h1>
         <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          Find and book hospitals and doctors near you.
+          Find and book verified hospitals, specialists, and procedure slots near you.
         </p>
       </div>
 
-      {/* Filter Bar Row (Exact Match to Screen 3) */}
+      {/* Filter Bar Row (Curved, spacious, modern) */}
       <form
         onSubmit={handleSearchSubmit}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          marginBottom: '24px'
+          marginBottom: '28px',
+          flexWrap: 'wrap'
         }}
       >
         {/* Search input with icon */}
-        <div style={{ position: 'relative', flex: 1 }}>
+        <div style={{ position: 'relative', flex: '1 1 320px' }}>
           <Search
             size={18}
             style={{
               position: 'absolute',
-              left: '14px',
+              left: '16px',
               top: '50%',
               transform: 'translateY(-50%)',
               color: 'var(--text-muted)'
@@ -129,17 +132,19 @@ export default function SearchPage() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search hospital, location or specialty..."
+            placeholder="Search hospital, doctor or medical specialty..."
             style={{
               width: '100%',
-              height: '42px',
-              padding: '0 16px 0 42px',
-              borderRadius: '8px',
+              height: '46px',
+              padding: '0 20px 0 46px',
+              borderRadius: '9999px',
               border: '1px solid var(--border)',
               backgroundColor: '#FFFFFF',
               fontSize: '0.875rem',
               outline: 'none',
-              color: 'var(--text)'
+              color: 'var(--text)',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              transition: 'border-color 0.15s ease'
             }}
             onFocus={(e) => (e.target.style.borderColor = 'var(--color-primary)')}
             onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
@@ -147,15 +152,15 @@ export default function SearchPage() {
         </div>
 
         {/* Location Dropdown */}
-        <div style={{ position: 'relative', minWidth: '160px' }}>
+        <div style={{ position: 'relative', minWidth: '170px' }}>
           <MapPin
             size={16}
             style={{
               position: 'absolute',
-              left: '12px',
+              left: '14px',
               top: '50%',
               transform: 'translateY(-50%)',
-              color: 'var(--text-muted)',
+              color: 'var(--color-primary)',
               pointerEvents: 'none'
             }}
           />
@@ -164,16 +169,17 @@ export default function SearchPage() {
             onChange={(e) => setSelectedDistrict(e.target.value)}
             style={{
               width: '100%',
-              height: '42px',
-              padding: '0 12px 0 34px',
-              borderRadius: '8px',
+              height: '46px',
+              padding: '0 16px 0 38px',
+              borderRadius: '9999px',
               border: '1px solid var(--border)',
               backgroundColor: '#FFFFFF',
               fontSize: '0.875rem',
-              fontWeight: '600',
+              fontWeight: '700',
               color: 'var(--color-heading)',
               outline: 'none',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
             }}
           >
             <option value="Coimbatore">Coimbatore</option>
@@ -182,38 +188,44 @@ export default function SearchPage() {
           </select>
         </div>
 
-        {/* Filter Button */}
+        {/* Filter / Search Button */}
         <button
           type="submit"
           style={{
-            height: '42px',
-            width: '42px',
-            borderRadius: '8px',
-            border: '1px solid var(--border)',
-            backgroundColor: '#FFFFFF',
+            height: '46px',
+            padding: '0 24px',
+            borderRadius: '9999px',
+            border: 'none',
+            backgroundColor: 'var(--color-primary)',
+            color: '#FFFFFF',
+            fontSize: '0.875rem',
+            fontWeight: '700',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
+            gap: '8px',
             cursor: 'pointer',
-            color: 'var(--color-heading)'
+            boxShadow: '0 2px 8px rgba(184, 61, 131, 0.25)'
           }}
-          aria-label="Filter"
         >
-          <SlidersHorizontal size={18} />
+          <SlidersHorizontal size={16} />
+          <span>Search</span>
         </button>
       </form>
 
-      {/* Hospital Listing Cards (Exact Match to Screen 3) */}
+      {/* Hospital Listing Cards */}
       {loading ? (
-        <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid var(--border)' }}>
-          <p style={{ color: 'var(--text-muted)', margin: 0 }}>Searching hospitals across network...</p>
+        <div style={{ padding: '48px', textAlign: 'center', backgroundColor: '#FFFFFF', borderRadius: '18px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="spinner" style={{ width: '36px', height: '36px', border: '3px solid var(--border)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+          <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.875rem' }}>Searching hospitals across network...</p>
         </div>
       ) : hospitals.length === 0 ? (
-        <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '1px solid var(--border)' }}>
-          <p style={{ color: 'var(--text-muted)', margin: 0 }}>No hospitals found for this location.</p>
+        <div style={{ padding: '48px', textAlign: 'center', backgroundColor: '#FFFFFF', borderRadius: '18px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)' }}>
+          <Building2 size={36} style={{ color: 'var(--text-muted)', margin: '0 auto 12px auto' }} />
+          <h3 style={{ margin: '0 0 4px 0', color: 'var(--color-heading)', fontSize: '1.125rem' }}>No hospitals found</h3>
+          <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.875rem' }}>Please select another city or change your search filter.</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           {hospitals.map((h) => {
             const distance = h.distanceKm || (h.name.includes('KMCH') ? '3.2' : h.name.includes('PSG') ? '5.8' : '18.4');
             const rating = h.name.includes('KMCH') ? '4.7 (1,240 reviews)' : h.name.includes('PSG') ? '4.6 (980 reviews)' : '4.4 (520 reviews)';
@@ -221,32 +233,34 @@ export default function SearchPage() {
             return (
               <div
                 key={h.id}
-                className="card"
                 style={{
                   backgroundColor: '#FFFFFF',
                   border: '1px solid var(--border)',
-                  borderRadius: '12px',
-                  padding: '18px 22px',
+                  borderRadius: '18px',
+                  padding: '24px 28px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  gap: '20px',
-                  boxShadow: '0 2px 8px rgba(112, 43, 89, 0.03)'
+                  gap: '24px',
+                  boxShadow: 'var(--shadow-card)',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                  flexWrap: 'wrap'
                 }}
               >
                 {/* Left & Middle Info */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '22px', flex: '1 1 500px' }}>
                   {/* Hospital Thumbnail */}
                   <div
                     style={{
-                      width: '88px',
-                      height: '76px',
-                      borderRadius: '8px',
+                      width: '100px',
+                      height: '88px',
+                      borderRadius: '14px',
                       backgroundImage: `url(${hospitalBg})`,
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                       flexShrink: 0,
-                      border: '1px solid var(--border)'
+                      border: '1px solid var(--border)',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
                     }}
                   />
 
@@ -254,8 +268,8 @@ export default function SearchPage() {
                   <div>
                     <h3
                       style={{
-                        margin: '0 0 3px 0',
-                        fontSize: '1.0625rem',
+                        margin: '0 0 4px 0',
+                        fontSize: '1.125rem',
                         fontWeight: '800',
                         color: 'var(--color-heading)'
                       }}
@@ -263,14 +277,14 @@ export default function SearchPage() {
                       {h.name}
                     </h3>
 
-                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                      {h.type === 'tertiary' ? 'Multispeciality Hospital' : 'District Government Hospital'}
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                      {h.type === 'tertiary' ? 'Multispeciality Tertiary Care' : 'District Government Healthcare Center'}
                     </div>
 
                     {/* Rating & Distance */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#D5A45B', fontWeight: '700' }}>
-                        <Star size={14} fill="#D5A45B" />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#B77A32', fontWeight: '700' }}>
+                        <Star size={14} fill="#B77A32" />
                         <span>{rating}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -279,18 +293,17 @@ export default function SearchPage() {
                       </div>
                     </div>
 
-                    {/* Badges Row */}
+                    {/* Badges Row (Curved pill tags) */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       {h.emergencyAvailable && (
                         <span
                           style={{
-                            fontSize: '0.7rem',
+                            fontSize: '0.725rem',
                             fontWeight: '700',
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            backgroundColor: 'var(--status-critical-bg)',
-                            color: 'var(--status-critical-solid)',
-                            border: '1px solid rgba(184, 50, 69, 0.2)'
+                            padding: '3px 12px',
+                            borderRadius: '9999px',
+                            backgroundColor: '#FEE2E2',
+                            color: '#B83245'
                           }}
                         >
                           24/7 Emergency
@@ -299,11 +312,11 @@ export default function SearchPage() {
 
                       <span
                         style={{
-                          fontSize: '0.7rem',
+                          fontSize: '0.725rem',
                           fontWeight: '700',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          backgroundColor: 'var(--color-blush-pink)',
+                          padding: '3px 12px',
+                          borderRadius: '9999px',
+                          backgroundColor: '#F8DDE3',
                           color: 'var(--color-heading)'
                         }}
                       >
@@ -312,52 +325,37 @@ export default function SearchPage() {
 
                       <span
                         style={{
-                          fontSize: '0.7rem',
-                          fontWeight: '600',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          backgroundColor: 'var(--status-success-bg)',
-                          color: 'var(--status-success-accent)'
+                          fontSize: '0.725rem',
+                          fontWeight: '700',
+                          padding: '3px 12px',
+                          borderRadius: '9999px',
+                          backgroundColor: '#DCFCE7',
+                          color: '#15803D'
                         }}
                       >
                         Diagnostic Lab
                       </span>
-
-                      {h.schemesSupported?.includes('cmchis') && (
-                        <span
-                          style={{
-                            fontSize: '0.7rem',
-                            fontWeight: '600',
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            backgroundColor: 'var(--color-pale-rose)',
-                            color: 'var(--color-heading)'
-                          }}
-                        >
-                          CMCHIS Empaneled
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Right Action Button (Magenta Pill Button) */}
+                {/* Right Action Button (Pill button) */}
                 <div>
                   <Link
                     to={`/hospital/${h.id}`}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '10px 22px',
-                      borderRadius: '8px',
+                      gap: '6px',
                       backgroundColor: 'var(--color-primary)',
                       color: '#FFFFFF',
+                      padding: '11px 26px',
+                      borderRadius: '9999px',
                       fontSize: '0.875rem',
                       fontWeight: '700',
                       textDecoration: 'none',
-                      boxShadow: '0 2px 6px rgba(184, 61, 131, 0.25)',
-                      whiteSpace: 'nowrap'
+                      boxShadow: '0 2px 8px rgba(184, 61, 131, 0.25)',
+                      transition: 'all 0.15s ease'
                     }}
                   >
                     View Details
