@@ -1090,6 +1090,75 @@ export default function AdminConsolePage() {
       )}
 
       {/* ================================================================
+          SUB-TAB: HOSPITAL & SYSTEM SETTINGS VIEW
+          ================================================================ */}
+      {(currentTab === 'settings' || currentTab === 'system') && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="card" style={{ padding: '24px 28px', backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', boxShadow: 'var(--shadow-card)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h1 style={{ margin: 0, fontSize: '1.375rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  {user?.role === 'super_admin' ? 'Platform Governance & System Settings' : 'Hospital Facility Configuration & Governance'}
+                </h1>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  Manage hospital tenant parameters, emergency triage protocols, and security compliance.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMsg({ type: 'success', text: 'Facility configurations updated successfully!' })}
+                className="btn btn-primary"
+              >
+                Save Settings
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+            <div className="card" style={{ padding: '24px', backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px' }}>
+              <h3 style={{ margin: '0 0 14px 0', fontSize: '1.05rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                Emergency & Capacity Thresholds
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.875rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Auto-Broadcast 108 Emergency Divert</span>
+                  <span className="badge badge-pill badge-primary">Active</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>ICU Minimum Reserved Capacity</span>
+                  <span style={{ fontWeight: '700' }}>3 Beds</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Cross-Hospital Referral SLA Target</span>
+                  <span style={{ fontWeight: '700' }}>30 Minutes</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: '24px', backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px' }}>
+              <h3 style={{ margin: '0 0 14px 0', fontSize: '1.05rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                Compliance & Security Seal
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.875rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>DPDP 2023 Digital Health Audit</span>
+                  <span className="badge badge-pill badge-success">Verified Pass</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>NHA / ABDM Gateway Sync</span>
+                  <span className="badge badge-pill badge-success">Online & Synced</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Data Encryption Standard</span>
+                  <span style={{ fontWeight: '700' }}>AES-256 GCM</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================
           MODALS
           ================================================================ */}
       {/* MODAL 1: ADD DOCTOR */}

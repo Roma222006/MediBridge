@@ -164,14 +164,14 @@ export default function Sidebar({ isOpen, onClose }) {
                   </Link>
                 </li>
                 <li>
-                  <a
-                    href="#settings"
-                    className="nav-link"
-                    onClick={(e) => { e.preventDefault(); onClose(); }}
+                  <Link
+                    to="/patient-dashboard?tab=settings"
+                    className={`nav-link ${isCurrent('/patient-dashboard', 'settings') ? 'active' : ''}`}
+                    onClick={onClose}
                   >
                     <Settings size={17} strokeWidth={1.75} />
                     <span>Settings</span>
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -198,8 +198,8 @@ export default function Sidebar({ isOpen, onClose }) {
                 </li>
                 <li>
                   <Link
-                    to="/doctor-portal?tab=profile"
-                    className={`nav-link ${isCurrent('/doctor-portal', 'profile') ? 'active' : ''}`}
+                    to="/patient-dashboard?tab=settings"
+                    className={`nav-link ${isCurrent('/patient-dashboard', 'settings') ? 'active' : ''}`}
                     onClick={onClose}
                   >
                     <UserCheck size={17} strokeWidth={1.75} />
@@ -287,14 +287,14 @@ export default function Sidebar({ isOpen, onClose }) {
                   </Link>
                 </li>
                 <li>
-                  <a
-                    href="#settings"
-                    className="nav-link"
-                    onClick={(e) => { e.preventDefault(); onClose(); }}
+                  <Link
+                    to="/doctor-portal?tab=profile"
+                    className={`nav-link ${isCurrent('/doctor-portal', 'profile') ? 'active' : ''}`}
+                    onClick={onClose}
                   >
                     <Settings size={17} strokeWidth={1.75} />
                     <span>Settings</span>
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -410,14 +410,14 @@ export default function Sidebar({ isOpen, onClose }) {
                   </Link>
                 </li>
                 <li>
-                  <a
-                    href="#settings"
-                    className="nav-link"
-                    onClick={(e) => { e.preventDefault(); onClose(); }}
+                  <Link
+                    to="/admin-console?tab=settings"
+                    className={`nav-link ${isCurrent('/admin-console', 'settings') ? 'active' : ''}`}
+                    onClick={onClose}
                   >
                     <Settings size={17} strokeWidth={1.75} />
                     <span>Settings</span>
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -513,14 +513,14 @@ export default function Sidebar({ isOpen, onClose }) {
                   </Link>
                 </li>
                 <li>
-                  <a
-                    href="#settings"
-                    className="nav-link"
-                    onClick={(e) => { e.preventDefault(); onClose(); }}
+                  <Link
+                    to="/admin-console?tab=system"
+                    className={`nav-link ${isCurrent('/admin-console', 'system') ? 'active' : ''}`}
+                    onClick={onClose}
                   >
                     <Settings size={17} strokeWidth={1.75} />
                     <span>System Settings</span>
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
