@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Hospital, AlertCircle, Eye, EyeOff, ArrowRight, UserCheck, Stethoscope, Building2, ShieldCheck } from 'lucide-react';
-import Button from '../components/ui/Button';
+import { Hospital, AlertCircle, Eye, EyeOff, Mail, Lock, UserCheck, Stethoscope, Building2, ShieldCheck } from 'lucide-react';
 import hospitalBg from '../assets/hospital-login-bg.jpg';
 
 export default function LoginPage() {
@@ -11,6 +10,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -58,16 +58,16 @@ export default function LoginPage() {
         fontFamily: 'var(--font-body, "Inter", sans-serif)'
       }}
     >
-      {/* LEFT SECTION: Authentication Form (~40%) */}
+      {/* LEFT SECTION: Authentication Card / Form (~40%) */}
       <div
         style={{
           flex: '0 0 42%',
           minWidth: '380px',
-          maxWidth: '520px',
+          maxWidth: '500px',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          padding: '48px 40px',
+          padding: '44px 40px',
           backgroundColor: '#FFFFFF',
           borderRight: '1px solid var(--border)',
           overflowY: 'auto',
@@ -75,58 +75,42 @@ export default function LoginPage() {
           boxShadow: '4px 0 24px rgba(112, 43, 89, 0.04)'
         }}
       >
-        {/* Brand Header */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '40px' }}>
-            <div
-              style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
-                backgroundColor: 'var(--color-blush-pink)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--color-primary)'
-              }}
-            >
-              <Hospital size={24} strokeWidth={1.75} />
+          {/* Logo & Subtitle */}
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+              <Hospital size={26} strokeWidth={1.75} style={{ color: 'var(--color-primary)' }} />
+              <span
+                style={{
+                  fontFamily: 'var(--font-heading, "Manrope", sans-serif)',
+                  fontSize: '1.5rem',
+                  fontWeight: '800',
+                  letterSpacing: '-0.02em'
+                }}
+              >
+                <span style={{ color: 'var(--color-heading)' }}>Medi</span>
+                <span style={{ color: 'var(--color-primary)' }}>Bridge</span>
+              </span>
             </div>
-            <span
-              style={{
-                fontFamily: 'var(--font-heading, "Manrope", sans-serif)',
-                fontSize: '1.375rem',
-                fontWeight: '800',
-                letterSpacing: '-0.02em'
-              }}
-            >
-              <span style={{ color: 'var(--color-heading)' }}>Medi</span>
-              <span style={{ color: 'var(--color-primary)' }}>Bridge</span>
-            </span>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '500' }}>
+              Hospital Healthcare Coordination Platform
+            </div>
           </div>
 
           {/* Heading */}
-          <div style={{ marginBottom: '32px' }}>
+          <div style={{ textAlign: 'left', marginBottom: '28px' }}>
             <h1
               style={{
-                margin: '0 0 8px 0',
+                margin: '0 0 6px 0',
                 fontFamily: 'var(--font-heading, "Manrope", sans-serif)',
-                fontSize: '1.75rem',
+                fontSize: '1.625rem',
                 fontWeight: '800',
-                letterSpacing: '-0.02em',
                 color: 'var(--color-heading)'
               }}
             >
-              Welcome back
+              Welcome Back
             </h1>
-            <p
-              style={{
-                margin: 0,
-                fontSize: '0.9375rem',
-                color: 'var(--text-muted)',
-                lineHeight: '1.5'
-              }}
-            >
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Sign in to access your healthcare portal.
             </p>
           </div>
@@ -153,73 +137,32 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Login Form */}
+          {/* Form */}
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '18px' }}>
-              <label
-                htmlFor="login-email"
-                style={{
-                  display: 'block',
-                  fontSize: '0.8125rem',
-                  fontWeight: '600',
-                  color: 'var(--color-heading)',
-                  marginBottom: '6px'
-                }}
-              >
-                Email Address
-              </label>
-              <input
-                id="login-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@hospital.org"
-                required
-                style={{
-                  width: '100%',
-                  height: '42px',
-                  padding: '0 14px',
-                  borderRadius: 'var(--radius-control)',
-                  border: '1px solid var(--border-control)',
-                  backgroundColor: '#FFFFFF',
-                  color: 'var(--text)',
-                  fontSize: '0.875rem',
-                  outline: 'none',
-                  transition: 'border-color 0.15s ease'
-                }}
-                onFocus={(e) => (e.target.style.borderColor = 'var(--color-primary)')}
-                onBlur={(e) => (e.target.style.borderColor = 'var(--border-control)')}
-              />
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label
-                  htmlFor="login-password"
-                  style={{
-                    fontSize: '0.8125rem',
-                    fontWeight: '600',
-                    color: 'var(--color-heading)'
-                  }}
-                >
-                  Password
-                </label>
-              </div>
-
               <div style={{ position: 'relative' }}>
+                <Mail
+                  size={16}
+                  style={{
+                    position: 'absolute',
+                    left: '14px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--text-muted)'
+                  }}
+                />
                 <input
-                  id="login-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your account password"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email Address"
                   required
                   style={{
                     width: '100%',
-                    height: '42px',
-                    padding: '0 40px 0 14px',
-                    borderRadius: 'var(--radius-control)',
-                    border: '1px solid var(--border-control)',
+                    height: '44px',
+                    padding: '0 14px 0 40px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
                     backgroundColor: '#FFFFFF',
                     color: 'var(--text)',
                     fontSize: '0.875rem',
@@ -227,7 +170,43 @@ export default function LoginPage() {
                     transition: 'border-color 0.15s ease'
                   }}
                   onFocus={(e) => (e.target.style.borderColor = 'var(--color-primary)')}
-                  onBlur={(e) => (e.target.style.borderColor = 'var(--border-control)')}
+                  onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '18px' }}>
+              <div style={{ position: 'relative' }}>
+                <Lock
+                  size={16}
+                  style={{
+                    position: 'absolute',
+                    left: '14px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--text-muted)'
+                  }}
+                />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  required
+                  style={{
+                    width: '100%',
+                    height: '44px',
+                    padding: '0 40px 0 40px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    backgroundColor: '#FFFFFF',
+                    color: 'var(--text)',
+                    fontSize: '0.875rem',
+                    outline: 'none',
+                    transition: 'border-color 0.15s ease'
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = 'var(--color-primary)')}
+                  onBlur={(e) => (e.target.style.borderColor = 'var(--border)')}
                 />
                 <button
                   type="button"
@@ -247,52 +226,80 @@ export default function LoginPage() {
                     padding: 0
                   }}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
 
-            <Button
+            {/* Remember Me & Forgot Password Row */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '24px',
+                fontSize: '0.8125rem'
+              }}
+            >
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text)' }}>
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  style={{ accentColor: 'var(--color-primary)' }}
+                />
+                <span>Remember me</span>
+              </label>
+
+              <a
+                href="#forgot"
+                onClick={(e) => e.preventDefault()}
+                style={{ color: 'var(--color-primary)', fontWeight: '600', textDecoration: 'none' }}
+              >
+                Forgot Password?
+              </a>
+            </div>
+
+            <button
               type="submit"
               disabled={submitting}
-              variant="primary"
               style={{
                 width: '100%',
                 height: '44px',
+                borderRadius: '8px',
+                backgroundColor: 'var(--color-primary)',
+                color: '#FFFFFF',
                 fontSize: '0.9375rem',
                 fontWeight: '700',
-                backgroundColor: 'var(--color-primary)',
-                borderColor: 'var(--color-primary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
+                border: 'none',
+                cursor: submitting ? 'not-allowed' : 'pointer',
+                transition: 'background-color 0.15s ease',
+                boxShadow: '0 2px 8px rgba(184, 61, 131, 0.25)'
+              }}
+              onMouseEnter={(e) => {
+                if (!submitting) e.currentTarget.style.backgroundColor = 'var(--color-primary-hover)';
+              }}
+              onMouseLeave={(e) => {
+                if (!submitting) e.currentTarget.style.backgroundColor = 'var(--color-primary)';
               }}
             >
-              <span>{submitting ? 'Verifying Credentials...' : 'Sign In'}</span>
-              <ArrowRight size={16} />
-            </Button>
+              {submitting ? 'Signing In...' : 'Sign In'}
+            </button>
           </form>
 
-          {/* Quick Demo Credentials Fill Pills */}
-          <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-              <span
-                style={{
-                  fontSize: '0.75rem',
-                  fontWeight: '700',
-                  color: 'var(--color-heading)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em'
-                }}
-              >
-                Instant 1-Click Role Login
-              </span>
-              <span className="badge badge-pill badge-neutral" style={{ fontSize: '0.6875rem' }}>
-                Demo Environment
-              </span>
-            </div>
+          {/* Registration link */}
+          <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            Don't have an account?{' '}
+            <span style={{ color: 'var(--color-primary)', fontWeight: '700', cursor: 'pointer' }}>
+              Register
+            </span>
+          </div>
 
+          {/* Quick Demo Fill Buttons for Evaluation */}
+          <div style={{ marginTop: '28px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-heading)', textTransform: 'uppercase', marginBottom: '10px' }}>
+              Instant Demo Access
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <button
                 type="button"
@@ -301,30 +308,19 @@ export default function LoginPage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '8px 10px',
-                  borderRadius: 'var(--radius-control)',
+                  padding: '7px 10px',
+                  borderRadius: '6px',
                   border: '1px solid var(--border)',
                   backgroundColor: '#FFFFFF',
                   cursor: 'pointer',
-                  textAlign: 'left',
                   fontSize: '0.75rem',
                   fontWeight: '600',
-                  color: 'var(--color-heading)',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--color-primary)';
-                  e.currentTarget.style.backgroundColor = 'var(--color-pale-rose)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border)';
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  color: 'var(--color-heading)'
                 }}
               >
                 <UserCheck size={14} style={{ color: 'var(--color-primary)' }} />
-                <span>Patient Portal</span>
+                <span>Patient</span>
               </button>
-
               <button
                 type="button"
                 onClick={() => handleFillDemo('dr.revathi@medibridge.org', 'DoctorPass123!')}
@@ -332,30 +328,19 @@ export default function LoginPage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '8px 10px',
-                  borderRadius: 'var(--radius-control)',
+                  padding: '7px 10px',
+                  borderRadius: '6px',
                   border: '1px solid var(--border)',
                   backgroundColor: '#FFFFFF',
                   cursor: 'pointer',
-                  textAlign: 'left',
                   fontSize: '0.75rem',
                   fontWeight: '600',
-                  color: 'var(--color-heading)',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--color-primary)';
-                  e.currentTarget.style.backgroundColor = 'var(--color-pale-rose)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border)';
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  color: 'var(--color-heading)'
                 }}
               >
                 <Stethoscope size={14} style={{ color: 'var(--color-primary)' }} />
-                <span>Doctor Portal</span>
+                <span>Doctor</span>
               </button>
-
               <button
                 type="button"
                 onClick={() => handleFillDemo('admin.kmch@medibridge.org', 'AdminPass123!')}
@@ -363,30 +348,19 @@ export default function LoginPage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '8px 10px',
-                  borderRadius: 'var(--radius-control)',
+                  padding: '7px 10px',
+                  borderRadius: '6px',
                   border: '1px solid var(--border)',
                   backgroundColor: '#FFFFFF',
                   cursor: 'pointer',
-                  textAlign: 'left',
                   fontSize: '0.75rem',
                   fontWeight: '600',
-                  color: 'var(--color-heading)',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--color-primary)';
-                  e.currentTarget.style.backgroundColor = 'var(--color-pale-rose)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border)';
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  color: 'var(--color-heading)'
                 }}
               >
                 <Building2 size={14} style={{ color: 'var(--color-primary)' }} />
                 <span>Hospital Admin</span>
               </button>
-
               <button
                 type="button"
                 onClick={() => handleFillDemo('superadmin@medibridge.org', 'SuperAdmin123!')}
@@ -394,24 +368,14 @@ export default function LoginPage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '8px 10px',
-                  borderRadius: 'var(--radius-control)',
+                  padding: '7px 10px',
+                  borderRadius: '6px',
                   border: '1px solid var(--border)',
                   backgroundColor: '#FFFFFF',
                   cursor: 'pointer',
-                  textAlign: 'left',
                   fontSize: '0.75rem',
                   fontWeight: '600',
-                  color: 'var(--color-heading)',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--color-primary)';
-                  e.currentTarget.style.backgroundColor = 'var(--color-pale-rose)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border)';
-                  e.currentTarget.style.backgroundColor = '#FFFFFF';
+                  color: 'var(--color-heading)'
                 }}
               >
                 <ShieldCheck size={14} style={{ color: 'var(--color-primary)' }} />
@@ -421,13 +385,13 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Footer info */}
-        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          <span>Protected under DPDP Act 2023 &bull; Synthetic Health Demonstration</span>
+        {/* Footer */}
+        <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+          Protected under DPDP Act 2023 &bull; Synthetic Health Demonstration
         </div>
       </div>
 
-      {/* RIGHT SECTION: Healthcare Hospital Illustration (~58%-60%) */}
+      {/* RIGHT SECTION: Healthcare Hospital Illustration (~58%) */}
       <div
         style={{
           flex: '1 1 58%',
@@ -439,12 +403,11 @@ export default function LoginPage() {
           position: 'relative'
         }}
       >
-        {/* Subtle gradient vignette to blend smoothly into the left border */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(to right, rgba(255,255,255,0.08) 0%, transparent 15%, transparent 100%)'
+            background: 'linear-gradient(to right, rgba(255,255,255,0.06) 0%, transparent 15%, transparent 100%)'
           }}
         />
       </div>

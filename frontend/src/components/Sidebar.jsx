@@ -2,21 +2,45 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
+  Hospital,
+  LayoutDashboard,
   Building2,
   Calendar,
-  Stethoscope,
-  SlidersHorizontal,
+  FolderLock,
+  Users,
+  Send,
+  Clock,
   AlertTriangle,
+  Settings,
+  LogOut,
+  Stethoscope,
+  ShieldCheck,
+  CalendarCheck,
+  FileText,
+  Bell,
+  SlidersHorizontal,
+  Bed,
+  Layers,
+  Activity,
+  History,
+  CheckCircle,
   X,
-  Hospital,
-  ShieldCheck
+  UserCheck
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose }) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
 
-  const isCurrent = (path) => location.pathname === path;
+  const isCurrent = (path, tab) => {
+    if (tab) {
+      return location.pathname === path && location.search.includes(`tab=${tab}`);
+    }
+    if (path === '/') {
+      return location.pathname === '/' && !location.search.includes('tab=');
+    }
+    return location.pathname === path && (!location.search || !location.search.includes('tab='));
+  };
 
   return (
     <>
@@ -29,6 +53,7 @@ export default function Sidebar({ isOpen, onClose }) {
       )}
 
       <aside className={`sidebar ${isOpen ? 'open' : ''}`} aria-label="Main Navigation">
+        {/* Brand Logo Header */}
         <div className="sidebar-brand">
           <Link to="/" className="brand-logo" onClick={onClose} style={{ textDecoration: 'none' }}>
             <Hospital size={24} strokeWidth={1.75} aria-hidden="true" style={{ color: 'var(--color-primary)' }} />
@@ -48,192 +73,483 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
 
         <nav className="sidebar-nav">
-          {/* 1. PATIENT ACCOUNT or GUEST */}
+          {/* ========================================================
+              1. PATIENT PORTAL SIDEBAR
+              ======================================================== */}
           {(!user || user.role === 'patient') && (
-            <>
-              {user && (
-                <div className="nav-group">
-                  <span className="nav-group-label">Patient Portal</span>
-                  <ul className="nav-list">
-                    <li>
-                      <Link
-                        to="/patient-dashboard"
-                        className={`nav-link ${isCurrent('/patient-dashboard') ? 'active' : ''}`}
-                        onClick={onClose}
-                      >
-                        <Calendar size={18} strokeWidth={1.75} aria-hidden="true" />
-                        <span>Appointments & Vault</span>
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-              )}
-
-              <div className="nav-group">
-                <span className="nav-group-label">Healthcare Discovery</span>
-                <ul className="nav-list">
-                  <li>
-                    <Link
-                      to="/"
-                      className={`nav-link ${isCurrent('/') ? 'active' : ''}`}
-                      onClick={onClose}
-                    >
-                      <Building2 size={18} strokeWidth={1.75} aria-hidden="true" />
-                      <span>Discover & Book</span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      to="/emergency"
-                      className={`nav-link nav-link-emergency ${isCurrent('/emergency') ? 'active' : ''}`}
-                      onClick={onClose}
-                    >
-                      <AlertTriangle size={18} strokeWidth={1.75} aria-hidden="true" />
-                      <span>Emergency Mode (108)</span>
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-            </>
+            <div className="nav-group">
+              <span className="nav-group-label" style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                Patient Portal
+              </span>
+              <ul className="nav-list">
+                <li>
+                  <Link
+                    to="/patient-dashboard"
+                    className={`nav-link ${isCurrent('/patient-dashboard') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <LayoutDashboard size={17} strokeWidth={1.75} />
+                    <span>Dashboard</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/"
+                    className={`nav-link ${isCurrent('/') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Building2 size={17} strokeWidth={1.75} />
+                    <span>Discover Hospitals</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/patient-dashboard?tab=appointments"
+                    className={`nav-link ${isCurrent('/patient-dashboard', 'appointments') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Calendar size={17} strokeWidth={1.75} />
+                    <span>Appointments</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/patient-dashboard?tab=vault"
+                    className={`nav-link ${isCurrent('/patient-dashboard', 'vault') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <FolderLock size={17} strokeWidth={1.75} />
+                    <span>Health Vault</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/patient-dashboard?tab=family"
+                    className={`nav-link ${isCurrent('/patient-dashboard', 'family') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Users size={17} strokeWidth={1.75} />
+                    <span>Family Profiles</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/patient-dashboard?tab=referrals"
+                    className={`nav-link ${isCurrent('/patient-dashboard', 'referrals') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Send size={17} strokeWidth={1.75} />
+                    <span>Referrals</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/patient-dashboard?tab=followups"
+                    className={`nav-link ${isCurrent('/patient-dashboard', 'followups') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Clock size={17} strokeWidth={1.75} />
+                    <span>Follow-ups</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/emergency"
+                    className={`nav-link nav-link-emergency ${isCurrent('/emergency') ? 'active' : ''}`}
+                    onClick={onClose}
+                    style={{ color: 'var(--status-critical-solid)' }}
+                  >
+                    <AlertTriangle size={17} strokeWidth={1.75} />
+                    <span>Emergency (108)</span>
+                  </Link>
+                </li>
+                <li>
+                  <a
+                    href="#settings"
+                    className="nav-link"
+                    onClick={(e) => { e.preventDefault(); onClose(); }}
+                  >
+                    <Settings size={17} strokeWidth={1.75} />
+                    <span>Settings</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
           )}
 
-          {/* 2. DOCTOR ACCOUNT */}
+          {/* ========================================================
+              2. DOCTOR PORTAL SIDEBAR
+              ======================================================== */}
           {user?.role === 'doctor' && (
-            <>
-              <div className="nav-group">
-                <span className="nav-group-label">Doctor Workspace</span>
-                <ul className="nav-list">
-                  <li>
-                    <Link
-                      to="/doctor-portal"
-                      className={`nav-link ${isCurrent('/doctor-portal') ? 'active' : ''}`}
-                      onClick={onClose}
-                    >
-                      <Stethoscope size={18} strokeWidth={1.75} aria-hidden="true" />
-                      <span>Clinical Desk</span>
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="nav-group">
-                <span className="nav-group-label">Clinical Resources</span>
-                <ul className="nav-list">
-                  <li>
-                    <Link
-                      to="/emergency"
-                      className={`nav-link nav-link-emergency ${isCurrent('/emergency') ? 'active' : ''}`}
-                      onClick={onClose}
-                    >
-                      <AlertTriangle size={18} strokeWidth={1.75} aria-hidden="true" />
-                      <span>Emergency Triage (108)</span>
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-            </>
+            <div className="nav-group">
+              <span className="nav-group-label" style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                Doctor Portal
+              </span>
+              <ul className="nav-list">
+                <li>
+                  <Link
+                    to="/doctor-portal"
+                    className={`nav-link ${isCurrent('/doctor-portal') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <LayoutDashboard size={17} strokeWidth={1.75} />
+                    <span>Dashboard</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/doctor-portal?tab=profile"
+                    className={`nav-link ${isCurrent('/doctor-portal', 'profile') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <UserCheck size={17} strokeWidth={1.75} />
+                    <span>My Profile</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/doctor-portal?tab=credentials"
+                    className={`nav-link ${isCurrent('/doctor-portal', 'credentials') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <ShieldCheck size={17} strokeWidth={1.75} />
+                    <span>Credentials & Verification</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/doctor-portal?tab=availability"
+                    className={`nav-link ${isCurrent('/doctor-portal', 'availability') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <CalendarCheck size={17} strokeWidth={1.75} />
+                    <span>Availability</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/doctor-portal?tab=appointments"
+                    className={`nav-link ${isCurrent('/doctor-portal', 'appointments') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Calendar size={17} strokeWidth={1.75} />
+                    <span>Appointments</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/doctor-portal?tab=desk"
+                    className={`nav-link ${isCurrent('/doctor-portal', 'desk') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Stethoscope size={17} strokeWidth={1.75} />
+                    <span>Clinical Desk</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/doctor-portal?tab=prescriptions"
+                    className={`nav-link ${isCurrent('/doctor-portal', 'prescriptions') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <FileText size={17} strokeWidth={1.75} />
+                    <span>Prescriptions</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/doctor-portal?tab=referrals"
+                    className={`nav-link ${isCurrent('/doctor-portal', 'referrals') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Send size={17} strokeWidth={1.75} />
+                    <span>Referrals</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/doctor-portal?tab=followups"
+                    className={`nav-link ${isCurrent('/doctor-portal', 'followups') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Clock size={17} strokeWidth={1.75} />
+                    <span>Follow-ups</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/doctor-portal?tab=notifications"
+                    className={`nav-link ${isCurrent('/doctor-portal', 'notifications') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Bell size={17} strokeWidth={1.75} />
+                    <span>Notifications</span>
+                  </Link>
+                </li>
+                <li>
+                  <a
+                    href="#settings"
+                    className="nav-link"
+                    onClick={(e) => { e.preventDefault(); onClose(); }}
+                  >
+                    <Settings size={17} strokeWidth={1.75} />
+                    <span>Settings</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
           )}
 
-          {/* 3. HOSPITAL ADMIN ACCOUNT */}
+          {/* ========================================================
+              3. HOSPITAL ADMIN SIDEBAR
+              ======================================================== */}
           {user?.role === 'hospital_admin' && (
-            <>
-              <div className="nav-group">
-                <span className="nav-group-label">Hospital Administration</span>
-                <ul className="nav-list">
-                  <li>
-                    <Link
-                      to="/admin-console"
-                      className={`nav-link ${isCurrent('/admin-console') && !location.search.includes('tab=platform') ? 'active' : ''}`}
-                      onClick={onClose}
-                    >
-                      <SlidersHorizontal size={18} strokeWidth={1.75} aria-hidden="true" />
-                      <span>Operations Console</span>
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="nav-group">
-                <span className="nav-group-label">Hospital Services</span>
-                <ul className="nav-list">
-                  <li>
-                    <Link
-                      to="/emergency"
-                      className={`nav-link nav-link-emergency ${isCurrent('/emergency') ? 'active' : ''}`}
-                      onClick={onClose}
-                    >
-                      <AlertTriangle size={18} strokeWidth={1.75} aria-hidden="true" />
-                      <span>Emergency Beds (108)</span>
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-            </>
+            <div className="nav-group">
+              <span className="nav-group-label" style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                Hospital Admin
+              </span>
+              <ul className="nav-list">
+                <li>
+                  <Link
+                    to="/admin-console"
+                    className={`nav-link ${isCurrent('/admin-console') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <LayoutDashboard size={17} strokeWidth={1.75} />
+                    <span>Dashboard</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=profile"
+                    className={`nav-link ${isCurrent('/admin-console', 'profile') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Building2 size={17} strokeWidth={1.75} />
+                    <span>Hospital Profile</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=doctors"
+                    className={`nav-link ${isCurrent('/admin-console', 'doctors') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <UserCheck size={17} strokeWidth={1.75} />
+                    <span>Doctor Management</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=services"
+                    className={`nav-link ${isCurrent('/admin-console', 'services') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Layers size={17} strokeWidth={1.75} />
+                    <span>Departments & Services</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=slots"
+                    className={`nav-link ${isCurrent('/admin-console', 'slots') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <CalendarCheck size={17} strokeWidth={1.75} />
+                    <span>Availability</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=appointments"
+                    className={`nav-link ${isCurrent('/admin-console', 'appointments') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Calendar size={17} strokeWidth={1.75} />
+                    <span>Appointments</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=beds"
+                    className={`nav-link ${isCurrent('/admin-console', 'beds') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Bed size={17} strokeWidth={1.75} />
+                    <span>Bed Management</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=referrals"
+                    className={`nav-link ${isCurrent('/admin-console', 'referrals') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Send size={17} strokeWidth={1.75} />
+                    <span>Referrals</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=reports"
+                    className={`nav-link ${isCurrent('/admin-console', 'reports') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <FileText size={17} strokeWidth={1.75} />
+                    <span>Reports</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=notifications"
+                    className={`nav-link ${isCurrent('/admin-console', 'notifications') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Bell size={17} strokeWidth={1.75} />
+                    <span>Notifications</span>
+                  </Link>
+                </li>
+                <li>
+                  <a
+                    href="#settings"
+                    className="nav-link"
+                    onClick={(e) => { e.preventDefault(); onClose(); }}
+                  >
+                    <Settings size={17} strokeWidth={1.75} />
+                    <span>Settings</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
           )}
 
-          {/* 4. SUPER ADMIN ACCOUNT */}
+          {/* ========================================================
+              4. SUPER ADMIN SIDEBAR
+              ======================================================== */}
           {user?.role === 'super_admin' && (
-            <>
-              <div className="nav-group">
-                <span className="nav-group-label">State Platform Governance</span>
-                <ul className="nav-list">
-                  <li>
-                    <Link
-                      to="/admin-console?tab=platform"
-                      className={`nav-link ${isCurrent('/admin-console') && location.search.includes('tab=platform') ? 'active' : ''}`}
-                      onClick={onClose}
-                    >
-                      <ShieldCheck size={18} strokeWidth={1.75} aria-hidden="true" />
-                      <span>Platform Governance</span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      to="/admin-console"
-                      className={`nav-link ${isCurrent('/admin-console') && !location.search.includes('tab=platform') ? 'active' : ''}`}
-                      onClick={onClose}
-                    >
-                      <SlidersHorizontal size={18} strokeWidth={1.75} aria-hidden="true" />
-                      <span>Hospital Operations</span>
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="nav-group">
-                <span className="nav-group-label">Network Discovery</span>
-                <ul className="nav-list">
-                  <li>
-                    <Link
-                      to="/"
-                      className={`nav-link ${isCurrent('/') ? 'active' : ''}`}
-                      onClick={onClose}
-                    >
-                      <Building2 size={18} strokeWidth={1.75} aria-hidden="true" />
-                      <span>Hospital Network</span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      to="/emergency"
-                      className={`nav-link nav-link-emergency ${isCurrent('/emergency') ? 'active' : ''}`}
-                      onClick={onClose}
-                    >
-                      <AlertTriangle size={18} strokeWidth={1.75} aria-hidden="true" />
-                      <span>Emergency Grid (108)</span>
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-            </>
+            <div className="nav-group">
+              <span className="nav-group-label" style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                Super Admin
+              </span>
+              <ul className="nav-list">
+                <li>
+                  <Link
+                    to="/admin-console?tab=platform"
+                    className={`nav-link ${isCurrent('/admin-console', 'platform') || isCurrent('/admin-console') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <LayoutDashboard size={17} strokeWidth={1.75} />
+                    <span>Dashboard</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=hospitals"
+                    className={`nav-link ${isCurrent('/admin-console', 'hospitals') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Building2 size={17} strokeWidth={1.75} />
+                    <span>Hospital Management</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=approvals"
+                    className={`nav-link ${isCurrent('/admin-console', 'approvals') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <CheckCircle size={17} strokeWidth={1.75} />
+                    <span>Hospital Approvals</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=users"
+                    className={`nav-link ${isCurrent('/admin-console', 'users') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Users size={17} strokeWidth={1.75} />
+                    <span>User Management</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=roles"
+                    className={`nav-link ${isCurrent('/admin-console', 'roles') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <ShieldCheck size={17} strokeWidth={1.75} />
+                    <span>Role Management</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=monitoring"
+                    className={`nav-link ${isCurrent('/admin-console', 'monitoring') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <Activity size={17} strokeWidth={1.75} />
+                    <span>Platform Monitoring</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=audit"
+                    className={`nav-link ${isCurrent('/admin-console', 'audit') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <History size={17} strokeWidth={1.75} />
+                    <span>Audit Logs</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/admin-console?tab=reports"
+                    className={`nav-link ${isCurrent('/admin-console', 'reports') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <FileText size={17} strokeWidth={1.75} />
+                    <span>Reports</span>
+                  </Link>
+                </li>
+                <li>
+                  <a
+                    href="#settings"
+                    className="nav-link"
+                    onClick={(e) => { e.preventDefault(); onClose(); }}
+                  >
+                    <Settings size={17} strokeWidth={1.75} />
+                    <span>System Settings</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
           )}
         </nav>
 
-        <div className="sidebar-footer">
-          <div className="sidebar-env-tag">
-            <span className="demo-badge">{user ? user.role.replace('_', ' ').toUpperCase() : 'PUBLIC'}</span>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Techthon 2026</span>
-          </div>
+        {/* Sidebar Footer with Logout */}
+        <div className="sidebar-footer" style={{ padding: '16px', borderTop: '1px solid var(--border)' }}>
+          {user && (
+            <button
+              type="button"
+              onClick={logout}
+              className="nav-link"
+              style={{
+                width: '100%',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                color: 'var(--color-heading)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '10px 14px'
+              }}
+            >
+              <LogOut size={17} strokeWidth={1.75} />
+              <span>Logout</span>
+            </button>
+          )}
         </div>
       </aside>
     </>

@@ -56,21 +56,24 @@
 :root {
   /* Specification Named Colors */
   --color-deep-plum: #702B59;
+  --color-dark-plum: #542044;
   --color-rose-magenta: #B83D83;
   --color-blush-pink: #F8DDE3;
+  --color-soft-rose: #F2B9CA;
   --color-pale-rose: #FCEFED;
   --color-white: #FFFFFF;
   --color-charcoal: #29252A;
   --color-soft-grey: #E8E3E5;
   --color-healthcare-green: #477B67;
-  --color-warning-amber: #D5A45B;
-  --color-critical-red: #C44752;
+  --color-warning-amber: #B77A32;
+  --color-critical-red: #B83245;
 
   /* Brand */
   --color-primary: #B83D83;
   --color-primary-hover: #A23373;
   --color-primary-pressed: #8C2B62;
   --color-heading: #702B59;
+  --color-heading-secondary: #542044;
 
   /* Surfaces */
   --bg-app: #FCEFED;
@@ -84,20 +87,20 @@
 
   /* Lines & Controls */
   --border: #E8E3E5;
-  --border-control: #8F858C;
+  --border-control: #E8E3E5;
 
   /* Status Colors */
-  --status-success-text: #2F5A49;
-  --status-success-bg: #E6F1EC;
+  --status-success-text: #477B67;
+  --status-success-bg: #EAF4F0;
   --status-success-accent: #477B67;
 
-  --status-warning-text: #7C4F00;
-  --status-warning-bg: #FFF3D6;
-  --status-warning-accent: #D5A45B;
+  --status-warning-text: #B77A32;
+  --status-warning-bg: #FDF4E9;
+  --status-warning-accent: #B77A32;
 
-  --status-critical-text: #C44752;
-  --status-critical-bg: #FDECEA;
-  --status-critical-solid: #C44752;
+  --status-critical-text: #B83245;
+  --status-critical-bg: #FDF0F2;
+  --status-critical-solid: #B83245;
 
   --status-info-text: #702B59;
   --status-info-bg: #FCEFED;

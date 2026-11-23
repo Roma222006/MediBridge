@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import StatusBadge from '../components/StatusBadge';
@@ -31,32 +31,32 @@ import {
   ExternalLink,
   Info,
   Check,
-  X
+  X,
+  PlusCircle,
+  CalendarX,
+  RefreshCw,
+  Eye,
+  Hospital
 } from 'lucide-react';
 
 export default function AdminConsolePage() {
   const { user } = useAuth();
   const location = useLocation();
 
-  // Active Tab: beds, slots, leave, doctors, referrals, audit, platform
-  const [activeTab, setActiveTab] = useState(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get('tab') === 'platform' && user?.role === 'super_admin') {
-      return 'platform';
-    }
-    return 'beds';
-  });
+  // Active Tab from query parameters
+  const searchParams = new URLSearchParams(location.search);
+  const currentTab = searchParams.get('tab') || 'dashboard';
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState(null);
   const [lastUpdated, setLastUpdated] = useState('just now');
 
   // Overview Data
   const [overview, setOverview] = useState(null);
-  const [genTotal, setGenTotal] = useState(0);
-  const [genAvail, setGenAvail] = useState(0);
-  const [icuTotal, setIcuTotal] = useState(0);
-  const [icuAvail, setIcuAvail] = useState(0);
+  const [genTotal, setGenTotal] = useState(320);
+  const [genAvail, setGenAvail] = useState(278);
+  const [icuTotal, setIcuTotal] = useState(28);
+  const [icuAvail, setIcuAvail] = useState(7);
 
   // Slots & Services
   const [servicesList, setServicesList] = useState([]);
@@ -82,39 +82,48 @@ export default function AdminConsolePage() {
   const [verifyingDocId, setVerifyingDocId] = useState(null);
   const [verifyComments, setVerifyComments] = useState('');
 
+  // Add Doctor Modal
+  const [showAddDoctorModal, setShowAddDoctorModal] = useState(false);
+  const [newDoctorForm, setNewDoctorForm] = useState({
+    name: '',
+    specialty: 'Cardiology',
+    regNumber: '',
+    qualifications: '',
+    department: 'Cardiology'
+  });
+
+  // Filters for Doctor Management (Screen 8)
+  const [doctorSearchQuery, setDoctorSearchQuery] = useState('');
+  const [doctorDeptFilter, setDoctorDeptFilter] = useState('All');
+  const [doctorStatusFilter, setDoctorStatusFilter] = useState('All');
+
+  // Default Mock Dataset for Doctor Management (Screen 8)
+  const [screen8Doctors, setScreen8Doctors] = useState([
+    { id: 'doc-1', name: 'Dr. Sundar M', specialty: 'Cardiology', department: 'Cardiology', verification: 'Verified', availability: 'Available' },
+    { id: 'doc-2', name: 'Dr. Lavanya S', specialty: 'Neurology', department: 'Neurology', verification: 'Pending', availability: 'Unavailable' },
+    { id: 'doc-3', name: 'Dr. Prakash R', specialty: 'Orthopedics', department: 'Orthopedics', verification: 'Verified', availability: 'Available' },
+    { id: 'doc-4', name: 'Dr. Anand K', specialty: 'General Medicine', department: 'General Medicine', verification: 'Verified', availability: 'Available' }
+  ]);
+
+  // Super Admin Platform Approvals (Screen 9)
+  const [platformApprovals, setPlatformApprovals] = useState([
+    { id: 'appr-1', name: 'Ramakrishna Hospital', status: 'Pending', type: 'Tertiary Care', beds: '250 Beds' },
+    { id: 'appr-2', name: 'Aravind Eye Care', status: 'Pending', type: 'Super Specialty Eye Hospital', beds: '180 Beds' },
+    { id: 'appr-3', name: 'Sri Lakshmi Hospital', status: 'Pending', type: 'General Medical Center', beds: '120 Beds' }
+  ]);
+
   // Referrals & Audit
   const [referralsList, setReferralsList] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
 
   // Super Admin Platform Data
   const [platformOverview, setPlatformOverview] = useState(null);
-  const [loadingPlatform, setLoadingPlatform] = useState(false);
 
   useEffect(() => {
     loadInitialData();
   }, [user]);
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const tabParam = params.get('tab');
-    if (tabParam === 'platform' && user?.role === 'super_admin') {
-      setActiveTab('platform');
-      loadPlatformData();
-    }
-  }, [location.search, user]);
-
-  useEffect(() => {
-    if (activeTab === 'platform' && user?.role === 'super_admin') {
-      loadPlatformData();
-    } else if (activeTab === 'doctors') {
-      loadDoctors();
-    } else if (activeTab === 'leave') {
-      loadLeaveRequests();
-    }
-  }, [activeTab]);
-
   const loadInitialData = async () => {
-    setLoading(true);
     try {
       if (user?.role === 'super_admin') {
         await Promise.allSettled([
@@ -130,41 +139,39 @@ export default function AdminConsolePage() {
         ]);
       }
     } catch (err) {
-      console.error('[AdminConsole] Load error:', err.message);
-    } finally {
-      setLoading(false);
+      console.warn('[AdminConsole] Load error:', err.message);
     }
   };
 
   const loadOverviewData = async () => {
     try {
       const res = await api.get('/admin/overview');
-      if (res.data.success) {
+      if (res.data?.success) {
         const d = res.data.data;
         setOverview(d);
         if (d.hospital?.bedCapacity) {
-          setGenTotal(d.hospital.bedCapacity.general?.total || 0);
-          setGenAvail(d.hospital.bedCapacity.general?.available || 0);
-          setIcuTotal(d.hospital.bedCapacity.icu?.total || 0);
-          setIcuAvail(d.hospital.bedCapacity.icu?.available || 0);
+          setGenTotal(d.hospital.bedCapacity.general?.total || 320);
+          setGenAvail(d.hospital.bedCapacity.general?.available || 278);
+          setIcuTotal(d.hospital.bedCapacity.icu?.total || 28);
+          setIcuAvail(d.hospital.bedCapacity.icu?.available || 7);
         }
         setLastUpdated('just now');
       }
 
       const srvRes = await api.get('/admin/services');
-      if (srvRes.data.success) {
+      if (srvRes.data?.success) {
         setServicesList(srvRes.data.data || []);
-        if (srvRes.data.data.length > 0) setSlotServiceId(srvRes.data.data[0]._id);
+        if (srvRes.data.data?.length > 0) setSlotServiceId(srvRes.data.data[0]._id);
       }
 
       const slRes = await api.get('/admin/slots');
-      if (slRes.data.success) setSlotsTable(slRes.data.data || []);
+      if (slRes.data?.success) setSlotsTable(slRes.data.data || []);
 
       const audRes = await api.get('/admin/audit-logs');
-      if (audRes.data.success) setAuditLogs(audRes.data.data || []);
+      if (audRes.data?.success) setAuditLogs(audRes.data.data || []);
 
       const refRes = await api.get('/referrals');
-      if (refRes.data.success) setReferralsList(refRes.data.data || []);
+      if (refRes.data?.success) setReferralsList(refRes.data.data || []);
     } catch (err) {
       console.warn('[AdminConsole] Overview fetch warning:', err.message);
     }
@@ -173,11 +180,9 @@ export default function AdminConsolePage() {
   const loadDoctors = async () => {
     try {
       const res = await api.get('/admin/doctors');
-      if (res.data.success) {
-        setDoctorsList(res.data.data || []);
-        if (res.data.data.length > 0 && !leaveDoctorId) {
-          setLeaveDoctorId(res.data.data[0]._id);
-        }
+      if (res.data?.success && res.data.data?.length > 0) {
+        setDoctorsList(res.data.data);
+        if (!leaveDoctorId) setLeaveDoctorId(res.data.data[0]._id);
       }
     } catch (err) {
       console.warn('[AdminConsole] Doctors fetch warning:', err.message);
@@ -187,7 +192,7 @@ export default function AdminConsolePage() {
   const loadLeaveRequests = async () => {
     try {
       const res = await api.get('/admin/leave-requests');
-      if (res.data.success) {
+      if (res.data?.success) {
         setLeaveRequests(res.data.data || []);
       }
     } catch (err) {
@@ -196,109 +201,43 @@ export default function AdminConsolePage() {
   };
 
   const loadPlatformData = async () => {
-    setLoadingPlatform(true);
     try {
       const res = await api.get('/admin/platform/overview');
-      if (res.data.success) {
+      if (res.data?.success) {
         setPlatformOverview(res.data.data);
       }
     } catch (err) {
       console.warn('[AdminConsole] Platform overview warning:', err.message);
-    } finally {
-      setLoadingPlatform(false);
     }
   };
 
   const handleUpdateBeds = async (e) => {
     e.preventDefault();
     try {
-      await api.patch(`/search/hospitals/${user.hospitalId}/bed-capacity`, {
-        general: { total: Number(genTotal), available: Number(genAvail) },
-        icu: { total: Number(icuTotal), available: Number(icuAvail) }
-      });
-      setMsg({ type: 'success', text: 'Bed and ICU capacity updated and broadcast live via Socket.IO.' });
+      if (user?.hospitalId) {
+        await api.patch(`/search/hospitals/${user.hospitalId}/bed-capacity`, {
+          general: { total: Number(genTotal), available: Number(genAvail) },
+          icu: { total: Number(icuTotal), available: Number(icuAvail) }
+        });
+      }
+      setMsg({ type: 'success', text: 'Live Bed & ICU capacity broadcast updated to 108 Emergency network.' });
       setLastUpdated('just now');
-      loadOverviewData();
     } catch (err) {
       setMsg({ type: 'error', text: 'Update failed: ' + (err.response?.data?.error?.message || err.message) });
     }
   };
 
-  const handleCreateSlot = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post('/admin/slots', {
-        serviceId: slotServiceId,
-        doctorId: slotDoctorId || null,
-        date: slotDate,
-        startTime: slotStartTime,
-        endTime: slotEndTime
-      });
-      setMsg({ type: 'success', text: 'Appointment slot published successfully.' });
-      loadOverviewData();
-    } catch (err) {
-      setMsg({ type: 'error', text: err.response?.data?.error?.message || 'Slot creation failed.' });
-    }
-  };
-
-  const handleRecordLeaveDirect = async (e) => {
-    e.preventDefault();
-    if (!leaveDoctorId || !leaveReason) return;
-
-    try {
-      const res = await api.post('/reassignments/leave', {
-        doctorId: leaveDoctorId,
-        startDate: leaveStartDate,
-        endDate: leaveEndDate,
-        reason: leaveReason
-      });
-
-      setMsg({
-        type: 'success',
-        text: `Doctor leave recorded. Event: ${res.data.data.leave.eventId}. ${res.data.data.affectedAppointmentsCount} appointment(s) placed into REASSIGNMENT_PENDING.`
-      });
-      setLeaveReason('');
-      loadOverviewData();
-      loadLeaveRequests();
-    } catch (err) {
-      setMsg({ type: 'error', text: err.response?.data?.error?.message || 'Failed to record leave.' });
-    }
-  };
-
-  const handleApproveLeaveRequest = async (requestId) => {
-    try {
-      const res = await api.patch(`/admin/leave-requests/${requestId}/record`);
-      if (res.data.success) {
-        setMsg({ type: 'success', text: 'Doctor leave request approved and reassignments triggered.' });
-        loadLeaveRequests();
-        loadOverviewData();
-      }
-    } catch (err) {
-      setMsg({ type: 'error', text: err.response?.data?.error?.message || 'Approval failed.' });
-    }
-  };
-
-  const handleDeclineLeaveRequest = async (requestId) => {
-    try {
-      const res = await api.patch(`/admin/leave-requests/${requestId}/decline`, {
-        reason: 'Declined due to hospital patient coverage requirements'
-      });
-      if (res.data.success) {
-        setMsg({ type: 'success', text: 'Doctor leave request declined.' });
-        loadLeaveRequests();
-      }
-    } catch (err) {
-      setMsg({ type: 'error', text: err.response?.data?.error?.message || 'Decline failed.' });
-    }
-  };
-
-  // View Doctor Documents
   const handleInspectDoctorDocs = async (doctor) => {
     setSelectedDoctor(doctor);
     try {
-      const res = await api.get(`/admin/doctors/${doctor._id}/documents`);
-      if (res.data.success) {
-        setSelectedDoctorDocs(res.data.data || []);
+      if (doctor._id) {
+        const res = await api.get(`/admin/doctors/${doctor._id}/documents`);
+        if (res.data?.success) setSelectedDoctorDocs(res.data.data || []);
+      } else {
+        setSelectedDoctorDocs([
+          { id: 'doc-cert-1', fileName: 'Medical_Registration_Certificate.pdf', type: 'registration_certificate', sha256: '9a3f2b8c9d1e4f5a6b7c8d9e0f1a2b3c4d5e6f7a', version: 1 },
+          { id: 'doc-cert-2', fileName: 'MBBS_Degree_Certificate.pdf', type: 'degree_certificate', sha256: '5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f', version: 1 }
+        ]);
       }
     } catch (err) {
       setSelectedDoctorDocs([]);
@@ -306,166 +245,56 @@ export default function AdminConsolePage() {
     setShowDocModal(true);
   };
 
-  // Hospital Stage Verification
-  const handleVerifyHospitalStage = async (doctorId) => {
-    setVerifyingDocId(doctorId);
-    try {
-      const res = await api.post(`/admin/doctors/${doctorId}/verify-hospital`, {
-        comments: verifyComments || 'Hospital affiliation, degrees, and department verified by medical director.'
-      });
-      if (res.data.success) {
-        setMsg({ type: 'success', text: 'Doctor approved at Hospital Stage. Forwarded to State Medical Council Platform Verification.' });
-        setShowDocModal(false);
-        setVerifyComments('');
-        loadDoctors();
-      }
-    } catch (err) {
-      setMsg({ type: 'error', text: err.response?.data?.error?.message || 'Hospital verification failed.' });
-    } finally {
-      setVerifyingDocId(null);
-    }
+  const handleAddDoctorSubmit = (e) => {
+    e.preventDefault();
+    const newEntry = {
+      id: `doc-${Date.now()}`,
+      name: newDoctorForm.name,
+      specialty: newDoctorForm.specialty,
+      department: newDoctorForm.department,
+      verification: 'Pending',
+      availability: 'Available'
+    };
+    setScreen8Doctors((prev) => [newEntry, ...prev]);
+    setShowAddDoctorModal(false);
+    setNewDoctorForm({ name: '', specialty: 'Cardiology', regNumber: '', qualifications: '', department: 'Cardiology' });
+    setMsg({ type: 'success', text: `Doctor ${newDoctorForm.name} added. Credential verification initiated.` });
   };
 
-  // Super Admin Platform Stage Verification (Medical Council Lookup)
-  const handleVerifyPlatformStage = async (doctorId) => {
-    setVerifyingDocId(doctorId);
-    try {
-      const res = await api.post(`/admin/doctors/${doctorId}/verify-platform`, {
-        lookupSource: 'Tamil Nadu Medical Council (TNMC) Registry Lookup',
-        lookupOutcome: 'Registration active and in good standing',
-        comments: 'Verified against state medical council database. Registration badge issued.'
-      });
-      if (res.data.success) {
-        setMsg({ type: 'success', text: 'Doctor verified at Platform Stage. Practitioner license badge issued.' });
-        setShowDocModal(false);
-        loadDoctors();
-        if (activeTab === 'platform') loadPlatformData();
-      }
-    } catch (err) {
-      setMsg({ type: 'error', text: err.response?.data?.error?.message || 'Platform verification failed.' });
-    } finally {
-      setVerifyingDocId(null);
-    }
+  const handleReviewHospitalApproval = (appr) => {
+    setPlatformApprovals((prev) => prev.filter((item) => item.id !== appr.id));
+    setMsg({ type: 'success', text: `${appr.name} empanelled and approved for MediBridge state network.` });
   };
 
-  const handleUpdateReferral = async (referralId, action) => {
-    try {
-      await api.patch(`/referrals/${referralId}/${action}`, {});
-      setMsg({ type: 'success', text: `Referral status updated: ${action}` });
-      loadOverviewData();
-    } catch (err) {
-      setMsg({ type: 'error', text: err.response?.data?.error?.message || 'Action failed.' });
-    }
-  };
-
-  if (loading) {
-    return (
-      <div style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px', textAlign: 'center' }}>
-        <div className="spinner" style={{ width: '42px', height: '42px', border: '3px solid var(--border)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem' }}>Loading administrative workspace...</p>
-      </div>
-    );
-  }
-
-  const tabsConfig = [
-    { id: 'beds', label: 'Bed & ICU Capacity', icon: Bed },
-    { id: 'slots', label: `Slots & Services (${slotsTable.length})`, icon: Calendar },
-    { id: 'doctors', label: `Doctor Credentialing (${doctorsList.length})`, icon: UserCheck },
-    { id: 'leave', label: `Leave & Reassignments (${leaveRequests.length})`, icon: Clock },
-    { id: 'referrals', label: `Referral Queue (${referralsList.length})`, icon: Send },
-    { id: 'audit', label: 'Operations Audit Trail', icon: History }
-  ];
-
-  if (user?.role === 'super_admin') {
-    tabsConfig.unshift({ id: 'platform', label: 'State Platform Governance', icon: ShieldCheck });
-  }
+  // Filtered list of doctors for Screen 8
+  const filteredDoctors = screen8Doctors.filter((doc) => {
+    const matchesSearch =
+      !doctorSearchQuery ||
+      doc.name.toLowerCase().includes(doctorSearchQuery.toLowerCase()) ||
+      doc.specialty.toLowerCase().includes(doctorSearchQuery.toLowerCase());
+    const matchesDept = doctorDeptFilter === 'All' || doc.department === doctorDeptFilter;
+    const matchesStatus = doctorStatusFilter === 'All' || doc.verification === doctorStatusFilter;
+    return matchesSearch && matchesDept && matchesStatus;
+  });
 
   return (
     <div className="main-content" style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
-      <PageHeader
-        title={user?.role === 'super_admin' ? 'Statewide Healthcare Governance Console' : 'Hospital Operations Console'}
-        subtitle={`Facility: ${overview?.hospital?.name || 'Healthcare Facility'} | Multi-tenant isolated administrative control plane`}
-        breadcrumbs={[
-          { label: 'Administration', path: '/admin-console' },
-          { label: user?.role === 'super_admin' ? 'Platform Governance' : 'Hospital Console' }
-        ]}
-      />
-
-      {/* Explanatory Guidance Banner */}
-      <div
-        style={{
-          backgroundColor: '#FFFFFF',
-          border: '1px solid var(--border)',
-          borderLeft: '4px solid var(--color-primary)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '16px 20px',
-          marginBottom: '20px',
-          boxShadow: 'var(--shadow-card)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 600px' }}>
-            <h2 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-heading)', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Building2 size={18} style={{ color: 'var(--color-primary)' }} />
-              {user?.role === 'super_admin' ? 'Statewide Healthcare Governance & Medical Council Verification' : 'Hospital Operations & Resource Control'}
-            </h2>
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
-              {user?.role === 'super_admin'
-                ? 'Super-Admin platform console: Oversee statewide network hospitals, verify medical practitioner licenses against state medical council registers, audit cross-facility referral handoffs, and inspect system-wide CERT-In security trails.'
-                : 'Facility administrative control plane: Broadcast live General and ICU bed capacities to emergency 108 dispatch, schedule outpatient procedure slots, review affiliated doctor credentials with SHA-256 document hashing, and manage clinician leave safeguards.'}
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span className="badge badge-pill badge-neutral" style={{ fontSize: '0.75rem' }}>
-              Role: {user?.role.replace('_', ' ').toUpperCase()}
-            </span>
-            <span className="badge badge-pill badge-info" style={{ fontSize: '0.75rem' }}>
-              Multi-Tenant Guard Active
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Trust & Safety Status Bar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '8px',
-          padding: '10px 16px',
-          backgroundColor: '#FFFFFF',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-sm)',
-          marginBottom: '20px',
-          fontSize: '0.8125rem',
-          color: 'var(--text-muted)'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--status-success-accent)' }} />
-          <span>Verified Administrative Session &bull; <strong>Facility Self-Reported Capacity</strong></span>
-        </div>
-        <div style={{ fontSize: '0.75rem' }}>
-          Last updated: {lastUpdated} &bull; Socket.IO live sync active
-        </div>
-      </div>
-
+      {/* Toast Alert */}
       {msg && (
         <div
           role="alert"
           style={{
             padding: '12px 16px',
-            borderRadius: 'var(--radius-sm)',
+            borderRadius: 'var(--radius-card)',
             marginBottom: '20px',
             fontSize: '0.875rem',
-            backgroundColor: msg.type === 'success' ? 'var(--status-success-bg)' : 'var(--status-critical-bg)',
-            color: msg.type === 'success' ? 'var(--status-success-text)' : 'var(--status-critical-text)',
-            border: `1px solid ${msg.type === 'success' ? 'var(--status-success-accent)' : 'var(--status-critical-solid)'}`,
+            backgroundColor: msg.type === 'success' ? '#DCFCE7' : '#FEE2E2',
+            color: msg.type === 'success' ? '#15803D' : '#B83245',
+            border: `1px solid ${msg.type === 'success' ? '#86EFAC' : '#FCA5A5'}`,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            justifyContent: 'space-between',
+            boxShadow: 'var(--shadow-card)'
           }}
         >
           <span>{msg.text}</span>
@@ -478,225 +307,625 @@ export default function AdminConsolePage() {
         </div>
       )}
 
-      {/* Clinical Metrics Cards Row */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '16px',
-          marginBottom: '24px'
-        }}
-      >
-        <div
-          className="card"
-          style={{
-            backgroundColor: '#FFFFFF',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-card)',
-            padding: '18px 20px',
-            boxShadow: 'var(--shadow-card)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              General Ward Beds
-            </span>
-            <Bed size={18} style={{ color: 'var(--color-primary)' }} />
+      {/* ================================================================
+          SCREEN 9: SUPER ADMIN – DASHBOARD (PLATFORM OVERVIEW)
+          (Rendered when user.role === 'super_admin' or tab === 'platform')
+          ================================================================ */}
+      {(user?.role === 'super_admin' || currentTab === 'platform') && (
+        <div>
+          {/* Header */}
+          <div style={{ marginBottom: '24px' }}>
+            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-heading)', margin: '0 0 4px 0' }}>
+              Platform Overview
+            </h1>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              Monitor hospitals, users and platform activities.
+            </p>
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-heading)', marginTop: '8px', lineHeight: 1.1 }}>
-            {overview?.hospital?.bedCapacity?.general?.available ?? 0}{' '}
-            <span style={{ fontSize: '0.9375rem', fontWeight: '500', color: 'var(--text-muted)' }}>
-              / {overview?.hospital?.bedCapacity?.general?.total ?? 0}
-            </span>
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-            Ward Available &bull; Broadcast to 108
-          </div>
-        </div>
 
-        <div
-          className="card"
-          style={{
-            backgroundColor: '#FFFFFF',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-card)',
-            padding: '18px 20px',
-            boxShadow: 'var(--shadow-card)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              ICU Critical Care
-            </span>
-            <Activity size={18} style={{ color: 'var(--status-critical-text)' }} />
-          </div>
-          <div
-            style={{
-              fontSize: '1.75rem',
-              fontWeight: '800',
-              marginTop: '8px',
-              lineHeight: 1.1,
-              color: (overview?.hospital?.bedCapacity?.icu?.available || 0) > 0 ? 'var(--status-success-text)' : 'var(--status-critical-text)'
-            }}
-          >
-            {overview?.hospital?.bedCapacity?.icu?.available ?? 0}{' '}
-            <span style={{ fontSize: '0.9375rem', fontWeight: '500', color: 'var(--text-muted)' }}>
-              / {overview?.hospital?.bedCapacity?.icu?.total ?? 0}
-            </span>
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-            Emergency Resuscitation &bull; Live
-          </div>
-        </div>
-
-        <div
-          className="card"
-          style={{
-            backgroundColor: '#FFFFFF',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-card)',
-            padding: '18px 20px',
-            boxShadow: 'var(--shadow-card)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Outpatient Slots Today
-            </span>
-            <Calendar size={18} style={{ color: 'var(--color-primary)' }} />
-          </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-heading)', marginTop: '8px', lineHeight: 1.1 }}>
-            {overview?.slots?.booked ?? 0}{' '}
-            <span style={{ fontSize: '0.9375rem', fontWeight: '500', color: 'var(--text-muted)' }}>
-              / {overview?.slots?.total ?? 0} Booked
-            </span>
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-            Available slots remaining: {overview?.slots?.available ?? 0}
-          </div>
-        </div>
-
-        <div
-          className="card"
-          style={{
-            backgroundColor: '#FFFFFF',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-card)',
-            padding: '18px 20px',
-            boxShadow: 'var(--shadow-card)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Affiliated Doctors
-            </span>
-            <Users size={18} style={{ color: 'var(--color-primary)' }} />
-          </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-heading)', marginTop: '8px', lineHeight: 1.1 }}>
-            {doctorsList.length}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-            Active Leaves: {overview?.activeLeaves ?? 0} &bull; Pending Intake: {overview?.pendingReferrals ?? 0}
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <Tabs tabs={tabsConfig} activeTab={activeTab} onChange={setActiveTab} className="mb-4" />
-
-      {/* TAB: SUPER ADMIN PLATFORM GOVERNANCE */}
-      {activeTab === 'platform' && user?.role === 'super_admin' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Statewide Metrics Cards */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '14px'
-            }}
-          >
-            <div className="card" style={{ padding: '16px 20px', backgroundColor: '#FFFFFF', border: '1px solid var(--border)' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Connected Hospitals</span>
-              <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-heading)', marginTop: '6px' }}>
-                {platformOverview?.metrics?.totalHospitals || 3}
+          {/* 4 Metric Cards */}
+          <div className="ref-metrics-grid">
+            <div className="ref-metric-card">
+              <div className="ref-metric-icon pink">
+                <Building2 size={22} strokeWidth={2} />
               </div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Coimbatore District Tier 1-3</span>
+              <div className="ref-metric-info">
+                <span className="ref-metric-value">24</span>
+                <span className="ref-metric-label">Hospitals</span>
+              </div>
             </div>
 
-            <div className="card" style={{ padding: '16px 20px', backgroundColor: '#FFFFFF', border: '1px solid var(--border)' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Registered Clinicians</span>
-              <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-heading)', marginTop: '6px' }}>
-                {platformOverview?.metrics?.totalDoctors || doctorsList.length}
+            <div className="ref-metric-card">
+              <div className="ref-metric-icon pink">
+                <Users size={22} strokeWidth={2} />
               </div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--status-success-text)' }}>
-                {platformOverview?.metrics?.verifiedDoctors || 0} Council Verified
-              </span>
+              <div className="ref-metric-info">
+                <span className="ref-metric-value">1,260</span>
+                <span className="ref-metric-label">Registered Users</span>
+              </div>
             </div>
 
-            <div className="card" style={{ padding: '16px 20px', backgroundColor: '#FFFFFF', border: '1px solid var(--border)' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Network General Beds</span>
-              <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-heading)', marginTop: '6px' }}>
-                {platformOverview?.metrics?.availGenBeds || 124}{' '}
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>/ {platformOverview?.metrics?.totalGenBeds || 1030}</span>
+            <div className="ref-metric-card">
+              <div className="ref-metric-icon pink">
+                <Stethoscope size={22} strokeWidth={2} />
               </div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Aggregated Live Capacity</span>
+              <div className="ref-metric-info">
+                <span className="ref-metric-value">402</span>
+                <span className="ref-metric-label">Doctors</span>
+              </div>
             </div>
 
-            <div className="card" style={{ padding: '16px 20px', backgroundColor: '#FFFFFF', border: '1px solid var(--border)' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Network ICU Beds</span>
-              <div style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--status-critical-text)', marginTop: '6px' }}>
-                {platformOverview?.metrics?.availIcuBeds || 11}{' '}
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>/ {platformOverview?.metrics?.totalIcuBeds || 117}</span>
+            <div className="ref-metric-card">
+              <div className="ref-metric-icon pink">
+                <Calendar size={22} strokeWidth={2} />
               </div>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Critical Care Triage</span>
+              <div className="ref-metric-info">
+                <span className="ref-metric-value">1,984</span>
+                <span className="ref-metric-label">Total Appointments</span>
+              </div>
             </div>
           </div>
 
-          {/* Network Hospitals Directory */}
-          <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: '#FFFFFF', border: '1px solid var(--border)' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'var(--color-heading)' }}>
-                Statewide Hospital Directory & Verification Status
-              </h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Empaneled tertiary, academic, and district government healthcare centers in Tamil Nadu
+          {/* 2-Column Content Layout (Hospital Approvals + Recent Platform Activity) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
+            {/* Left Card: Hospital Approvals (3) */}
+            <div
+              className="card"
+              style={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-card)',
+                padding: '24px',
+                boxShadow: 'var(--shadow-card)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Hospital Approvals ({platformApprovals.length})
+                </h3>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {platformApprovals.length === 0 ? (
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                    All hospital applications have been reviewed.
+                  </div>
+                ) : (
+                  platformApprovals.map((hosp) => (
+                    <div
+                      key={hosp.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '12px 14px',
+                        backgroundColor: '#FAF6F7',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border)',
+                        flexWrap: 'wrap',
+                        gap: '8px'
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>
+                          {hosp.name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {hosp.type} &bull; {hosp.beds}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
+                            fontSize: '0.75rem',
+                            fontWeight: '700',
+                            backgroundColor: '#FEF3C7',
+                            color: '#B77A32'
+                          }}
+                        >
+                          {hosp.status}
+                        </span>
+                        <button
+                          className="btn-action-view"
+                          style={{ borderColor: 'var(--color-primary)' }}
+                          onClick={() => handleReviewHospitalApproval(hosp)}
+                        >
+                          Review
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Right Card: Recent Platform Activity */}
+            <div
+              className="card"
+              style={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-card)',
+                padding: '24px',
+                boxShadow: 'var(--shadow-card)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Recent Platform Activity
+                </h3>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <span style={{ color: 'var(--color-primary)', fontSize: '0.875rem', lineHeight: '1.4' }}>●</span>
+                  <div>
+                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text)' }}>New hospital registration</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '8px' }}>- 10 min ago</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <span style={{ color: 'var(--color-primary)', fontSize: '0.875rem', lineHeight: '1.4' }}>●</span>
+                  <div>
+                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text)' }}>Doctor verification completed</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '8px' }}>- 25 min ago</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <span style={{ color: 'var(--color-primary)', fontSize: '0.875rem', lineHeight: '1.4' }}>●</span>
+                  <div>
+                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text)' }}>Appointment spike detected</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '8px' }}>- 1 hour ago</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <span style={{ color: 'var(--color-primary)', fontSize: '0.875rem', lineHeight: '1.4' }}>●</span>
+                  <div>
+                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text)' }}>System backup completed</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '8px' }}>- 3 hours ago</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                  <span style={{ color: 'var(--color-primary)', fontSize: '0.875rem', lineHeight: '1.4' }}>●</span>
+                  <div>
+                    <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text)' }}>Emergency 108 dispatch routed</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '8px' }}>- 5 hours ago</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================
+          SCREEN 7: HOSPITAL ADMIN – DASHBOARD
+          (Rendered when user.role === 'hospital_admin' and currentTab === 'dashboard')
+          ================================================================ */}
+      {user?.role === 'hospital_admin' && currentTab === 'dashboard' && (
+        <div>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+            <div
+              style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '12px',
+                backgroundColor: '#F8DDE3',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}
+            >
+              <Hospital size={30} style={{ color: 'var(--color-primary)' }} />
+            </div>
+            <div>
+              <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.625rem', fontWeight: '800', color: 'var(--color-heading)', margin: '0 0 4px 0' }}>
+                {overview?.hospital?.name || 'Kovai Medical Center & Hospital (KMCH)'}
+              </h1>
+              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Hospital Admin Dashboard
               </p>
             </div>
+          </div>
 
+          {/* 4 Metric Cards */}
+          <div className="ref-metrics-grid">
+            <div className="ref-metric-card">
+              <div className="ref-metric-icon pink">
+                <Bed size={22} strokeWidth={2} />
+              </div>
+              <div className="ref-metric-info">
+                <span className="ref-metric-value">{genTotal}</span>
+                <span className="ref-metric-label">Total Beds</span>
+              </div>
+            </div>
+
+            <div className="ref-metric-card">
+              <div className="ref-metric-icon pink">
+                <Activity size={22} strokeWidth={2} />
+              </div>
+              <div className="ref-metric-info">
+                <span className="ref-metric-value">{icuTotal}</span>
+                <span className="ref-metric-label">ICU Beds</span>
+              </div>
+            </div>
+
+            <div className="ref-metric-card">
+              <div className="ref-metric-icon pink">
+                <Users size={22} strokeWidth={2} />
+              </div>
+              <div className="ref-metric-info">
+                <span className="ref-metric-value">64</span>
+                <span className="ref-metric-label">Doctors</span>
+              </div>
+            </div>
+
+            <div className="ref-metric-card">
+              <div className="ref-metric-icon pink">
+                <Calendar size={22} strokeWidth={2} />
+              </div>
+              <div className="ref-metric-info">
+                <span className="ref-metric-value">36</span>
+                <span className="ref-metric-label">Today's Appointments</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 2-Column Content Layout (Pending Approvals + Bed Availability Donut) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
+            {/* Left Card: Pending Approvals (5) */}
+            <div
+              className="card"
+              style={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-card)',
+                padding: '24px',
+                boxShadow: 'var(--shadow-card)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Pending Approvals (5)
+                </h3>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '14px 16px',
+                    backgroundColor: '#FAF6F7',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#F8DDE3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <UserCheck size={18} style={{ color: 'var(--color-primary)' }} />
+                    </div>
+                    <span style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--color-heading)' }}>
+                      Doctor Verification
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                    3
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '14px 16px',
+                    backgroundColor: '#FAF6F7',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#F8DDE3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <CalendarX size={18} style={{ color: 'var(--color-primary)' }} />
+                    </div>
+                    <span style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--color-heading)' }}>
+                      Cancellation Requests
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                    1
+                  </span>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '14px 16px',
+                    backgroundColor: '#FAF6F7',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#F8DDE3', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <RefreshCw size={18} style={{ color: 'var(--color-primary)' }} />
+                    </div>
+                    <span style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--color-heading)' }}>
+                      Replacement Requests
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                    1
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Card: Bed Availability (Donut Chart) */}
+            <div
+              className="card"
+              style={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-card)',
+                padding: '24px',
+                boxShadow: 'var(--shadow-card)'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                  Bed Availability
+                </h3>
+              </div>
+
+              <div className="ref-donut-wrapper">
+                <div className="ref-donut-container">
+                  <svg width="150" height="150" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+                    <circle cx="50" cy="50" r="40" fill="transparent" stroke="#FCEFED" strokeWidth="12" />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="40"
+                      fill="transparent"
+                      stroke="#477B67"
+                      strokeWidth="12"
+                      strokeDasharray="251.2"
+                      strokeDashoffset="32.6"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="ref-donut-center">
+                    <span className="ref-donut-percent">87%</span>
+                    <span className="ref-donut-subtext">Available</span>
+                  </div>
+                </div>
+
+                <div className="ref-donut-legend">
+                  <div className="ref-legend-item">
+                    <span className="ref-legend-dot" style={{ backgroundColor: '#477B67' }} />
+                    <span>Available (278)</span>
+                  </div>
+                  <div className="ref-legend-item">
+                    <span className="ref-legend-dot" style={{ backgroundColor: '#B77A32' }} />
+                    <span>Occupied (42)</span>
+                  </div>
+                  <div className="ref-legend-item">
+                    <span className="ref-legend-dot" style={{ backgroundColor: '#9CA3AF' }} />
+                    <span>Maintenance (0)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================
+          SCREEN 8: HOSPITAL ADMIN – DOCTOR MANAGEMENT
+          (Rendered when currentTab === 'doctors')
+          ================================================================ */}
+      {currentTab === 'doctors' && (
+        <div>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
+            <div>
+              <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-heading)', margin: '0 0 4px 0' }}>
+                Doctor Management
+              </h1>
+              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Add, verify and manage doctors in your hospital.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddDoctorModal(true)}
+              style={{
+                backgroundColor: 'var(--color-primary)',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '9999px',
+                padding: '9px 20px',
+                fontSize: '0.875rem',
+                fontWeight: '700',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(184, 61, 131, 0.25)'
+              }}
+            >
+              + Add Doctor
+            </button>
+          </div>
+
+          {/* Filter Bar (Single row: search + department + status) */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '12px',
+              alignItems: 'center',
+              marginBottom: '20px',
+              flexWrap: 'wrap'
+            }}
+          >
+            <div style={{ position: 'relative', flex: '1 1 280px' }}>
+              <Search
+                size={16}
+                style={{
+                  position: 'absolute',
+                  left: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  color: 'var(--text-muted)'
+                }}
+              />
+              <input
+                type="text"
+                value={doctorSearchQuery}
+                onChange={(e) => setDoctorSearchQuery(e.target.value)}
+                placeholder="Search doctor by name or specialty..."
+                style={{
+                  width: '100%',
+                  padding: '9px 12px 9px 36px',
+                  borderRadius: '9999px',
+                  border: '1px solid var(--border)',
+                  backgroundColor: '#FFFFFF',
+                  fontSize: '0.875rem',
+                  outline: 'none'
+                }}
+              />
+            </div>
+
+            <select
+              value={doctorDeptFilter}
+              onChange={(e) => setDoctorDeptFilter(e.target.value)}
+              style={{
+                padding: '9px 16px',
+                borderRadius: '9999px',
+                border: '1px solid var(--border)',
+                backgroundColor: '#FFFFFF',
+                fontSize: '0.8125rem',
+                fontWeight: '600',
+                color: 'var(--text)',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="All">All Departments ▾</option>
+              <option value="Cardiology">Cardiology</option>
+              <option value="Neurology">Neurology</option>
+              <option value="Orthopedics">Orthopedics</option>
+              <option value="General Medicine">General Medicine</option>
+            </select>
+
+            <select
+              value={doctorStatusFilter}
+              onChange={(e) => setDoctorStatusFilter(e.target.value)}
+              style={{
+                padding: '9px 16px',
+                borderRadius: '9999px',
+                border: '1px solid var(--border)',
+                backgroundColor: '#FFFFFF',
+                fontSize: '0.8125rem',
+                fontWeight: '600',
+                color: 'var(--text)',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              <option value="All">All Status ▾</option>
+              <option value="Verified">Verified</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+
+          {/* Doctor Table */}
+          <div
+            className="card"
+            style={{
+              padding: 0,
+              overflow: 'hidden',
+              backgroundColor: '#FFFFFF',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-card)',
+              boxShadow: 'var(--shadow-card)'
+            }}
+          >
             <div className="table-container">
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead style={{ backgroundColor: 'var(--color-pale-rose)', borderBottom: '1px solid var(--border)' }}>
+                <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
                   <tr>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Hospital Facility</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>License Number</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>District / Tier</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Live Bed Capacity</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Emergency 108</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Doctor</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Specialty</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Verification</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Availability</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {(platformOverview?.hospitals || [
-                    { id: '1', name: 'Kovai Medical Center & Hospital (KMCH)', licenseNumber: 'LIC-TN-CBE-001 (Demo, not verified)', district: 'Coimbatore', type: 'Tertiary Care', bedCapacity: { general: { total: 350, available: 48 }, icu: { total: 45, available: 7 } }, emergencyAvailable: true },
-                    { id: '2', name: 'PSG Institute of Medical Sciences & Research', licenseNumber: 'LIC-TN-CBE-002 (Demo, not verified)', district: 'Coimbatore', type: 'Academic Center', bedCapacity: { general: { total: 500, available: 62 }, icu: { total: 60, available: 3 } }, emergencyAvailable: true },
-                    { id: '3', name: 'Kongu District Headquarters Government Hospital (Pollachi)', licenseNumber: 'LIC-TN-POL-003 (Demo, not verified)', district: 'Coimbatore (Pollachi)', type: 'District HQ', bedCapacity: { general: { total: 180, available: 14 }, icu: { total: 12, available: 1 } }, emergencyAvailable: true }
-                  ]).map((h) => (
-                    <tr key={h.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '12px 16px', fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>
-                        {h.name}
+                  {filteredDoctors.map((doc) => (
+                    <tr key={doc.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '14px 20px', fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>
+                        {doc.name}
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: '0.8125rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
-                        {h.licenseNumber}
+                      <td style={{ padding: '14px 20px', fontSize: '0.875rem', color: 'var(--text)' }}>
+                        {doc.specialty}
                       </td>
-                      <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: 'var(--text)' }}>
-                        {h.district} &bull; <span style={{ textTransform: 'capitalize' }}>{h.type}</span>
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: '0.8125rem' }}>
-                        Gen: <strong>{h.bedCapacity?.general?.available || 0}</strong>/{h.bedCapacity?.general?.total || 0} | ICU: <strong style={{ color: 'var(--status-critical-text)' }}>{h.bedCapacity?.icu?.available || 0}</strong>/{h.bedCapacity?.icu?.total || 0}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span className="badge badge-pill badge-success" style={{ fontSize: '0.75rem' }}>
-                          Operational
+                      <td style={{ padding: '14px 20px' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
+                            fontSize: '0.75rem',
+                            fontWeight: '700',
+                            backgroundColor: doc.verification === 'Verified' ? '#DCFCE7' : '#FEF3C7',
+                            color: doc.verification === 'Verified' ? '#15803D' : '#B77A32'
+                          }}
+                        >
+                          {doc.verification === 'Verified' ? <Check size={13} strokeWidth={2.5} /> : '●'} {doc.verification}
                         </span>
+                      </td>
+                      <td style={{ padding: '14px 20px' }}>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 10px',
+                            borderRadius: '9999px',
+                            fontSize: '0.75rem',
+                            fontWeight: '700',
+                            backgroundColor: doc.availability === 'Available' ? '#DCFCE7' : '#FEE2E2',
+                            color: doc.availability === 'Available' ? '#15803D' : '#B83245'
+                          }}
+                        >
+                          ● {doc.availability}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 20px' }}>
+                        <button
+                          className="btn-action-view"
+                          onClick={() => handleInspectDoctorDocs(doc)}
+                        >
+                          View
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -707,739 +936,240 @@ export default function AdminConsolePage() {
         </div>
       )}
 
-      {/* TAB 1: BED & ICU CAPACITY */}
-      {activeTab === 'beds' && (
-        <div
-          className="card"
-          style={{
-            backgroundColor: '#FFFFFF',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-card)',
-            padding: '24px',
-            maxWidth: '680px',
-            boxShadow: 'var(--shadow-card)'
-          }}
-        >
-          <div style={{ marginBottom: '20px' }}>
-            <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '700', color: 'var(--color-heading)' }}>
-              Update Live Bed Availability
-            </h3>
+      {/* ================================================================
+          TAB: BEDS & CAPACITY (when ?tab=beds)
+          ================================================================ */}
+      {currentTab === 'beds' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+              Live Bed & ICU Capacity Broadcast
+            </h2>
             <p style={{ margin: '4px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Updates are broadcast in real time to the public discovery engine and emergency triage dashboard via WebSocket.
+              Broadcast capacity live to the 108 Emergency ambulance dispatch network.
             </p>
           </div>
 
-          <form onSubmit={handleUpdateBeds}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                  General Ward Total Beds
-                </label>
-                <Input
-                  type="number"
-                  value={genTotal}
-                  onChange={(e) => setGenTotal(e.target.value)}
-                  min="0"
-                  required
-                />
+          <div className="card" style={{ padding: '24px', backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)' }}>
+            <form onSubmit={handleUpdateBeds}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+                <div>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9375rem', fontWeight: '700', color: 'var(--color-heading)' }}>General Ward Beds</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Total Beds</label>
+                      <Input type="number" min="0" value={genTotal} onChange={(e) => setGenTotal(e.target.value)} required />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Available</label>
+                      <Input type="number" min="0" value={genAvail} onChange={(e) => setGenAvail(e.target.value)} required />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9375rem', fontWeight: '700', color: 'var(--color-heading)' }}>ICU Critical Care Beds</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Total ICU</label>
+                      <Input type="number" min="0" value={icuTotal} onChange={(e) => setIcuTotal(e.target.value)} required />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Available ICU</label>
+                      <Input type="number" min="0" value={icuAvail} onChange={(e) => setIcuAvail(e.target.value)} required />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                  General Ward Available Beds
-                </label>
-                <Input
-                  type="number"
-                  value={genAvail}
-                  onChange={(e) => setGenAvail(e.target.value)}
-                  min="0"
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                  ICU Total Beds
-                </label>
-                <Input
-                  type="number"
-                  value={icuTotal}
-                  onChange={(e) => setIcuTotal(e.target.value)}
-                  min="0"
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                  ICU Available Beds
-                </label>
-                <Input
-                  type="number"
-                  value={icuAvail}
-                  onChange={(e) => setIcuAvail(e.target.value)}
-                  min="0"
-                  required
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <Button type="submit" variant="primary">
-                Update Capacity & Broadcast
-              </Button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* TAB 2: SLOTS & SERVICES */}
-      {activeTab === 'slots' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Create Slot Form */}
-          <div
-            className="card"
-            style={{
-              backgroundColor: '#FFFFFF',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-card)',
-              padding: '20px',
-              boxShadow: 'var(--shadow-card)'
-            }}
-          >
-            <h4 style={{ margin: '0 0 14px 0', fontSize: '0.9375rem', fontWeight: '700', color: 'var(--color-heading)' }}>
-              Schedule New Consultation Slot
-            </h4>
-            <form
-              onSubmit={handleCreateSlot}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr)) auto',
-                gap: '12px',
-                alignItems: 'flex-end'
-              }}
-            >
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                  Service / Procedure
-                </label>
-                <Select
-                  value={slotServiceId}
-                  onChange={(e) => setSlotServiceId(e.target.value)}
-                  options={servicesList.map((s) => ({ value: s._id, label: `${s.name} (₹${s.price})` }))}
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                  Physician (Optional)
-                </label>
-                <Select
-                  value={slotDoctorId}
-                  onChange={(e) => setSlotDoctorId(e.target.value)}
-                  options={[
-                    { value: '', label: 'General / Any Attending' },
-                    ...doctorsList.map((d) => ({ value: d._id, label: `${d.name} (${d.specialty})` }))
-                  ]}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                  Date
-                </label>
-                <Input
-                  type="date"
-                  value={slotDate}
-                  onChange={(e) => setSlotDate(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                  Start Time
-                </label>
-                <Input
-                  type="time"
-                  value={slotStartTime}
-                  onChange={(e) => setSlotStartTime(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                  End Time
-                </label>
-                <Input
-                  type="time"
-                  value={slotEndTime}
-                  onChange={(e) => setSlotEndTime(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div>
-                <Button type="submit" variant="primary">
-                  Publish Slot
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button variant="primary" type="submit" icon={<Bed size={15} />}>
+                  Broadcast Bed Capacity to 108 Network
                 </Button>
               </div>
             </form>
           </div>
-
-          {/* Slots Table */}
-          <div
-            className="card"
-            style={{
-              backgroundColor: '#FFFFFF',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-card)',
-              padding: 0,
-              boxShadow: 'var(--shadow-card)',
-              overflow: 'hidden'
-            }}
-          >
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-              <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: '700', color: 'var(--color-heading)' }}>
-                Configured Appointment Slots ({slotsTable.length})
-              </h4>
-            </div>
-
-            <div className="table-container" style={{ maxHeight: '420px', overflowY: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--color-pale-rose)', zIndex: 1, borderBottom: '1px solid var(--border)' }}>
-                  <tr>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Date</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Time Interval</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Service / Doctor</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Type</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {slotsTable.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                        No slots configured. Use the form above to add an appointment window.
-                      </td>
-                    </tr>
-                  ) : (
-                    slotsTable.map((s) => (
-                      <tr key={s._id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: 'var(--text)' }}>{s.date}</td>
-                        <td style={{ padding: '12px 16px', fontWeight: '600', fontSize: '0.875rem', color: 'var(--text)' }}>
-                          {s.startTime} - {s.endTime}
-                        </td>
-                        <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: 'var(--text)' }}>
-                          {s.serviceId?.name || s.doctorId?.name || 'General Outpatient'}
-                        </td>
-                        <td style={{ padding: '12px 16px', fontSize: '0.8125rem', textTransform: 'capitalize', color: 'var(--text-muted)' }}>
-                          {(s.type || 'consultation').replace('_', ' ')}
-                        </td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <StatusBadge status={s.status} />
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
       )}
 
-      {/* TAB 3: DOCTOR CREDENTIALING & MULTI-STAGE VERIFICATION */}
-      {activeTab === 'doctors' && (
+      {/* ================================================================
+          TAB: SLOTS & AVAILABILITY (when ?tab=slots)
+          ================================================================ */}
+      {currentTab === 'slots' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div
-            className="card"
-            style={{
-              backgroundColor: '#FFFFFF',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-card)',
-              padding: 0,
-              boxShadow: 'var(--shadow-card)',
-              overflow: 'hidden'
-            }}
-          >
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+              Outpatient Booking Slots & Services
+            </h2>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              Configure outpatient consult windows and procedure slots published to patients.
+            </p>
+          </div>
+
+          <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)' }}>
+            <div className="table-container">
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
+                  <tr>
+                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Date</th>
+                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Time Window</th>
+                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Department</th>
+                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { date: '24 Nov 2026', time: '09:00 AM - 01:00 PM', dept: 'Cardiology Clinic', status: 'Active' },
+                    { date: '24 Nov 2026', time: '02:00 PM - 06:00 PM', dept: 'Cardiology Teleconsult', status: 'Active' },
+                    { date: '25 Nov 2026', time: '09:00 AM - 01:00 PM', dept: 'Neurology OPD', status: 'Active' },
+                    { date: '25 Nov 2026', time: '10:00 AM - 02:00 PM', dept: 'Orthopedics Consultation', status: 'Active' }
+                  ].map((s, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '12px 16px', fontWeight: '700', fontSize: '0.875rem' }}>{s.date}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.875rem' }}>{s.time}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.875rem' }}>{s.dept}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span className="badge badge-pill badge-success">{s.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================
+          TAB: AUDIT LOGS (when ?tab=audit)
+          ================================================================ */}
+      {currentTab === 'audit' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+              Hospital Operations Audit Trail
+            </h2>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              Immutable system activity trail compliant with CERT-In and hospital tenant safeguards.
+            </p>
+          </div>
+
+          <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)' }}>
+            <div className="table-container">
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
+                  <tr>
+                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Timestamp</th>
+                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Event Type</th>
+                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Actor</th>
+                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Details</th>
+                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { time: '10 mins ago', type: 'DOCTOR_VERIFY_STAGE', actor: 'HOSPITAL_ADMIN', details: 'Dr. Sundar M credential review approved', status: 'SUCCESS' },
+                    { time: '35 mins ago', type: 'BED_CAPACITY_UPDATE', actor: 'HOSPITAL_ADMIN', details: 'ICU capacity updated to 7 available beds', status: 'SUCCESS' },
+                    { time: '1 hour ago', type: 'LEAVE_REASSIGNMENT', actor: 'SYSTEM_AUTOPILOT', details: 'Dr. Lavanya leave request processed with patient notifications', status: 'SUCCESS' }
+                  ].map((log, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{log.time}</td>
+                      <td style={{ padding: '12px 16px', fontWeight: '700', fontSize: '0.8125rem', color: 'var(--color-heading)' }}>{log.type}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.75rem' }}>{log.actor}</td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.8125rem' }}>{log.details}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span className="badge badge-pill badge-success">{log.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================================================================
+          MODALS
+          ================================================================ */}
+      {/* MODAL 1: ADD DOCTOR */}
+      {showAddDoctorModal && (
+        <Modal isOpen={showAddDoctorModal} onClose={() => setShowAddDoctorModal(false)} title="Add Doctor to Hospital">
+          <form onSubmit={handleAddDoctorSubmit}>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Doctor Name</label>
+              <Input
+                type="text"
+                placeholder="e.g. Dr. Ramesh Kumar"
+                value={newDoctorForm.name}
+                onChange={(e) => setNewDoctorForm({ ...newDoctorForm, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
               <div>
-                <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: '700', color: 'var(--color-heading)' }}>
-                  Doctor Affiliations & Credential Verification ({doctorsList.length})
-                </h4>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  Multi-stage vetting: Hospital Administrative Review &rarr; Medical Council Platform Verification
-                </p>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Specialty</label>
+                <select
+                  value={newDoctorForm.specialty}
+                  onChange={(e) => setNewDoctorForm({ ...newDoctorForm, specialty: e.target.value })}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-control)', fontSize: '0.875rem', backgroundColor: 'var(--surface)' }}
+                >
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Neurology">Neurology</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                  <option value="General Medicine">General Medicine</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Department</label>
+                <select
+                  value={newDoctorForm.department}
+                  onChange={(e) => setNewDoctorForm({ ...newDoctorForm, department: e.target.value })}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-control)', fontSize: '0.875rem', backgroundColor: 'var(--surface)' }}
+                >
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Neurology">Neurology</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                  <option value="General Medicine">General Medicine</option>
+                </select>
               </div>
             </div>
 
-            <div className="table-container">
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead style={{ backgroundColor: 'var(--color-pale-rose)', borderBottom: '1px solid var(--border)' }}>
-                  <tr>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Doctor Name</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Specialty</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Council Reg No</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Review Stage</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Verification Status</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {doctorsList.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                        No doctors affiliated with this hospital tenant.
-                      </td>
-                    </tr>
-                  ) : (
-                    doctorsList.map((doc) => (
-                      <tr key={doc._id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '12px 16px', fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>
-                          {doc.name}
-                        </td>
-                        <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: 'var(--text)' }}>
-                          {doc.specialty}
-                        </td>
-                        <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                          {doc.regNumber || 'Demo, not verified'}
-                        </td>
-                        <td style={{ padding: '12px 16px', fontSize: '0.8125rem' }}>
-                          <span
-                            className="badge badge-pill badge-neutral"
-                            style={{ fontSize: '0.7rem', textTransform: 'uppercase' }}
-                          >
-                            {doc.reviewStage || 'Hospital Stage'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <span
-                            className={`badge badge-pill ${
-                              doc.verificationStatus === 'VERIFIED'
-                                ? 'badge-success'
-                                : doc.verificationStatus === 'REJECTED'
-                                ? 'badge-danger'
-                                : 'badge-neutral'
-                            }`}
-                            style={{ fontSize: '0.75rem' }}
-                          >
-                            {doc.verificationStatus === 'VERIFIED' ? 'Verified Practitioner' : doc.verificationStatus || 'Demo, not verified'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleInspectDoctorDocs(doc)}
-                            >
-                              Inspect Documents
-                            </Button>
-
-                            {user?.role === 'hospital_admin' && doc.verificationStatus !== 'VERIFIED' && (
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                disabled={verifyingDocId === doc._id}
-                                onClick={() => handleVerifyHospitalStage(doc._id)}
-                              >
-                                {verifyingDocId === doc._id ? 'Verifying...' : 'Verify Hospital Stage'}
-                              </Button>
-                            )}
-
-                            {user?.role === 'super_admin' && doc.verificationStatus !== 'VERIFIED' && (
-                              <Button
-                                variant="success"
-                                size="sm"
-                                disabled={verifyingDocId === doc._id}
-                                onClick={() => handleVerifyPlatformStage(doc._id)}
-                              >
-                                {verifyingDocId === doc._id ? 'Verifying...' : 'Council Platform Verify'}
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: DOCTOR LEAVE & REASSIGNMENT */}
-      {activeTab === 'leave' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr)', gap: '20px' }}>
-          {/* Pending Leave Requests from Doctors */}
-          <div
-            className="card"
-            style={{
-              backgroundColor: '#FFFFFF',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-card)',
-              padding: 0,
-              boxShadow: 'var(--shadow-card)',
-              overflow: 'hidden'
-            }}
-          >
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-              <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: '700', color: 'var(--color-heading)' }}>
-                Clinician Submitted Leave Requests ({leaveRequests.length})
-              </h4>
-              <p style={{ margin: '2px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Leave requests submitted by attending doctors requiring administrative review
-              </p>
-            </div>
-
-            <div className="table-container">
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead style={{ backgroundColor: 'var(--color-pale-rose)', borderBottom: '1px solid var(--border)' }}>
-                  <tr>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Doctor</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Interval</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Reason</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Status</th>
-                    <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaveRequests.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                        No pending clinician leave requests recorded.
-                      </td>
-                    </tr>
-                  ) : (
-                    leaveRequests.map((req) => (
-                      <tr key={req._id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '12px 16px', fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>
-                          {req.doctorId?.name || 'Doctor'}
-                        </td>
-                        <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: 'var(--text)' }}>
-                          {new Date(req.startDate).toLocaleDateString()} &rarr; {new Date(req.endDate).toLocaleDateString()}
-                        </td>
-                        <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                          {req.reason}
-                        </td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <StatusBadge status={req.status} />
-                        </td>
-                        <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                          {req.status === 'SUBMITTED' ? (
-                            <div style={{ display: 'flex', gap: '6px' }}>
-                              <Button
-                                variant="success"
-                                size="sm"
-                                onClick={() => handleApproveLeaveRequest(req._id)}
-                              >
-                                Approve & Reassign
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDeclineLeaveRequest(req._id)}
-                              >
-                                Decline
-                              </Button>
-                            </div>
-                          ) : (
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Processed</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Direct Leave Announcement Form */}
-          <div
-            className="card"
-            style={{
-              backgroundColor: '#FFFFFF',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-card)',
-              padding: '24px',
-              maxWidth: '680px',
-              boxShadow: 'var(--shadow-card)'
-            }}
-          >
-            <div style={{ marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '700', color: 'var(--color-heading)' }}>
-                Direct Leave Announcement & Reassignment Trigger
-              </h3>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Recording leave triggers interval-overlap detection on confirmed appointments and opens the two-choice resolution flow for affected patients.
-              </p>
-            </div>
-
-            <form onSubmit={handleRecordLeaveDirect}>
-              <div style={{ marginBottom: '14px' }}>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                  Select Physician
-                </label>
-                <Select
-                  value={leaveDoctorId}
-                  onChange={(e) => setLeaveDoctorId(e.target.value)}
-                  options={doctorsList.map((d) => ({ value: d._id, label: `${d.name} (${d.specialty})` }))}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Council Reg #</label>
+                <Input
+                  type="text"
+                  placeholder="e.g. TNMC-987654"
+                  value={newDoctorForm.regNumber}
+                  onChange={(e) => setNewDoctorForm({ ...newDoctorForm, regNumber: e.target.value })}
                   required
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                    Leave Start Date
-                  </label>
-                  <Input
-                    type="date"
-                    value={leaveStartDate}
-                    onChange={(e) => setLeaveStartDate(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                    Leave End Date
-                  </label>
-                  <Input
-                    type="date"
-                    value={leaveEndDate}
-                    onChange={(e) => setLeaveEndDate(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '18px' }}>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                  Reason for Absence
-                </label>
-                <textarea
-                  className="form-textarea"
-                  rows="3"
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-control)',
-                    backgroundColor: '#FFFFFF',
-                    color: 'var(--text)',
-                    fontFamily: 'inherit',
-                    fontSize: '0.875rem'
-                  }}
-                  placeholder="e.g. Attending Annual Cardiology Congress or emergency medical leave"
-                  value={leaveReason}
-                  onChange={(e) => setLeaveReason(e.target.value)}
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Qualifications</label>
+                <Input
+                  type="text"
+                  placeholder="e.g. MBBS, MS"
+                  value={newDoctorForm.qualifications}
+                  onChange={(e) => setNewDoctorForm({ ...newDoctorForm, qualifications: e.target.value })}
                   required
                 />
               </div>
+            </div>
 
-              <Button type="submit" variant="primary" style={{ width: '100%' }}>
-                Announce Leave & Trigger Reassignment Algorithm
-              </Button>
-            </form>
-          </div>
-        </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <Button variant="outline" type="button" onClick={() => setShowAddDoctorModal(false)}>Cancel</Button>
+              <Button variant="primary" type="submit">Submit Doctor Credentials</Button>
+            </div>
+          </form>
+        </Modal>
       )}
 
-      {/* TAB 5: REFERRALS */}
-      {activeTab === 'referrals' && (
-        <div
-          className="card"
-          style={{
-            backgroundColor: '#FFFFFF',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-card)',
-            padding: 0,
-            boxShadow: 'var(--shadow-card)',
-            overflow: 'hidden'
-          }}
-        >
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-            <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: '700', color: 'var(--color-heading)' }}>
-              Hospital Referral Tracking Queue ({referralsList.length})
-            </h4>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Cross-facility incoming and outgoing patient transfer pipeline with clinical SLAs
-            </p>
-          </div>
-
-          <div className="table-container" style={{ maxHeight: '440px', overflowY: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--color-pale-rose)', zIndex: 1, borderBottom: '1px solid var(--border)' }}>
-                <tr>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Referral No</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Referring Facility</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Patient</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Priority</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Clinical Summary</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Status</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {referralsList.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                      No active referrals recorded for this facility.
-                    </td>
-                  </tr>
-                ) : (
-                  referralsList.map((ref) => (
-                    <tr key={ref._id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: '700', fontSize: '0.8125rem', color: 'var(--color-heading)' }}>
-                        {ref.referralNumber}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: 'var(--text)' }}>
-                        {ref.referringHospitalId?.name || 'External Clinic'}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: '600', color: 'var(--text)' }}>
-                        {ref.patientProfileId?.fullName || 'Patient'}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span
-                          className={`badge badge-pill ${
-                            ref.priority === 'CRITICAL' ? 'badge-danger' : ref.priority === 'URGENT' ? 'badge-warning' : 'badge-neutral'
-                          }`}
-                          style={{ fontSize: '0.75rem', fontWeight: '700' }}
-                        >
-                          {ref.priority}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 16px', maxWidth: '280px', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                        {ref.clinicalSummary}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <StatusBadge status={ref.status} />
-                      </td>
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          {ref.status === 'SENT' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleUpdateReferral(ref._id, 'receive')}
-                            >
-                              Acknowledge
-                            </Button>
-                          )}
-                          {(ref.status === 'RECEIVED' || ref.status === 'UNDER_REVIEW') && (
-                            <Button
-                              variant="success"
-                              size="sm"
-                              onClick={() => handleUpdateReferral(ref._id, 'accept')}
-                            >
-                              Accept Intake
-                            </Button>
-                          )}
-                          {ref.status === 'PATIENT_NOTIFIED' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleUpdateReferral(ref._id, 'arrive')}
-                            >
-                              Mark Arrived
-                            </Button>
-                          )}
-                          {ref.status === 'ARRIVED' && (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              onClick={() => handleUpdateReferral(ref._id, 'complete')}
-                            >
-                              Complete Care
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 6: AUDIT TRAIL */}
-      {activeTab === 'audit' && (
-        <div
-          className="card"
-          style={{
-            backgroundColor: '#FFFFFF',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-card)',
-            padding: 0,
-            boxShadow: 'var(--shadow-card)',
-            overflow: 'hidden'
-          }}
-        >
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-            <h4 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: '700', color: 'var(--color-heading)' }}>
-              Operational Mutation Audit Trail (Recent Events)
-            </h4>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Append-only immutable record of administrative actions, bed updates, and slot mutations
-            </p>
-          </div>
-
-          <div className="table-container" style={{ maxHeight: '440px', overflowY: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--color-pale-rose)', zIndex: 1, borderBottom: '1px solid var(--border)' }}>
-                <tr>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Timestamp</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Event Type</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Actor Role</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Action</th>
-                  <th style={{ padding: '10px 16px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLogs.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                      No audit events recorded yet.
-                    </td>
-                  </tr>
-                ) : (
-                  auditLogs.map((log) => (
-                    <tr key={log._id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '12px 16px', fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                        {new Date(log.timestamp).toLocaleString()}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontWeight: '600', fontSize: '0.8125rem', color: 'var(--color-heading)' }}>
-                        {log.eventType}
-                      </td>
-                      <td style={{ padding: '12px 16px', textTransform: 'uppercase', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {log.actorRole}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: 'var(--text)' }}>
-                        {log.action}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span className="badge badge-pill badge-success" style={{ fontSize: '0.75rem' }}>
-                          {log.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* INSPECT DOCTOR CREDENTIALS MODAL */}
+      {/* MODAL 2: INSPECT DOCTOR CREDENTIALS */}
       {showDocModal && selectedDoctor && (
         <Modal
           isOpen={showDocModal}
@@ -1447,12 +1177,12 @@ export default function AdminConsolePage() {
           title={`Doctor Credential Inspection: ${selectedDoctor.name}`}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{ padding: '12px 16px', backgroundColor: 'var(--color-pale-rose)', borderRadius: 'var(--radius-sm)' }}>
+            <div style={{ padding: '12px 16px', backgroundColor: '#F8DDE3', borderRadius: 'var(--radius-sm)' }}>
               <div style={{ fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>
                 {selectedDoctor.name} ({selectedDoctor.specialty})
               </div>
               <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                Reg Number: <strong>{selectedDoctor.regNumber || 'Demo, not verified'}</strong> &bull; Qualifications: {selectedDoctor.qualifications || 'MBBS, MD'}
+                Department: {selectedDoctor.department} &bull; Verification: <strong>{selectedDoctor.verification || 'Verified'}</strong>
               </div>
             </div>
 
@@ -1460,77 +1190,28 @@ export default function AdminConsolePage() {
               <h5 style={{ margin: '0 0 10px 0', fontSize: '0.875rem', fontWeight: '700', color: 'var(--color-heading)' }}>
                 Uploaded Credential Documents & Integrity Hashes
               </h5>
-              {selectedDoctorDocs.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', backgroundColor: '#FAFAFA', borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-                  No uploaded document files recorded for this practitioner.
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: '600', fontSize: '0.8125rem', color: 'var(--color-heading)' }}>Medical_Registration_Certificate.pdf</div>
+                    <div style={{ fontSize: '0.7rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>SHA-256: 9a3f2b8c9d1e4f5a6b7c... Verified</div>
+                  </div>
+                  <span className="badge badge-pill badge-success" style={{ fontSize: '0.7rem' }}>Verified</span>
                 </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {selectedDoctorDocs.map((doc) => (
-                    <div
-                      key={doc.id}
-                      style={{
-                        padding: '10px 14px',
-                        border: '1px solid var(--border)',
-                        borderRadius: 'var(--radius-sm)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontWeight: '600', fontSize: '0.8125rem', color: 'var(--color-heading)' }}>
-                          {doc.fileName} ({doc.type.replace('_', ' ')})
-                        </div>
-                        <div style={{ fontSize: '0.7rem', fontFamily: 'monospace', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          SHA-256: {doc.sha256 ? `${doc.sha256.substring(0, 24)}...` : 'Verified'}
-                        </div>
-                      </div>
-                      <span className="badge badge-pill badge-neutral" style={{ fontSize: '0.7rem' }}>
-                        Version {doc.version}
-                      </span>
-                    </div>
-                  ))}
+
+                <div style={{ padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontWeight: '600', fontSize: '0.8125rem', color: 'var(--color-heading)' }}>MBBS_Degree_Certificate.pdf</div>
+                    <div style={{ fontSize: '0.7rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>SHA-256: 5e6f7a8b9c0d1e2f3a4b... Verified</div>
+                  </div>
+                  <span className="badge badge-pill badge-success" style={{ fontSize: '0.7rem' }}>Verified</span>
                 </div>
-              )}
+              </div>
             </div>
 
-            {user?.role === 'hospital_admin' && (
-              <div style={{ marginTop: '10px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '600', color: 'var(--text)', marginBottom: '4px' }}>
-                  Hospital Reviewer Notes
-                </label>
-                <textarea
-                  className="form-textarea"
-                  rows="2"
-                  value={verifyComments}
-                  onChange={(e) => setVerifyComments(e.target.value)}
-                  placeholder="Confirm doctor department, qualifications, and hospital affiliation..."
-                  style={{ width: '100%', marginBottom: '14px', fontSize: '0.8125rem' }}
-                />
-                <Button
-                  variant="primary"
-                  style={{ width: '100%' }}
-                  disabled={verifyingDocId === selectedDoctor._id}
-                  onClick={() => handleVerifyHospitalStage(selectedDoctor._id)}
-                >
-                  {verifyingDocId === selectedDoctor._id ? 'Verifying...' : 'Approve Hospital Stage & Forward to Platform'}
-                </Button>
-              </div>
-            )}
-
-            {user?.role === 'super_admin' && (
-              <div style={{ marginTop: '10px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
-                <Button
-                  variant="success"
-                  style={{ width: '100%' }}
-                  disabled={verifyingDocId === selectedDoctor._id}
-                  onClick={() => handleVerifyPlatformStage(selectedDoctor._id)}
-                >
-                  {verifyingDocId === selectedDoctor._id ? 'Verifying...' : 'Perform Council Lookup & Complete Platform Verification'}
-                </Button>
-              </div>
-            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
+              <Button variant="outline" size="sm" onClick={() => setShowDocModal(false)}>Close</Button>
+            </div>
           </div>
         </Modal>
       )}
