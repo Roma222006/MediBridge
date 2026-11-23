@@ -7,6 +7,7 @@ const Referral = require('../models/Referral');
 const DoctorLeave = require('../models/DoctorLeave');
 const AuditLog = require('../models/AuditLog');
 const CredentialDocument = require('../models/CredentialDocument');
+const User = require('../models/User');
 const vaultStorageService = require('../services/vaultStorageService');
 
 class AdminController {
@@ -580,6 +581,87 @@ class AdminController {
           id: doctor._id,
           verificationStatus: doctor.verificationStatus,
           verificationHistory: doctor.verificationHistory
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getDoctors(req, res, next) {
+    try {
+      const query =
+        req.user.role === 'super_admin' && !req.user.hospitalId
+          ? {}
+          : { hospitalId: req.user.hospitalId };
+      const doctors = await Doctor.find(query)
+        .populate('hospitalId', 'name licenseNumber address district')
+        .sort({ name: 1 })
+        .lean();
+
+      res.json({
+        success: true,
+        count: doctors.length,
+        data: doctors
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getPlatformOverview(req, res, next) {
+    try {
+      const totalHospitals = await Hospital.countDocuments({});
+      const totalDoctors = await Doctor.countDocuments({});
+      const totalPatients = await User.countDocuments({ role: 'patient' });
+      const hospitals = await Hospital.find({}).lean();
+      const verifiedDoctors = await Doctor.countDocuments({ verificationStatus: 'VERIFIED' });
+      const pendingVerification = await Doctor.countDocuments({
+        verificationStatus: { $in: ['SUBMITTED', 'UNDER_REVIEW', 'DEMO_NOT_VERIFIED'] }
+      });
+
+      let totalGenBeds = 0;
+      let availGenBeds = 0;
+      let totalIcuBeds = 0;
+      let availIcuBeds = 0;
+      hospitals.forEach((h) => {
+        totalGenBeds += h.bedCapacity?.general?.total || 0;
+        availGenBeds += h.bedCapacity?.general?.available || 0;
+        totalIcuBeds += h.bedCapacity?.icu?.total || 0;
+        availIcuBeds += h.bedCapacity?.icu?.available || 0;
+      });
+
+      const recentAudit = await AuditLog.find({})
+        .sort({ timestamp: -1 })
+        .limit(30)
+        .lean();
+
+      res.json({
+        success: true,
+        data: {
+          metrics: {
+            totalHospitals,
+            totalDoctors,
+            verifiedDoctors,
+            pendingVerification,
+            totalPatients,
+            totalGenBeds,
+            availGenBeds,
+            totalIcuBeds,
+            availIcuBeds
+          },
+          hospitals: hospitals.map((h) => ({
+            id: h._id,
+            name: h.name,
+            licenseNumber: h.licenseNumber,
+            type: h.type,
+            district: h.address?.district || 'Coimbatore',
+            phone: h.phone,
+            bedCapacity: h.bedCapacity,
+            emergencyAvailable: h.emergencyAvailable,
+            isVerified: h.isVerified
+          })),
+          recentAudit
         }
       });
     } catch (err) {

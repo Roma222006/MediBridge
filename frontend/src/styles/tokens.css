@@ -54,6 +54,18 @@
 }
 
 :root {
+  /* Specification Named Colors */
+  --color-deep-plum: #702B59;
+  --color-rose-magenta: #B83D83;
+  --color-blush-pink: #F8DDE3;
+  --color-pale-rose: #FCEFED;
+  --color-white: #FFFFFF;
+  --color-charcoal: #29252A;
+  --color-soft-grey: #E8E3E5;
+  --color-healthcare-green: #477B67;
+  --color-warning-amber: #D5A45B;
+  --color-critical-red: #C44752;
+
   /* Brand */
   --color-primary: #B83D83;
   --color-primary-hover: #A23373;
@@ -79,13 +91,13 @@
   --status-success-bg: #E6F1EC;
   --status-success-accent: #477B67;
 
-  --status-warning-text: #8A5A00;
+  --status-warning-text: #7C4F00;
   --status-warning-bg: #FFF3D6;
-  --status-warning-accent: #B7791F;
+  --status-warning-accent: #D5A45B;
 
-  --status-critical-text: #C0262D;
+  --status-critical-text: #C44752;
   --status-critical-bg: #FDECEA;
-  --status-critical-solid: #C0262D;
+  --status-critical-solid: #C44752;
 
   --status-info-text: #702B59;
   --status-info-bg: #FCEFED;

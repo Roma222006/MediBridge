@@ -10,6 +10,8 @@ router.use(rbacMiddleware('hospital_admin', 'super_admin'));
 router.use(tenantGuard());
 
 router.get('/overview', (req, res, next) => adminController.getOverview(req, res, next));
+router.get('/platform/overview', (req, res, next) => adminController.getPlatformOverview(req, res, next));
+router.get('/doctors', (req, res, next) => adminController.getDoctors(req, res, next));
 router.post('/slots', (req, res, next) => adminController.createSlot(req, res, next));
 router.get('/slots', (req, res, next) => adminController.getSlots(req, res, next));
 router.post('/services', (req, res, next) => adminController.createService(req, res, next));

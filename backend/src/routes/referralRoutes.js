@@ -20,6 +20,11 @@ router.get(
   (req, res, next) => referralController.getReferrals(req, res, next)
 );
 
+// List referrals for current authenticated patient
+router.get('/my-referrals', (req, res, next) =>
+  referralController.getMyReferrals(req, res, next)
+);
+
 // State transitions
 router.patch('/:id/receive', rbacMiddleware('doctor', 'hospital_admin'), (req, res, next) =>
   referralController.receiveReferral(req, res, next)

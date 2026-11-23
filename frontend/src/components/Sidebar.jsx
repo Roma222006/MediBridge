@@ -8,7 +8,10 @@ import {
   SlidersHorizontal,
   AlertTriangle,
   X,
-  Hospital
+  Hospital,
+  ShieldCheck,
+  Activity,
+  Layers
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -31,7 +34,7 @@ export default function Sidebar({ isOpen, onClose }) {
       <aside className={`sidebar ${isOpen ? 'open' : ''}`} aria-label="Main Navigation">
         <div className="sidebar-brand">
           <Link to="/" className="brand-logo" onClick={onClose} style={{ textDecoration: 'none' }}>
-            <Hospital size={22} strokeWidth={1.75} aria-hidden="true" style={{ color: 'var(--color-primary)' }} />
+            <Hospital size={24} strokeWidth={1.75} aria-hidden="true" style={{ color: 'var(--color-primary)' }} />
             <span style={{ fontFamily: 'var(--font-heading)', fontSize: '1.25rem', fontWeight: '800', letterSpacing: '-0.02em' }}>
               <span style={{ color: 'var(--color-heading)' }}>Medi</span>
               <span style={{ color: 'var(--color-primary)' }}>Bridge</span>
@@ -69,74 +72,85 @@ export default function Sidebar({ isOpen, onClose }) {
                   onClick={onClose}
                 >
                   <AlertTriangle size={18} strokeWidth={1.75} aria-hidden="true" />
-                  <span>Emergency (108)</span>
+                  <span>Emergency Mode (108)</span>
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Group 2: Patient Services */}
-          {(user?.role === 'patient' || !user) && (
-            <div className="nav-group">
-              <span className="nav-group-label">Patient Services</span>
-              <ul className="nav-list">
-                <li>
-                  <Link
-                    to="/patient-dashboard"
-                    className={`nav-link ${isCurrent('/patient-dashboard') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <Calendar size={18} strokeWidth={1.75} aria-hidden="true" />
-                    <span>Appointments & Vault</span>
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          )}
+          {/* Group 2: Patient Portal */}
+          <div className="nav-group">
+            <span className="nav-group-label">Patient Portal</span>
+            <ul className="nav-list">
+              <li>
+                <Link
+                  to="/patient-dashboard"
+                  className={`nav-link ${isCurrent('/patient-dashboard') ? 'active' : ''}`}
+                  onClick={onClose}
+                >
+                  <Calendar size={18} strokeWidth={1.75} aria-hidden="true" />
+                  <span>Appointments & Vault</span>
+                </Link>
+              </li>
+            </ul>
+          </div>
 
-          {/* Group 3: Clinical Staff */}
-          {(user?.role === 'doctor' || user?.role === 'super_admin') && (
-            <div className="nav-group">
-              <span className="nav-group-label">Clinical Staff</span>
-              <ul className="nav-list">
-                <li>
-                  <Link
-                    to="/doctor-portal"
-                    className={`nav-link ${isCurrent('/doctor-portal') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <Stethoscope size={18} strokeWidth={1.75} aria-hidden="true" />
-                    <span>Doctor Portal</span>
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          )}
+          {/* Group 3: Doctor Portal */}
+          <div className="nav-group">
+            <span className="nav-group-label">Doctor Portal</span>
+            <ul className="nav-list">
+              <li>
+                <Link
+                  to="/doctor-portal"
+                  className={`nav-link ${isCurrent('/doctor-portal') ? 'active' : ''}`}
+                  onClick={onClose}
+                >
+                  <Stethoscope size={18} strokeWidth={1.75} aria-hidden="true" />
+                  <span>Clinical Desk</span>
+                </Link>
+              </li>
+            </ul>
+          </div>
 
-          {/* Group 4: Administration */}
-          {(user?.role === 'hospital_admin' || user?.role === 'super_admin') && (
-            <div className="nav-group">
-              <span className="nav-group-label">Administration</span>
-              <ul className="nav-list">
-                <li>
-                  <Link
-                    to="/admin-console"
-                    className={`nav-link ${isCurrent('/admin-console') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <SlidersHorizontal size={18} strokeWidth={1.75} aria-hidden="true" />
-                    <span>Operations Console</span>
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          )}
+          {/* Group 4: Hospital Admin Portal */}
+          <div className="nav-group">
+            <span className="nav-group-label">Hospital Admin Portal</span>
+            <ul className="nav-list">
+              <li>
+                <Link
+                  to="/admin-console"
+                  className={`nav-link ${isCurrent('/admin-console') && !location.search.includes('tab=platform') ? 'active' : ''}`}
+                  onClick={onClose}
+                >
+                  <SlidersHorizontal size={18} strokeWidth={1.75} aria-hidden="true" />
+                  <span>Operations Console</span>
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Group 5: Super Admin Portal */}
+          <div className="nav-group">
+            <span className="nav-group-label">Super Admin Portal</span>
+            <ul className="nav-list">
+              <li>
+                <Link
+                  to="/admin-console?tab=platform"
+                  className={`nav-link ${isCurrent('/admin-console') && location.search.includes('tab=platform') ? 'active' : ''}`}
+                  onClick={onClose}
+                >
+                  <ShieldCheck size={18} strokeWidth={1.75} aria-hidden="true" />
+                  <span>Platform Governance</span>
+                </Link>
+              </li>
+            </ul>
+          </div>
         </nav>
 
         <div className="sidebar-footer">
           <div className="sidebar-env-tag">
-            <span className="demo-badge">Demo</span>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Techthon 2026 R2</span>
+            <span className="demo-badge">Verified</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Techthon 2026</span>
           </div>
         </div>
       </aside>

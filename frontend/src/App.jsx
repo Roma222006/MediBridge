@@ -14,14 +14,44 @@ import AdminConsolePage from './pages/AdminConsolePage';
 import EmergencyPage from './pages/EmergencyPage';
 import TeleconsultRoomPage from './pages/TeleconsultRoomPage';
 import LoginPage from './pages/LoginPage';
+import RoleAccessGate from './components/RoleAccessGate';
 
-function ProtectedRoute({ children, allowedRoles }) {
+function ProtectedRoute({ children, allowedRoles, portal }) {
   const { user, loading } = useAuth();
-  if (loading) return null;
-  if (!user) return <Navigate to="/login" replace />;
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: '60vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '16px'
+        }}
+      >
+        <div
+          style={{
+            width: '42px',
+            height: '42px',
+            border: '3px solid var(--border)',
+            borderTopColor: 'var(--color-primary)',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite'
+          }}
+        />
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: '600' }}>
+          Verifying security tokens and role permissions...
+        </p>
+      </div>
+    );
   }
+
+  if (!user || (allowedRoles && !allowedRoles.includes(user.role))) {
+    return <RoleAccessGate requiredPortal={portal || (allowedRoles ? allowedRoles[0] : 'patient')} allowedRoles={allowedRoles} />;
+  }
+
   return children;
 }
 
@@ -56,7 +86,7 @@ export default function App() {
                   <Route
                     path="/patient-dashboard"
                     element={
-                      <ProtectedRoute allowedRoles={['patient', 'super_admin']}>
+                      <ProtectedRoute allowedRoles={['patient', 'super_admin']} portal="patient">
                         <PatientDashboardPage />
                       </ProtectedRoute>
                     }
@@ -65,7 +95,7 @@ export default function App() {
                   <Route
                     path="/doctor-portal"
                     element={
-                      <ProtectedRoute allowedRoles={['doctor', 'super_admin']}>
+                      <ProtectedRoute allowedRoles={['doctor', 'super_admin']} portal="doctor">
                         <DoctorPortalPage />
                       </ProtectedRoute>
                     }
@@ -74,7 +104,7 @@ export default function App() {
                   <Route
                     path="/admin-console"
                     element={
-                      <ProtectedRoute allowedRoles={['hospital_admin', 'super_admin']}>
+                      <ProtectedRoute allowedRoles={['hospital_admin', 'super_admin']} portal="hospital_admin">
                         <AdminConsolePage />
                       </ProtectedRoute>
                     }

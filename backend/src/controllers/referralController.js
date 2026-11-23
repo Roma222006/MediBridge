@@ -58,6 +58,30 @@ class ReferralController {
     }
   }
 
+  async getMyReferrals(req, res, next) {
+    try {
+      const PatientProfile = require('../models/PatientProfile');
+      const Referral = require('../models/Referral');
+      const profiles = await PatientProfile.find({ userId: req.user._id }).select('_id');
+      const profileIds = profiles.map((p) => p._id);
+      const referrals = await Referral.find({ patientProfileId: { $in: profileIds } })
+        .populate('referringHospitalId', 'name address phone type')
+        .populate('receivingHospitalId', 'name address phone type')
+        .populate('referringDoctorId', 'name specialty qualifications')
+        .populate('patientProfileId', 'fullName dateOfBirth gender')
+        .sort({ createdAt: -1 })
+        .lean();
+
+      res.json({
+        success: true,
+        count: referrals.length,
+        data: referrals
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async receiveReferral(req, res, next) {
     try {
       const referral = await referralService.receiveReferral(
