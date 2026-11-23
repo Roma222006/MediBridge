@@ -48,6 +48,22 @@ class ReferralService {
       throw err;
     }
 
+    if (referringDoctorId) {
+      const doctor = await Doctor.findOne({
+        $or: [{ _id: referringDoctorId }, { userId: referringDoctorId }]
+      });
+      if (doctor) {
+        const isVerified =
+          doctor.verificationStatus === 'VERIFIED' || doctor.verificationStatus === 'DEMO_NOT_VERIFIED';
+        if (!isVerified) {
+          const err = new Error('Unverified doctors cannot create referrals.');
+          err.code = 'DOCTOR_NOT_VERIFIED';
+          err.statusCode = 403;
+          throw err;
+        }
+      }
+    }
+
     const receivingHospital = await Hospital.findById(receivingHospitalId);
     if (!receivingHospital) {
       const err = new Error('Receiving hospital not found.');

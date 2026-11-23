@@ -23,4 +23,24 @@ router.patch('/leave-requests/:id/decline', (req, res, next) =>
   adminController.declineDoctorLeaveRequest(req, res, next)
 );
 
+// Doctor Credentialing & Multi-Stage Verification Routes
+router.get('/doctors/:doctorId/documents', (req, res, next) =>
+  adminController.getDoctorDocuments(req, res, next)
+);
+router.get('/doctors/:doctorId/documents/:docId/download-url', (req, res, next) =>
+  adminController.requestDoctorDocumentDownloadUrl(req, res, next)
+);
+router.post('/doctors/:doctorId/verify-hospital', (req, res, next) =>
+  adminController.verifyDoctorHospitalStage(req, res, next)
+);
+router.post('/doctors/:doctorId/verify-platform', (req, res, next) =>
+  adminController.verifyDoctorPlatformStage(req, res, next)
+);
+router.post('/doctors/:doctorId/request-info', (req, res, next) =>
+  adminController.requestDoctorAdditionalInfo(req, res, next)
+);
+router.post('/doctors/:doctorId/reject', (req, res, next) =>
+  adminController.rejectDoctorVerification(req, res, next)
+);
+
 module.exports = router;

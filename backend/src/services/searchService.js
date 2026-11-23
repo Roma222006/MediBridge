@@ -102,7 +102,11 @@ class SearchService {
 
     const [batchServices, batchDoctors, batchSlots] = await Promise.all([
       Service.find(serviceFilter).lean(),
-      Doctor.find({ hospitalId: { $in: hospitalIds }, isActive: true }).lean(),
+      Doctor.find({
+        hospitalId: { $in: hospitalIds },
+        isActive: true,
+        verificationStatus: { $in: ['VERIFIED', 'DEMO_NOT_VERIFIED'] }
+      }).lean(),
       Slot.find({
         hospitalId: { $in: hospitalIds },
         date: { $gte: todayStr },
@@ -237,7 +241,11 @@ class SearchService {
     }
 
     const services = await Service.find({ hospitalId, isActive: true }).lean();
-    const doctors = await Doctor.find({ hospitalId, isActive: true }).lean();
+    const doctors = await Doctor.find({
+      hospitalId,
+      isActive: true,
+      verificationStatus: { $in: ['VERIFIED', 'DEMO_NOT_VERIFIED'] }
+    }).lean();
 
     const lastUpdated = hospital.bedCapacity?.general?.lastUpdated || hospital.updatedAt;
     const minutesAgo = Math.floor((Date.now() - new Date(lastUpdated).getTime()) / (60 * 1000));

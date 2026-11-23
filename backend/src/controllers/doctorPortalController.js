@@ -1,6 +1,37 @@
 const Appointment = require('../models/Appointment');
 const Doctor = require('../models/Doctor');
 const Referral = require('../models/Referral');
+const CredentialDocument = require('../models/CredentialDocument');
+const AuditLog = require('../models/AuditLog');
+const vaultStorageService = require('../services/vaultStorageService');
+
+function computeVerificationBadge(doctor) {
+  if (doctor.verificationStatus === 'DEMO_NOT_VERIFIED') {
+    return 'Demo, not verified';
+  }
+  if (doctor.verificationStatus === 'VERIFIED') {
+    const dateStr = new Date(doctor.verifiedAt || doctor.updatedAt).toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+    const council = doctor.councilName || 'State Medical Council';
+    return `Registration checked on ${dateStr} (${doctor.regNumber}, ${council})`;
+  }
+  if (doctor.verificationStatus === 'SUBMITTED') {
+    return 'Verification submitted — pending review';
+  }
+  if (doctor.verificationStatus === 'UNDER_REVIEW') {
+    return 'Under administrative review';
+  }
+  if (doctor.verificationStatus === 'ADDITIONAL_INFO_REQUIRED') {
+    return 'Additional information required';
+  }
+  if (doctor.verificationStatus === 'REJECTED') {
+    return 'Verification rejected';
+  }
+  return 'Profile incomplete';
+}
 
 class DoctorPortalController {
   async getProfile(req, res, next) {
@@ -26,13 +57,23 @@ class DoctorPortalController {
           specialty: doctor.specialty,
           qualifications: doctor.qualifications,
           regNumber: doctor.regNumber,
+          councilName: doctor.councilName || 'Tamil Nadu Medical Council',
+          councilState: doctor.councilState || 'Tamil Nadu',
+          subSpecialty: doctor.subSpecialty || null,
+          designation: doctor.designation || 'Consultant',
+          languagesSpoken: doctor.languagesSpoken || ['English', 'Tamil'],
+          department: doctor.department || 'General',
           verificationStatus: doctor.verificationStatus,
+          reviewStage: doctor.reviewStage || 'NONE',
+          verifiedAt: doctor.verifiedAt || null,
+          verificationBadgeText: computeVerificationBadge(doctor),
+          verificationHistory: doctor.verificationHistory || [],
           experienceYears: doctor.experienceYears,
           consultationFee: doctor.consultationFee,
           availableDays: doctor.availableDays,
           consultModes: {
-            inPerson: doctor.inPersonAvailable !== false,
-            teleconsult: doctor.teleconsultAvailable !== false
+            inPerson: doctor.consultModes?.inPerson !== false && doctor.inPersonAvailable !== false,
+            teleconsult: doctor.consultModes?.teleconsult !== false && doctor.teleconsultAvailable !== false
           },
           hospital: doctor.hospitalId
             ? {
@@ -453,6 +494,304 @@ class DoctorPortalController {
         count: referrals.length,
         data: referrals
       });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async updateProfile(req, res, next) {
+    try {
+      const doctor = await Doctor.findOne({ userId: req.user._id });
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'DOCTOR_NOT_FOUND', message: 'Doctor profile not found.' }
+        });
+      }
+
+      // Prohibit self-approval or modifying hospital tenant directly
+      const {
+        name,
+        regNumber,
+        councilName,
+        councilState,
+        qualifications,
+        specialty,
+        subSpecialty,
+        designation,
+        languagesSpoken,
+        department,
+        experienceYears,
+        consultModes,
+        consultationFee
+      } = req.body;
+
+      // Rule 3.4: A change to name, registration number, council or qualifications
+      // resets the status to Submitted and removes the doctor from new bookings until re-checked;
+      // existing bookings stay. Doctor cannot approve their own verification or edit hospital affiliation.
+      const isCoreCredentialModified =
+        (name !== undefined && name.trim() !== doctor.name) ||
+        (regNumber !== undefined && regNumber.trim() !== doctor.regNumber) ||
+        (councilName !== undefined && councilName.trim() !== doctor.councilName) ||
+        (councilState !== undefined && councilState.trim() !== doctor.councilState) ||
+        (qualifications !== undefined && qualifications.trim() !== doctor.qualifications);
+
+      if (name !== undefined) doctor.name = name.trim();
+      if (regNumber !== undefined) doctor.regNumber = regNumber.trim();
+      if (councilName !== undefined) doctor.councilName = councilName.trim();
+      if (councilState !== undefined) doctor.councilState = councilState.trim();
+      if (qualifications !== undefined) doctor.qualifications = qualifications.trim();
+      if (specialty !== undefined) doctor.specialty = specialty.trim();
+      if (subSpecialty !== undefined) doctor.subSpecialty = subSpecialty.trim();
+      if (designation !== undefined) doctor.designation = designation.trim();
+      if (department !== undefined) doctor.department = department.trim();
+      if (experienceYears !== undefined) doctor.experienceYears = Number(experienceYears);
+      if (consultationFee !== undefined) doctor.consultationFee = Number(consultationFee);
+      if (Array.isArray(languagesSpoken)) doctor.languagesSpoken = languagesSpoken;
+      if (consultModes && typeof consultModes === 'object') {
+        doctor.consultModes = {
+          inPerson: consultModes.inPerson !== false,
+          teleconsult: consultModes.teleconsult !== false
+        };
+        doctor.inPersonAvailable = consultModes.inPerson !== false;
+        doctor.teleconsultAvailable = consultModes.teleconsult !== false;
+      }
+
+      if (isCoreCredentialModified) {
+        doctor.verificationStatus = 'SUBMITTED';
+        doctor.reviewStage = 'HOSPITAL_STAGE';
+        doctor.verificationHistory.push({
+          stage: 'hospital',
+          status: 'SUBMITTED',
+          reviewerId: req.user._id,
+          reviewerRole: 'doctor',
+          comments: 'Core professional credentials modified by doctor; reset to Submitted for administrative verification.',
+          timestamp: new Date()
+        });
+      }
+
+      await doctor.save();
+
+      res.json({
+        success: true,
+        message: isCoreCredentialModified
+          ? 'Profile updated. Core credential modifications require administrative review before new bookings can be accepted.'
+          : 'Profile updated successfully.',
+        data: {
+          id: doctor._id,
+          name: doctor.name,
+          specialty: doctor.specialty,
+          qualifications: doctor.qualifications,
+          regNumber: doctor.regNumber,
+          councilName: doctor.councilName,
+          councilState: doctor.councilState,
+          subSpecialty: doctor.subSpecialty,
+          designation: doctor.designation,
+          department: doctor.department,
+          verificationStatus: doctor.verificationStatus,
+          reviewStage: doctor.reviewStage,
+          verificationBadgeText: computeVerificationBadge(doctor),
+          verificationHistory: doctor.verificationHistory
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async uploadCredentialDocument(req, res, next) {
+    try {
+      const doctor = await Doctor.findOne({ userId: req.user._id });
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'DOCTOR_NOT_FOUND', message: 'Doctor profile not found.' }
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'FILE_REQUIRED', message: 'A credential document file is required.' }
+        });
+      }
+
+      const { type } = req.body;
+      const validTypes = ['registration_certificate', 'degree_certificate', 'other'];
+      if (!type || !validTypes.includes(type)) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            code: 'INVALID_DOCUMENT_TYPE',
+            message: 'Document type must be registration_certificate, degree_certificate, or other.'
+          }
+        });
+      }
+
+      // Save file with magic-byte validation and sha256 checksum
+      const storageResult = vaultStorageService.saveFile(
+        req.file.buffer,
+        req.file.originalname,
+        req.file.mimetype
+      );
+
+      // Previous current version of same type gets archived (isCurrent: false)
+      const prevDoc = await CredentialDocument.findOne({
+        doctorId: doctor._id,
+        type,
+        isCurrent: true
+      });
+      const newVersion = prevDoc ? prevDoc.version + 1 : 1;
+
+      if (prevDoc) {
+        prevDoc.isCurrent = false;
+        await prevDoc.save();
+      }
+
+      const credentialDoc = await CredentialDocument.create({
+        hospitalId: doctor.hospitalId,
+        doctorId: doctor._id,
+        type,
+        fileName: req.file.originalname,
+        fileSize: storageResult.fileSizeBytes,
+        mimeType: storageResult.mimeType,
+        storageKey: storageResult.fileKey,
+        sha256: storageResult.sha256Hash,
+        version: newVersion,
+        isCurrent: true,
+        uploadedBy: req.user._id,
+        uploadedAt: new Date()
+      });
+
+      // Audit log the document upload
+      await AuditLog.create({
+        eventType: 'CREDENTIAL_DOCUMENT_UPLOAD',
+        actorId: req.user._id,
+        actorRole: 'doctor',
+        hospitalId: doctor.hospitalId,
+        resourceType: 'CredentialDocument',
+        resourceId: credentialDoc._id.toString(),
+        action: 'UPLOAD',
+        status: 'EXECUTED'
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Credential document uploaded successfully.',
+        data: {
+          id: credentialDoc._id,
+          type: credentialDoc.type,
+          fileName: credentialDoc.fileName,
+          fileSize: credentialDoc.fileSize,
+          mimeType: credentialDoc.mimeType,
+          sha256: credentialDoc.sha256,
+          version: credentialDoc.version,
+          uploadedAt: credentialDoc.uploadedAt
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getCredentialDocuments(req, res, next) {
+    try {
+      const doctor = await Doctor.findOne({ userId: req.user._id });
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'DOCTOR_NOT_FOUND', message: 'Doctor profile not found.' }
+        });
+      }
+
+      const docs = await CredentialDocument.find({ doctorId: doctor._id, isCurrent: true })
+        .sort({ uploadedAt: -1 })
+        .lean();
+
+      res.json({
+        success: true,
+        count: docs.length,
+        data: docs.map((d) => ({
+          id: d._id,
+          type: d.type,
+          fileName: d.fileName,
+          fileSize: d.fileSize,
+          mimeType: d.mimeType,
+          sha256: d.sha256,
+          version: d.version,
+          uploadedAt: d.uploadedAt
+        }))
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async requestDocumentDownloadUrl(req, res, next) {
+    try {
+      const doctor = await Doctor.findOne({ userId: req.user._id });
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'DOCTOR_NOT_FOUND', message: 'Doctor profile not found.' }
+        });
+      }
+
+      const doc = await CredentialDocument.findById(req.params.id);
+      if (!doc || doc.doctorId.toString() !== doctor._id.toString()) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Credential document not found or belongs to another doctor.' }
+        });
+      }
+
+      // Ephemeral 60s signed token
+      const token = vaultStorageService.generateSignedDownloadToken({
+        recordId: doc._id,
+        fileKey: doc.storageKey,
+        userId: req.user._id,
+        role: 'doctor'
+      });
+
+      // CERT-In audit logging
+      await AuditLog.create({
+        eventType: 'CREDENTIAL_DOCUMENT_READ',
+        actorId: req.user._id,
+        actorRole: 'doctor',
+        hospitalId: doctor.hospitalId,
+        resourceType: 'CredentialDocument',
+        resourceId: doc._id.toString(),
+        action: 'DOWNLOAD',
+        status: 'ALLOWED'
+      });
+
+      res.json({
+        success: true,
+        data: {
+          downloadUrl: `/api/v1/doctor/documents/download?token=${token}`,
+          expiresInSeconds: 60
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async downloadDocument(req, res, next) {
+    try {
+      const { token } = req.query;
+      if (!token) {
+        return res.status(400).json({
+          success: false,
+          error: { code: 'TOKEN_REQUIRED', message: 'Signed download token is required.' }
+        });
+      }
+
+      const decoded = vaultStorageService.verifyDownloadToken(token);
+      const filePath = vaultStorageService.getFilePath(decoded.fileKey);
+
+      res.setHeader('Content-Disposition', `inline; filename="${decoded.fileKey}"`);
+      res.sendFile(filePath);
     } catch (err) {
       next(err);
     }

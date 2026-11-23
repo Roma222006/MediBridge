@@ -38,6 +38,28 @@ class BookingService {
       throw err;
     }
 
+    const candidateSlot = await Slot.findById(slotId);
+    if (!candidateSlot) {
+      const err = new Error('Slot not found.');
+      err.code = 'SLOT_NOT_FOUND';
+      err.statusCode = 404;
+      throw err;
+    }
+
+    if (candidateSlot.doctorId) {
+      const doctor = await Doctor.findById(candidateSlot.doctorId);
+      if (doctor) {
+        const isVerified =
+          doctor.verificationStatus === 'VERIFIED' || doctor.verificationStatus === 'DEMO_NOT_VERIFIED';
+        if (!isVerified) {
+          const err = new Error('Doctor must be verified to accept appointments.');
+          err.code = 'DOCTOR_NOT_VERIFIED';
+          err.statusCode = 403;
+          throw err;
+        }
+      }
+    }
+
     // Atomic conditional slot reservation
     const slot = await Slot.findOneAndUpdate(
       {
@@ -137,9 +159,19 @@ class BookingService {
       const service = await Service.findById(slot.serviceId);
       if (service) fee = service.price;
     }
-    if (slot.doctorId && fee === 0) {
+    if (slot.doctorId) {
       const doctor = await Doctor.findById(slot.doctorId);
-      if (doctor) fee = doctor.consultationFee;
+      if (doctor) {
+        const isVerified =
+          doctor.verificationStatus === 'VERIFIED' || doctor.verificationStatus === 'DEMO_NOT_VERIFIED';
+        if (!isVerified) {
+          const err = new Error('Doctor must be verified to receive new bookings.');
+          err.code = 'DOCTOR_NOT_VERIFIED';
+          err.statusCode = 403;
+          throw err;
+        }
+        if (fee === 0) fee = doctor.consultationFee;
+      }
     }
 
     // Generate unique reference

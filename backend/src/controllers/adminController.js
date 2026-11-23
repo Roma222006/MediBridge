@@ -6,6 +6,8 @@ const Appointment = require('../models/Appointment');
 const Referral = require('../models/Referral');
 const DoctorLeave = require('../models/DoctorLeave');
 const AuditLog = require('../models/AuditLog');
+const CredentialDocument = require('../models/CredentialDocument');
+const vaultStorageService = require('../services/vaultStorageService');
 
 class AdminController {
   async getOverview(req, res, next) {
@@ -294,6 +296,291 @@ class AdminController {
         success: true,
         message: 'Doctor leave request declined.',
         data: request
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getDoctorDocuments(req, res, next) {
+    try {
+      const { doctorId } = req.params;
+      const doctor = await Doctor.findById(doctorId);
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'DOCTOR_NOT_FOUND', message: 'Doctor not found.' }
+        });
+      }
+
+      // Hospital tenant isolation: Admin can only view doctors belonging to their own hospital
+      if (req.user.role === 'hospital_admin' && doctor.hospitalId.toString() !== req.user.hospitalId.toString()) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Doctor not found in this hospital.' }
+        });
+      }
+
+      const docs = await CredentialDocument.find({ doctorId, isCurrent: true })
+        .sort({ uploadedAt: -1 })
+        .lean();
+
+      res.json({
+        success: true,
+        count: docs.length,
+        data: docs.map((d) => ({
+          id: d._id,
+          type: d.type,
+          fileName: d.fileName,
+          fileSize: d.fileSize,
+          mimeType: d.mimeType,
+          sha256: d.sha256,
+          version: d.version,
+          uploadedAt: d.uploadedAt
+        }))
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async requestDoctorDocumentDownloadUrl(req, res, next) {
+    try {
+      const { doctorId, docId } = req.params;
+      const doc = await CredentialDocument.findById(docId);
+      if (!doc || doc.doctorId.toString() !== doctorId) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Credential document not found for this doctor.' }
+        });
+      }
+
+      // Tenant isolation: foreign hospital admin denied
+      if (req.user.role === 'hospital_admin' && doc.hospitalId.toString() !== req.user.hospitalId.toString()) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Document belongs to another hospital.' }
+        });
+      }
+
+      // CERT-In access logging
+      await AuditLog.create({
+        eventType: 'CREDENTIAL_DOCUMENT_READ',
+        actorId: req.user._id,
+        actorRole: req.user.role,
+        hospitalId: doc.hospitalId,
+        resourceType: 'CredentialDocument',
+        resourceId: doc._id.toString(),
+        action: 'DOWNLOAD',
+        status: 'ALLOWED'
+      });
+
+      const token = vaultStorageService.generateSignedDownloadToken({
+        recordId: doc._id,
+        fileKey: doc.storageKey,
+        userId: req.user._id,
+        role: req.user.role
+      });
+
+      res.json({
+        success: true,
+        data: {
+          downloadUrl: `/api/v1/doctor/documents/download?token=${token}`,
+          expiresInSeconds: 60
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async verifyDoctorHospitalStage(req, res, next) {
+    try {
+      const { doctorId } = req.params;
+      const { comments } = req.body;
+      const doctor = await Doctor.findById(doctorId);
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'DOCTOR_NOT_FOUND', message: 'Doctor not found.' }
+        });
+      }
+
+      if (req.user.role === 'hospital_admin' && doctor.hospitalId.toString() !== req.user.hospitalId.toString()) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Doctor belongs to another hospital.' }
+        });
+      }
+
+      doctor.reviewStage = 'PLATFORM_STAGE';
+      doctor.verificationStatus = 'UNDER_REVIEW';
+      doctor.verificationHistory.push({
+        stage: 'hospital',
+        status: 'UNDER_REVIEW',
+        reviewerId: req.user._id,
+        reviewerRole: req.user.role,
+        comments: comments || 'Hospital affiliation and department confirmed by hospital administration.',
+        timestamp: new Date()
+      });
+
+      await doctor.save();
+
+      res.json({
+        success: true,
+        message: 'Hospital review stage completed. Doctor submitted to platform stage for Medical Council lookup.',
+        data: {
+          id: doctor._id,
+          verificationStatus: doctor.verificationStatus,
+          reviewStage: doctor.reviewStage,
+          verificationHistory: doctor.verificationHistory
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async verifyDoctorPlatformStage(req, res, next) {
+    try {
+      // Super-Admin only check
+      if (req.user.role !== 'super_admin') {
+        return res.status(403).json({
+          success: false,
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Platform stage verification against Medical Council register requires Super-Admin authorization.'
+          }
+        });
+      }
+
+      const { doctorId } = req.params;
+      const { comments, lookupSource, lookupOutcome } = req.body;
+      const doctor = await Doctor.findById(doctorId);
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'DOCTOR_NOT_FOUND', message: 'Doctor not found.' }
+        });
+      }
+
+      doctor.verificationStatus = 'VERIFIED';
+      doctor.reviewStage = 'COMPLETED';
+      doctor.verifiedAt = new Date();
+      doctor.verifiedBy = req.user._id;
+      doctor.verificationHistory.push({
+        stage: 'platform',
+        status: 'VERIFIED',
+        reviewerId: req.user._id,
+        reviewerRole: 'super_admin',
+        comments: comments || 'Medical Council registration verified against official public register lookup.',
+        lookupSource: lookupSource || `${doctor.councilName || 'State Medical Council'} Public Lookup Portal`,
+        lookupOutcome: lookupOutcome || `Active registration verified under ${doctor.regNumber}`,
+        timestamp: new Date()
+      });
+
+      await doctor.save();
+
+      res.json({
+        success: true,
+        message: 'Platform stage verification completed. Doctor is now verified to receive bookings and referrals.',
+        data: {
+          id: doctor._id,
+          verificationStatus: doctor.verificationStatus,
+          reviewStage: doctor.reviewStage,
+          verifiedAt: doctor.verifiedAt,
+          verificationHistory: doctor.verificationHistory
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async requestDoctorAdditionalInfo(req, res, next) {
+    try {
+      const { doctorId } = req.params;
+      const { comments } = req.body;
+      const doctor = await Doctor.findById(doctorId);
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'DOCTOR_NOT_FOUND', message: 'Doctor not found.' }
+        });
+      }
+
+      if (req.user.role === 'hospital_admin' && doctor.hospitalId.toString() !== req.user.hospitalId.toString()) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Doctor belongs to another hospital.' }
+        });
+      }
+
+      doctor.verificationStatus = 'ADDITIONAL_INFO_REQUIRED';
+      doctor.verificationHistory.push({
+        stage: req.user.role === 'super_admin' ? 'platform' : 'hospital',
+        status: 'ADDITIONAL_INFO_REQUIRED',
+        reviewerId: req.user._id,
+        reviewerRole: req.user.role,
+        comments: comments || 'Additional credential documents or clarification required for verification.',
+        timestamp: new Date()
+      });
+
+      await doctor.save();
+
+      res.json({
+        success: true,
+        message: 'Additional information requested from doctor.',
+        data: {
+          id: doctor._id,
+          verificationStatus: doctor.verificationStatus,
+          verificationHistory: doctor.verificationHistory
+        }
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async rejectDoctorVerification(req, res, next) {
+    try {
+      const { doctorId } = req.params;
+      const { comments } = req.body;
+      const doctor = await Doctor.findById(doctorId);
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'DOCTOR_NOT_FOUND', message: 'Doctor not found.' }
+        });
+      }
+
+      if (req.user.role === 'hospital_admin' && doctor.hospitalId.toString() !== req.user.hospitalId.toString()) {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'NOT_FOUND', message: 'Doctor belongs to another hospital.' }
+        });
+      }
+
+      doctor.verificationStatus = 'REJECTED';
+      doctor.verificationHistory.push({
+        stage: req.user.role === 'super_admin' ? 'platform' : 'hospital',
+        status: 'REJECTED',
+        reviewerId: req.user._id,
+        reviewerRole: req.user.role,
+        comments: comments || 'Doctor credential verification rejected.',
+        timestamp: new Date()
+      });
+
+      await doctor.save();
+
+      res.json({
+        success: true,
+        message: 'Doctor credential verification rejected.',
+        data: {
+          id: doctor._id,
+          verificationStatus: doctor.verificationStatus,
+          verificationHistory: doctor.verificationHistory
+        }
       });
     } catch (err) {
       next(err);

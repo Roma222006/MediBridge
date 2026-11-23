@@ -30,11 +30,84 @@ const doctorSchema = new mongoose.Schema(
       required: true,
       default: 'TNMC/2026/00000 (Demo, not verified)'
     },
+    councilName: {
+      type: String,
+      default: 'Tamil Nadu Medical Council'
+    },
+    councilState: {
+      type: String,
+      default: 'Tamil Nadu'
+    },
+    subSpecialty: {
+      type: String,
+      default: null
+    },
+    designation: {
+      type: String,
+      default: 'Consultant'
+    },
+    languagesSpoken: {
+      type: [String],
+      default: ['English', 'Tamil']
+    },
+    department: {
+      type: String,
+      default: 'General'
+    },
+    consultModes: {
+      inPerson: { type: Boolean, default: true },
+      teleconsult: { type: Boolean, default: true }
+    },
     verificationStatus: {
       type: String,
-      enum: ['VERIFIED', 'UNVERIFIED', 'DEMO_NOT_VERIFIED'],
+      enum: [
+        'PROFILE_INCOMPLETE',
+        'SUBMITTED',
+        'UNDER_REVIEW',
+        'ADDITIONAL_INFO_REQUIRED',
+        'VERIFIED',
+        'REJECTED',
+        'DEMO_NOT_VERIFIED',
+        'UNVERIFIED'
+      ],
       default: 'DEMO_NOT_VERIFIED'
     },
+    reviewStage: {
+      type: String,
+      enum: ['HOSPITAL_STAGE', 'PLATFORM_STAGE', 'COMPLETED', 'NONE'],
+      default: 'NONE'
+    },
+    verifiedAt: {
+      type: Date,
+      default: null
+    },
+    verifiedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+    },
+    verificationHistory: [
+      {
+        stage: { type: String, enum: ['hospital', 'platform'] },
+        status: {
+          type: String,
+          enum: [
+            'PROFILE_INCOMPLETE',
+            'SUBMITTED',
+            'UNDER_REVIEW',
+            'ADDITIONAL_INFO_REQUIRED',
+            'VERIFIED',
+            'REJECTED'
+          ]
+        },
+        reviewerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        reviewerRole: String,
+        comments: String,
+        lookupSource: String,
+        lookupOutcome: String,
+        timestamp: { type: Date, default: Date.now }
+      }
+    ],
     experienceYears: {
       type: Number,
       default: 5

@@ -77,6 +77,29 @@ export default function DoctorPortalPage() {
   const [leaveReason, setLeaveReason] = useState('');
   const [submittingLeave, setSubmittingLeave] = useState(false);
 
+  // Credential Documents & Profile Editing
+  const [credentialDocs, setCredentialDocs] = useState([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [showUploadDocModal, setShowUploadDocModal] = useState(false);
+  const [docUploadType, setDocUploadType] = useState('registration_certificate');
+  const [docSelectedFile, setDocSelectedFile] = useState(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    regNumber: '',
+    councilName: '',
+    councilState: '',
+    qualifications: '',
+    specialty: '',
+    subSpecialty: '',
+    designation: '',
+    department: '',
+    experienceYears: 5,
+    languagesSpoken: 'English, Tamil'
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
+
   useEffect(() => {
     loadInitialData();
 
@@ -111,6 +134,7 @@ export default function DoctorPortalPage() {
       loadLeaveRequests();
     } else if (activeTab === 'profile') {
       loadProfileData();
+      loadCredentialDocs();
     }
   }, [activeTab, apptSubTab, apptDateFilter]);
 
@@ -170,9 +194,111 @@ export default function DoctorPortalPage() {
   const loadProfileData = async () => {
     try {
       const res = await api.get('/doctor/profile');
-      if (res.data.success) setDoctorProfile(res.data.data);
+      if (res.data.success) {
+        setDoctorProfile(res.data.data);
+        setProfileForm({
+          name: res.data.data.name || '',
+          regNumber: res.data.data.regNumber || '',
+          councilName: res.data.data.councilName || '',
+          councilState: res.data.data.councilState || '',
+          qualifications: res.data.data.qualifications || '',
+          specialty: res.data.data.specialty || '',
+          subSpecialty: res.data.data.subSpecialty || '',
+          designation: res.data.data.designation || '',
+          department: res.data.data.department || '',
+          experienceYears: res.data.data.experienceYears || 5,
+          languagesSpoken: Array.isArray(res.data.data.languagesSpoken)
+            ? res.data.data.languagesSpoken.join(', ')
+            : 'English, Tamil'
+        });
+      }
     } catch (err) {
       console.error('[DoctorPortal] Profile load failed:', err.message);
+    }
+  };
+
+  const loadCredentialDocs = async () => {
+    setLoadingDocs(true);
+    try {
+      const res = await api.get('/doctor/documents');
+      if (res.data.success) {
+        setCredentialDocs(res.data.data || []);
+      }
+    } catch (err) {
+      console.error('[DoctorPortal] Document load failed:', err.message);
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
+
+  const handleUploadDoc = async (e) => {
+    e.preventDefault();
+    if (!docSelectedFile) return;
+
+    setUploadingDoc(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', docSelectedFile);
+      formData.append('type', docUploadType);
+
+      const res = await api.post('/doctor/documents', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data.success) {
+        setMsg({ type: 'success', text: 'Credential document uploaded successfully.' });
+        setShowUploadDocModal(false);
+        setDocSelectedFile(null);
+        loadCredentialDocs();
+      }
+    } catch (err) {
+      setMsg({
+        type: 'error',
+        text: err.response?.data?.error?.message || 'Failed to upload credential document.'
+      });
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
+  const handleDownloadDoc = async (docId) => {
+    try {
+      const res = await api.get(`/doctor/documents/${docId}/download-url`);
+      if (res.data.success) {
+        window.open(res.data.data.downloadUrl, '_blank');
+      }
+    } catch (err) {
+      setMsg({
+        type: 'error',
+        text: err.response?.data?.error?.message || 'Failed to generate signed download link.'
+      });
+    }
+  };
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setSavingProfile(true);
+    try {
+      const langs = profileForm.languagesSpoken
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const res = await api.patch('/doctor/profile', {
+        ...profileForm,
+        languagesSpoken: langs
+      });
+      if (res.data.success) {
+        setMsg({ type: 'success', text: res.data.message || 'Profile updated successfully.' });
+        setShowEditProfileModal(false);
+        loadProfileData();
+      }
+    } catch (err) {
+      setMsg({
+        type: 'error',
+        text: err.response?.data?.error?.message || 'Failed to update professional profile.'
+      });
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -1004,73 +1130,243 @@ export default function DoctorPortalPage() {
 
       {/* TAB 6: DOCTOR PROFILE & CREDENTIALS */}
       {activeTab === 'profile' && (
-        <div className="card" style={{ padding: '24px' }}>
-          <div style={{ marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
-            <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '700', color: 'var(--color-heading)' }}>
-              Attending Physician Credentials & Licensing
-            </h3>
-            <p style={{ margin: '4px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Official medical council credentials. Hospital affiliation and registration data are read-only and governed by platform administration.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            <div>
-              <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
-                Full Practitioner Name
-              </label>
-              <div style={{ fontSize: '1rem', fontWeight: '700', marginTop: '4px', color: 'var(--text)' }}>
-                {doctorProfile?.name}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Main Credentials Card */}
+          <div className="card" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '700', color: 'var(--color-heading)' }}>
+                  Attending Physician Credentials & Licensing
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  Official medical council credentials. Hospital affiliation is managed by platform administration.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Button variant="outline" size="sm" onClick={() => setShowEditProfileModal(true)}>
+                  Edit Profile
+                </Button>
               </div>
             </div>
 
-            <div>
-              <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
-                Medical Council Registration #
-              </label>
-              <div style={{ fontSize: '0.9375rem', fontFamily: 'monospace', fontWeight: '600', marginTop: '4px', color: 'var(--color-heading)' }}>
-                {doctorProfile?.regNumber}
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
-                Specialty & Qualifications
-              </label>
-              <div style={{ fontSize: '0.9375rem', fontWeight: '600', marginTop: '4px', color: 'var(--text)' }}>
-                {doctorProfile?.specialty} &bull; {doctorProfile?.qualifications}
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
-                Hospital Affiliation
-              </label>
-              <div style={{ fontSize: '0.9375rem', fontWeight: '600', marginTop: '4px', color: 'var(--text)' }}>
-                {doctorProfile?.hospital?.name} ({doctorProfile?.hospital?.district})
-              </div>
-            </div>
-
-            <div>
-              <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
-                Verification Status
-              </label>
-              <div style={{ marginTop: '4px' }}>
-                <span className="badge badge-pill badge-neutral">
-                  {doctorProfile?.verificationStatus === 'VERIFIED' ? 'Verified' : 'Demo, not verified'}
+            {/* Official Verification Badge Banner */}
+            <div style={{ marginBottom: '20px', padding: '12px 16px', background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700', display: 'block' }}>
+                  Verification Status
+                </span>
+                <span style={{ fontSize: '0.9375rem', fontWeight: '700', color: doctorProfile?.verificationStatus === 'VERIFIED' ? 'var(--color-primary)' : 'var(--text)' }}>
+                  {doctorProfile?.verificationBadgeText || 'Status pending'}
                 </span>
               </div>
+              <span className={`badge badge-pill ${doctorProfile?.verificationStatus === 'VERIFIED' ? 'badge-primary' : doctorProfile?.verificationStatus === 'DEMO_NOT_VERIFIED' ? 'badge-neutral' : 'badge-warning'}`}>
+                {doctorProfile?.verificationStatus?.replace(/_/g, ' ') || 'PENDING'}
+              </span>
             </div>
 
-            <div>
-              <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
-                Consultation Fee & Modes
-              </label>
-              <div style={{ fontSize: '0.9375rem', fontWeight: '600', marginTop: '4px', color: 'var(--text)' }}>
-                ₹{doctorProfile?.consultationFee} &bull; In-Person: {doctorProfile?.consultModes?.inPerson ? 'Yes' : 'No'} &bull; Teleconsult: {doctorProfile?.consultModes?.teleconsult ? 'Yes' : 'No'}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
+                  Full Practitioner Name
+                </label>
+                <div style={{ fontSize: '1rem', fontWeight: '700', marginTop: '4px', color: 'var(--text)' }}>
+                  {doctorProfile?.name}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
+                  Medical Council Registration #
+                </label>
+                <div style={{ fontSize: '0.9375rem', fontFamily: 'monospace', fontWeight: '600', marginTop: '4px', color: 'var(--color-heading)' }}>
+                  {doctorProfile?.regNumber}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
+                  Council & State
+                </label>
+                <div style={{ fontSize: '0.9375rem', fontWeight: '600', marginTop: '4px', color: 'var(--text)' }}>
+                  {doctorProfile?.councilName} ({doctorProfile?.councilState})
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
+                  Specialty & Sub-Specialty
+                </label>
+                <div style={{ fontSize: '0.9375rem', fontWeight: '600', marginTop: '4px', color: 'var(--text)' }}>
+                  {doctorProfile?.specialty} {doctorProfile?.subSpecialty ? `(${doctorProfile.subSpecialty})` : ''}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
+                  Qualifications & Experience
+                </label>
+                <div style={{ fontSize: '0.9375rem', fontWeight: '600', marginTop: '4px', color: 'var(--text)' }}>
+                  {doctorProfile?.qualifications} &bull; {doctorProfile?.experienceYears} yrs exp.
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
+                  Department & Designation
+                </label>
+                <div style={{ fontSize: '0.9375rem', fontWeight: '600', marginTop: '4px', color: 'var(--text)' }}>
+                  {doctorProfile?.designation} &bull; {doctorProfile?.department}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
+                  Languages Spoken
+                </label>
+                <div style={{ fontSize: '0.9375rem', fontWeight: '600', marginTop: '4px', color: 'var(--text)' }}>
+                  {Array.isArray(doctorProfile?.languagesSpoken) ? doctorProfile.languagesSpoken.join(', ') : 'English, Tamil'}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
+                  Hospital Affiliation
+                </label>
+                <div style={{ fontSize: '0.9375rem', fontWeight: '600', marginTop: '4px', color: 'var(--text)' }}>
+                  {doctorProfile?.hospital?.name} ({doctorProfile?.hospital?.district})
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '700' }}>
+                  Consultation Fee & Modes
+                </label>
+                <div style={{ fontSize: '0.9375rem', fontWeight: '600', marginTop: '4px', color: 'var(--text)' }}>
+                  ₹{doctorProfile?.consultationFee} &bull; In-Person: {doctorProfile?.consultModes?.inPerson ? 'Yes' : 'No'} &bull; Teleconsult: {doctorProfile?.consultModes?.teleconsult ? 'Yes' : 'No'}
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Credential Documents Table */}
+          <div className="card" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'var(--color-heading)' }}>
+                  Credential Documents & Certificates
+                </h4>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Registration and degree certificates stored in secure private storage with SHA-256 integrity verification.
+                </p>
+              </div>
+              <Button variant="primary" size="sm" onClick={() => setShowUploadDocModal(true)}>
+                Upload Document
+              </Button>
+            </div>
+
+            <div className="table-container" style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+                    <th style={{ padding: '10px 14px', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Type</th>
+                    <th style={{ padding: '10px 14px', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>File Name</th>
+                    <th style={{ padding: '10px 14px', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Size</th>
+                    <th style={{ padding: '10px 14px', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Version</th>
+                    <th style={{ padding: '10px 14px', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>SHA-256 Checksum</th>
+                    <th style={{ padding: '10px 14px', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Uploaded</th>
+                    <th style={{ padding: '10px 14px', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingDocs ? (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '24px', textAlign: 'center' }}>
+                        <Skeleton height="20px" width="60%" />
+                      </td>
+                    </tr>
+                  ) : credentialDocs.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                        No credential documents uploaded yet. Upload your State Medical Council registration certificate.
+                      </td>
+                    </tr>
+                  ) : (
+                    credentialDocs.map((doc) => (
+                      <tr key={doc.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '10px 14px', fontWeight: '700', fontSize: '0.8125rem' }}>
+                          {doc.type === 'registration_certificate' ? 'Registration Certificate' : doc.type === 'degree_certificate' ? 'Degree Certificate' : 'Other Certificate'}
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: '0.8125rem' }}>{doc.fileName}</td>
+                        <td style={{ padding: '10px 14px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {(doc.fileSize / 1024).toFixed(1)} KB
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: '0.8125rem' }}>v{doc.version}</td>
+                        <td style={{ padding: '10px 14px', fontSize: '0.75rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+                          {doc.sha256?.substring(0, 16)}...
+                        </td>
+                        <td style={{ padding: '10px 14px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {new Date(doc.uploadedAt).toLocaleDateString()}
+                        </td>
+                        <td style={{ padding: '10px 14px' }}>
+                          <Button variant="outline" size="sm" onClick={() => handleDownloadDoc(doc.id)}>
+                            Download (60s URL)
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Verification Audit Thread */}
+          {doctorProfile?.verificationHistory?.length > 0 && (
+            <div className="card" style={{ padding: '24px' }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '1rem', fontWeight: '700', color: 'var(--color-heading)' }}>
+                Administrative Verification Audit History
+              </h4>
+              <div className="table-container" style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Stage</th>
+                      <th style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Role</th>
+                      <th style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Status</th>
+                      <th style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Comments / Lookup Source</th>
+                      <th style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {doctorProfile.verificationHistory.map((item, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '8px 12px', fontWeight: '700', fontSize: '0.8125rem', textTransform: 'capitalize' }}>
+                          {item.stage} Stage
+                        </td>
+                        <td style={{ padding: '8px 12px', fontSize: '0.8125rem' }}>{item.reviewerRole}</td>
+                        <td style={{ padding: '8px 12px' }}>
+                          <span className={`badge badge-pill ${item.status === 'VERIFIED' ? 'badge-primary' : 'badge-neutral'}`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 12px', fontSize: '0.8125rem' }}>
+                          <div>{item.comments}</div>
+                          {item.lookupSource && (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                              Source: {item.lookupSource} ({item.lookupOutcome})
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '8px 12px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                          {new Date(item.timestamp).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1338,6 +1634,243 @@ export default function DoctorPortalPage() {
               </div>
             </div>
           )}
+        </Modal>
+      )}
+
+      {/* MODAL 4: EDIT DOCTOR PROFILE & CREDENTIALS */}
+      {showEditProfileModal && (
+        <Modal
+          isOpen={showEditProfileModal}
+          onClose={() => setShowEditProfileModal(false)}
+          title="Edit Professional Credentials"
+        >
+          <form onSubmit={handleSaveProfile}>
+            <div
+              style={{
+                padding: '10px 14px',
+                backgroundColor: 'var(--surface)',
+                borderRadius: 'var(--radius)',
+                border: '1px solid var(--border)',
+                marginBottom: '16px',
+                fontSize: '0.8125rem',
+                color: 'var(--status-critical-accent)'
+              }}
+            >
+              <strong>Notice:</strong> Modifying your Practitioner Name, Council Registration #, Council Name, or Qualifications will automatically reset your verification status to <strong>Submitted</strong> and pause new bookings until reviewed.
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>
+                  Practitioner Full Name
+                </label>
+                <Input
+                  type="text"
+                  value={profileForm.name}
+                  onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>
+                  Medical Council Registration #
+                </label>
+                <Input
+                  type="text"
+                  value={profileForm.regNumber}
+                  onChange={(e) => setProfileForm({ ...profileForm, regNumber: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>
+                  Medical Council Name
+                </label>
+                <Input
+                  type="text"
+                  value={profileForm.councilName}
+                  onChange={(e) => setProfileForm({ ...profileForm, councilName: e.target.value })}
+                  placeholder="e.g. Tamil Nadu Medical Council"
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>
+                  Council State
+                </label>
+                <Input
+                  type="text"
+                  value={profileForm.councilState}
+                  onChange={(e) => setProfileForm({ ...profileForm, councilState: e.target.value })}
+                  placeholder="e.g. Tamil Nadu"
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>
+                Qualifications (Degrees, Institutions, Years)
+              </label>
+              <Input
+                type="text"
+                value={profileForm.qualifications}
+                onChange={(e) => setProfileForm({ ...profileForm, qualifications: e.target.value })}
+                required
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>
+                  Primary Specialty
+                </label>
+                <Input
+                  type="text"
+                  value={profileForm.specialty}
+                  onChange={(e) => setProfileForm({ ...profileForm, specialty: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>
+                  Sub-Specialty (Optional)
+                </label>
+                <Input
+                  type="text"
+                  value={profileForm.subSpecialty}
+                  onChange={(e) => setProfileForm({ ...profileForm, subSpecialty: e.target.value })}
+                  placeholder="e.g. Interventional Cardiology"
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>
+                  Designation
+                </label>
+                <Input
+                  type="text"
+                  value={profileForm.designation}
+                  onChange={(e) => setProfileForm({ ...profileForm, designation: e.target.value })}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>
+                  Department
+                </label>
+                <Input
+                  type="text"
+                  value={profileForm.department}
+                  onChange={(e) => setProfileForm({ ...profileForm, department: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px', marginBottom: '18px' }}>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>
+                  Experience (Years)
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={profileForm.experienceYears}
+                  onChange={(e) => setProfileForm({ ...profileForm, experienceYears: e.target.value })}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>
+                  Languages Spoken (comma-separated)
+                </label>
+                <Input
+                  type="text"
+                  value={profileForm.languagesSpoken}
+                  onChange={(e) => setProfileForm({ ...profileForm, languagesSpoken: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <Button variant="outline" type="button" onClick={() => setShowEditProfileModal(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit" disabled={savingProfile}>
+                {savingProfile ? 'Saving...' : 'Save Profile Changes'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* MODAL 5: UPLOAD CREDENTIAL DOCUMENT */}
+      {showUploadDocModal && (
+        <Modal
+          isOpen={showUploadDocModal}
+          onClose={() => {
+            setShowUploadDocModal(false);
+            setDocSelectedFile(null);
+          }}
+          title="Upload Credential Certificate"
+        >
+          <form onSubmit={handleUploadDoc}>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>
+                Certificate Document Type
+              </label>
+              <select
+                className="input"
+                value={docUploadType}
+                onChange={(e) => setDocUploadType(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                <option value="registration_certificate">State Medical Council Registration Certificate</option>
+                <option value="degree_certificate">Primary Medical Degree / Post-Graduate Certificate</option>
+                <option value="other">Other Professional Fellowship / License Certificate</option>
+              </select>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>
+                File Attachment (PDF, JPG, PNG &bull; Max 10MB)
+              </label>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={(e) => setDocSelectedFile(e.target.files?.[0] || null)}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '8px',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius)',
+                  fontSize: '0.8125rem'
+                }}
+                required
+              />
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Files undergo magic-byte signature validation and SHA-256 cryptographic hashing upon upload.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => {
+                  setShowUploadDocModal(false);
+                  setDocSelectedFile(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit" disabled={uploadingDoc || !docSelectedFile}>
+                {uploadingDoc ? 'Uploading...' : 'Upload & Verify'}
+              </Button>
+            </div>
+          </form>
         </Modal>
       )}
     </div>

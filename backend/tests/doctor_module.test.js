@@ -14,8 +14,8 @@ const DoctorLeaveRequest = require('../src/models/DoctorLeaveRequest');
 const authService = require('../src/services/authService');
 
 let hospitalA, hospitalB;
-let doctorAUser, doctorBUser, patientUser, adminUser;
-let doctorAToken, doctorBToken, patientToken, adminToken;
+let doctorAUser, doctorBUser, patientUser, adminUser, adminBUser, superAdminUser;
+let doctorAToken, doctorBToken, patientToken, adminToken, adminBToken, superAdminToken;
 let doctorA, doctorB, patientProfile, serviceA, slotA, appointmentA;
 
 beforeAll(async () => {
@@ -126,6 +126,27 @@ beforeEach(async () => {
   });
   const aTokens = await authService.generateTokens(adminUser);
   adminToken = aTokens.accessToken;
+
+  // Hospital Admin B (Hospital B)
+  adminBUser = await User.create({
+    email: 'admin.pol@test.com',
+    phone: '+919999000008',
+    password: 'Password123!',
+    role: 'hospital_admin',
+    hospitalId: hospitalB._id
+  });
+  const bTokens = await authService.generateTokens(adminBUser);
+  adminBToken = bTokens.accessToken;
+
+  // Super-Admin
+  superAdminUser = await User.create({
+    email: 'superadmin.doc@test.com',
+    phone: '+919999000099',
+    password: 'Password123!',
+    role: 'super_admin'
+  });
+  const saTokens = await authService.generateTokens(superAdminUser);
+  superAdminToken = saTokens.accessToken;
 
   // Service & Slot for Doctor A
   serviceA = await Service.create({
@@ -419,6 +440,227 @@ describe('MediBridge Doctor Module Verification Suite', () => {
 
       expect(resWithdraw.status).toBe(200);
       expect(resWithdraw.body.data.status).toBe('WITHDRAWN');
+    });
+  });
+
+  describe('6. Doctor Credentialing, Multi-Stage Review & Document Storage', () => {
+    it('should return enriched profile with council details and verification badge', async () => {
+      const res = await request(app)
+        .get('/api/v1/doctor/profile')
+        .set('Authorization', `Bearer ${doctorAToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.councilName).toBe('Tamil Nadu Medical Council');
+      expect(res.body.data.councilState).toBe('Tamil Nadu');
+      expect(res.body.data.verificationBadgeText).toBe('Demo, not verified');
+      expect(res.body.data.reviewStage).toBe('NONE');
+    });
+
+    it('should update non-core profile details without resetting verification status', async () => {
+      const res = await request(app)
+        .patch('/api/v1/doctor/profile')
+        .set('Authorization', `Bearer ${doctorAToken}`)
+        .send({
+          experienceYears: 12,
+          designation: 'Senior Consultant',
+          languagesSpoken: ['English', 'Tamil', 'Hindi']
+        });
+
+      expect(res.status).toBe(200);
+      const updatedDoc = await Doctor.findById(doctorA._id);
+      expect(updatedDoc.experienceYears).toBe(12);
+      expect(updatedDoc.designation).toBe('Senior Consultant');
+      expect(updatedDoc.verificationStatus).toBe('DEMO_NOT_VERIFIED');
+    });
+
+    it('should reset status to SUBMITTED and stage to HOSPITAL_STAGE when core credentials change', async () => {
+      const res = await request(app)
+        .patch('/api/v1/doctor/profile')
+        .set('Authorization', `Bearer ${doctorAToken}`)
+        .send({
+          qualifications: 'MBBS, MD, DM, FACC'
+        });
+
+      expect(res.status).toBe(200);
+      const updatedDoc = await Doctor.findById(doctorA._id);
+      expect(updatedDoc.qualifications).toBe('MBBS, MD, DM, FACC');
+      expect(updatedDoc.verificationStatus).toBe('SUBMITTED');
+      expect(updatedDoc.reviewStage).toBe('HOSPITAL_STAGE');
+      expect(updatedDoc.verificationHistory.length).toBeGreaterThan(0);
+      expect(updatedDoc.verificationHistory[0].status).toBe('SUBMITTED');
+    });
+
+    it('should block unverified doctor from creating referrals', async () => {
+      // Set doctorA to UNVERIFIED
+      await Doctor.findByIdAndUpdate(doctorA._id, { verificationStatus: 'UNVERIFIED' });
+
+      const res = await request(app)
+        .post('/api/v1/referrals')
+        .set('Authorization', `Bearer ${doctorAToken}`)
+        .send({
+          patientProfileId: patientProfile._id,
+          receivingHospitalId: hospitalB._id,
+          targetSpecialty: 'Cardiology',
+          clinicalSummary: 'Attempt by unverified physician'
+        });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('DOCTOR_NOT_VERIFIED');
+    });
+
+    it('should block unverified doctor from accepting new bookings', async () => {
+      // Set doctorA to UNVERIFIED
+      await Doctor.findByIdAndUpdate(doctorA._id, { verificationStatus: 'UNVERIFIED' });
+
+      const today = new Date().toISOString().split('T')[0];
+      const availableSlot = await Slot.create({
+        hospitalId: hospitalA._id,
+        serviceId: serviceA._id,
+        doctorId: doctorA._id,
+        date: today,
+        startTime: '16:00',
+        endTime: '16:30',
+        type: 'consultation_in_person',
+        status: 'AVAILABLE'
+      });
+
+      const res = await request(app)
+        .post('/api/v1/bookings/confirm')
+        .set('Authorization', `Bearer ${patientToken}`)
+        .send({
+          patientProfileId: patientProfile._id,
+          slotId: availableSlot._id,
+          idempotencyKey: 'BK-TEST-UNVERIFIED-DOC-01'
+        });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('DOCTOR_NOT_VERIFIED');
+    });
+
+    it('should upload credential document with magic-byte check and sha256 checksum', async () => {
+      const pdfBuffer = Buffer.from('%PDF-1.4 Mock Registration Certificate Content');
+
+      const res = await request(app)
+        .post('/api/v1/doctor/documents')
+        .set('Authorization', `Bearer ${doctorAToken}`)
+        .field('type', 'registration_certificate')
+        .attach('file', pdfBuffer, 'tnmc_registration.pdf');
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.type).toBe('registration_certificate');
+      expect(res.body.data.fileName).toBe('tnmc_registration.pdf');
+      expect(res.body.data.sha256).toBeDefined();
+      expect(res.body.data.version).toBe(1);
+
+      // Upload version 2 of same certificate
+      const pdfBufferV2 = Buffer.from('%PDF-1.4 Updated Registration Certificate Content V2');
+      const resV2 = await request(app)
+        .post('/api/v1/doctor/documents')
+        .set('Authorization', `Bearer ${doctorAToken}`)
+        .field('type', 'registration_certificate')
+        .attach('file', pdfBufferV2, 'tnmc_registration_v2.pdf');
+
+      expect(resV2.status).toBe(201);
+      expect(resV2.body.data.version).toBe(2);
+
+      // Verify list endpoint returns only current version
+      const listRes = await request(app)
+        .get('/api/v1/doctor/documents')
+        .set('Authorization', `Bearer ${doctorAToken}`);
+
+      expect(listRes.status).toBe(200);
+      expect(listRes.body.data.length).toBe(1);
+      expect(listRes.body.data[0].version).toBe(2);
+    });
+
+    it('should enforce document access permissions and log reads in AuditLog', async () => {
+      const pdfBuffer = Buffer.from('%PDF-1.4 Attending Degree Certificate');
+      const uploadRes = await request(app)
+        .post('/api/v1/doctor/documents')
+        .set('Authorization', `Bearer ${doctorAToken}`)
+        .field('type', 'degree_certificate')
+        .attach('file', pdfBuffer, 'degree.pdf');
+
+      const docId = uploadRes.body.data.id;
+
+      // Doctor A (owner) allowed
+      const resOwner = await request(app)
+        .get(`/api/v1/doctor/documents/${docId}/download-url`)
+        .set('Authorization', `Bearer ${doctorAToken}`);
+      expect(resOwner.status).toBe(200);
+      expect(resOwner.body.data.downloadUrl).toContain('/documents/download?token=');
+
+      // Doctor B denied with 404
+      const resDocB = await request(app)
+        .get(`/api/v1/doctor/documents/${docId}/download-url`)
+        .set('Authorization', `Bearer ${doctorBToken}`);
+      expect(resDocB.status).toBe(404);
+
+      // Admin A (same hospital) allowed
+      const resAdminA = await request(app)
+        .get(`/api/v1/admin/doctors/${doctorA._id}/documents/${docId}/download-url`)
+        .set('Authorization', `Bearer ${adminToken}`);
+      expect(resAdminA.status).toBe(200);
+
+      // Admin B (foreign hospital) denied with 404
+      const resAdminB = await request(app)
+        .get(`/api/v1/admin/doctors/${doctorA._id}/documents/${docId}/download-url`)
+        .set('Authorization', `Bearer ${adminBToken}`);
+      expect(resAdminB.status).toBe(404);
+
+      // Super-Admin allowed
+      const resSuperAdmin = await request(app)
+        .get(`/api/v1/admin/doctors/${doctorA._id}/documents/${docId}/download-url`)
+        .set('Authorization', `Bearer ${superAdminToken}`);
+      expect(resSuperAdmin.status).toBe(200);
+    });
+
+    it('should allow multi-stage verification (Hospital Admin -> Super-Admin)', async () => {
+      // Doctor modifies credentials -> sets to SUBMITTED
+      await request(app)
+        .patch('/api/v1/doctor/profile')
+        .set('Authorization', `Bearer ${doctorAToken}`)
+        .send({ qualifications: 'MBBS, MD (Cardiology)' });
+
+      // Stage 1: Hospital Admin confirms hospital affiliation & department
+      const resHospStage = await request(app)
+        .post(`/api/v1/admin/doctors/${doctorA._id}/verify-hospital`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ comments: 'Affiliation and cardiology department confirmed' });
+
+      expect(resHospStage.status).toBe(200);
+      expect(resHospStage.body.data.reviewStage).toBe('PLATFORM_STAGE');
+      expect(resHospStage.body.data.verificationStatus).toBe('UNDER_REVIEW');
+
+      // Hospital Admin cannot perform platform stage verification (Super-Admin only)
+      const resForbiddenPlatform = await request(app)
+        .post(`/api/v1/admin/doctors/${doctorA._id}/verify-platform`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ comments: 'Attempted by hospital admin' });
+      expect(resForbiddenPlatform.status).toBe(403);
+
+      // Stage 2: Super-Admin verifies Medical Council registration
+      const resPlatformStage = await request(app)
+        .post(`/api/v1/admin/doctors/${doctorA._id}/verify-platform`)
+        .set('Authorization', `Bearer ${superAdminToken}`)
+        .send({
+          comments: 'Checked against TNMC official public registry',
+          lookupSource: 'Tamil Nadu Medical Council Public Search Portal',
+          lookupOutcome: 'Active medical license confirmed'
+        });
+
+      expect(resPlatformStage.status).toBe(200);
+      expect(resPlatformStage.body.data.verificationStatus).toBe('VERIFIED');
+      expect(resPlatformStage.body.data.reviewStage).toBe('COMPLETED');
+      expect(resPlatformStage.body.data.verifiedAt).toBeDefined();
+
+      // Check profile reflection
+      const profileRes = await request(app)
+        .get('/api/v1/doctor/profile')
+        .set('Authorization', `Bearer ${doctorAToken}`);
+
+      expect(profileRes.body.data.verificationStatus).toBe('VERIFIED');
+      expect(profileRes.body.data.verificationBadgeText).toContain('Registration checked on');
     });
   });
 });
