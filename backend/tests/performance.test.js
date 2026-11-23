@@ -29,6 +29,8 @@ describe('MediBridge Performance & Concurrency Benchmark (Real Measured Metrics)
       { name: 'Chennai', centerLat: 13.0827, centerLng: 80.2707 }
     ];
 
+    await clearTestDB();
+
     const hospitals = [];
     for (let i = 1; i <= 1000; i++) {
       const d = districts[i % districts.length];
