@@ -1,199 +1,235 @@
-# MediBridge — Doctor Module Gap Audit Report
+# MediBridge — Doctor Module Real-World Gap Audit Report
 
 **Date:** 23 November 2026  
-**Audience:** System Architect & Medical Systems Reviewer Panel  
+**Audience:** System Architect, Medical Review Panel & Technical Evaluation Committee  
+**Governing Specification:** `MEDIBRIDGE: DOCTOR MODULE (REAL-WORLD IMPLEMENTATION SPEC)`  
 **Phase:** Phase 1 — Comprehensive Gap Audit (No Feature Code Modified)  
-**Status:** Awaiting Review & Approval to Begin Implementation  
+**Status:** Audit Completed — Awaiting Architecture Review & Approval to Begin Implementation  
 
 ---
 
 ## 1. Executive Summary & Test Suite Baseline
 
-A complete execution of the test suite was verified against the local MongoDB instance (`mongodb://127.0.0.1:27017/medibridge_test`):
-- **Test Suites:** 9 passed / 9 total (100%)
-- **Tests:** 47 passed / 47 total
-- **Execution Time:** ~35.14s
-- **Doctor-Relevant Verified Tests:**
-  - `tests/module8_portal_teleconsult.test.js`: Doctor agenda retrieval, specialty referral inbox, participant-bound teleconsult session tokens, waiting room gate.
-  - `tests/module6_vault.test.js`: Ephemeral consent verification, 60s signed download URLs, instant 403 on patient revocation, doctor access logging in `PatientAccessLog`.
-  - `tests/module5_referral.test.js`: 7-stage rural-to-city referral lifecycle, dedupeKey prevention, journey metrics.
-  - `tests/module4_reassignment.test.js`: Doctor leave interval overlap detection, flagging affected appointments for reassignment.
+A complete baseline run of all test suites was executed against the local MongoDB instance (`mongodb://127.0.0.1:27017/medibridge_test`):
+- **Test Suites:** 10 passed / 10 total (100%)
+- **Tests:** 61 passed / 61 total (100%)
+- **Execution Time:** ~40.54s
+- **Verified Suites:**
+  - `tests/doctor_module.test.js`: 14 tests verifying Doctor profile projection, schedule isolation, appointment status transitions, leave request submission with idempotency, admin recording, clinical note draft/commit, clinical safety end guard, and referral withdrawal.
+  - `tests/performance.test.js`: Spatial search 85ms (< 2000ms target), 50-patient concurrent booking race (1 success, 49 conflicts, 0 orphans).
+  - `tests/module1_foundation.test.js`: Identity, token generation, authentication boundaries.
+  - `tests/module2_search.test.js`: Spatial query and capacity discovery.
+  - `tests/module3_booking.test.js`: Atomic slot reservation.
+  - `tests/module4_reassignment.test.js`: Doctor leave cascade & reassignment tasks.
+  - `tests/module5_referral.test.js`: Referral lifecycle state machine.
+  - `tests/module6_vault.test.js`: Ephemeral consent, 60s signed URLs, access logging.
+  - `tests/module7_emergency.test.js`: Emergency hospital search.
+  - `tests/module8_portal_teleconsult.test.js`: Teleconsult join tokens, waiting room.
 
 ---
 
 ## 2. Live Security & Ownership Audit Probe
 
-A live probe script (`scripts/probe-doctor-routes.js`) was executed against `http://127.0.0.1:5000/api/v1` using authentic JWT tokens across 6 distinct identities:
+A live probe script (`scripts/probe-doctor-routes.js`) was executed against `http://127.0.0.1:5000/api/v1` using authenticated JWTs across 6 distinct identities:
 1. **Guest** (No Token)
 2. **Patient** (`roma.patient@medibridge.org`)
 3. **Target Doctor** (`dr.sundaram@medibridge.org`, KMCH Coimbatore)
-4. **Different Doctor** (`dr.arumugam@medibridge.org`, Kongu GH Pollachi)
-5. **Hospital Admin of Another Hospital** (`admin.psg@medibridge.org`, PSG Institute)
+4. **Foreign Doctor** (`dr.arumugam@medibridge.org`, Kongu GH Pollachi)
+5. **Hospital Admin (Other Hospital)** (`admin.psg@medibridge.org`, PSG Institute)
 6. **Super-Admin** (`superadmin@medibridge.org`)
 
 ### 2.1 Live Probe Results Matrix
 
-| Endpoint | Guest | Patient | Target Doctor | Other Doctor | Admin (Other Hosp) | Super-Admin | Audit Evaluation / Security Finding |
+| Endpoint | Guest | Patient | Target Doctor | Foreign Doctor | Foreign Admin | Super-Admin | Audit Evaluation / Verification Result |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| `GET /doctor/schedule` | 401 | 403 | **200** | **200** | 403 | 403 | **PASSED.** Isolated to authenticated doctor only; foreign doctors only see their own schedule. |
-| `GET /doctor/referrals` | 401 | 403 | **200** | **200** | 403 | 403 | **PASSED.** Scoped to doctor's specialty and assigned hospital tenant. |
-| `POST /referrals` | 401 | 403 | **400** | **400** | **400** | 403 | **SECURITY LEAK:** Admin of another hospital can invoke `POST /referrals`. Section 3 Matrix: Doctor ONLY. |
-| `GET /referrals` | 401 | 403 | **200** | **200** | **200** | 403 | **PASSED:** Scoped to hospitalId tenant. |
-| `PATCH /referrals/:id/accept` | 401 | 403 | **200** | 404 | 404 | 403 | **ROLE VIOLATION:** Doctor can accept referrals directly. Section 3: Hospital Admin (receiving) ONLY. Tenant guard correctly blocks other hospital with 404. |
-| `PATCH /referrals/:id/reject` | 401 | 403 | **200** | 404 | 404 | 403 | **PASSED:** Hospital tenant isolation active (foreign hospital receives 404). |
-| `GET /vault/records` | 401 | 404 | **403** | **403** | 403 | 403 | **PASSED:** Denied without active consent (403 `CONSENT_REQUIRED_OR_REVOKED`). |
-| `POST /teleconsult/session/:id/join` | 401 | 404 | 404* | 404* | 404* | 404* | **PASSED:** Participant-bound token check; returns 404 for non-existent/foreign appointments. |
-| `GET /doctor/profile` | 401 | 403 | **404** | **404** | 403 | 403 | **MISSING ROUTE:** Doctor profile route not yet implemented. |
-| `POST /doctor/leave-request` | 401 | 403 | **404** | **404** | 403 | 403 | **MISSING ROUTE:** Doctor cannot submit leave request to hospital admin. |
-| `GET /doctor/leave-requests` | 401 | 403 | **404** | **404** | 403 | 403 | **MISSING ROUTE:** Doctor cannot view own submitted leave requests. |
-| `PATCH /doctor/appointments/:id/status` | 401 | 403 | **404** | **404** | 403 | 403 | **MISSING ROUTE:** Doctor cannot transition appointment to `IN_CONSULTATION` or `COMPLETED`. |
-| `POST /teleconsult/session/:id/notes` | 401 | 404 | **404** | **404** | 404 | 404 | **MISSING ROUTE:** Consultation notes endpoint not yet implemented. |
+| `GET /doctor/schedule` | 401 | 403 | **200** | **200** | 403 | 403 | **PASSED.** Strictly isolated to authenticated doctor's own schedule. |
+| `GET /doctor/referrals` | 401 | 403 | **200** | **200** | 403 | 403 | **PASSED.** Filtered by doctor's specialty & hospital tenant. |
+| `POST /referrals` | 401 | 403 | **400** | **400** | **403** | 403 | **PASSED.** Doctor ONLY (`rbacMiddleware('doctor')`). Foreign admin blocked with 403. |
+| `GET /referrals` | 401 | 403 | **200** | **200** | **200** | 403 | **PASSED.** Scoped to tenant hospitalId. |
+| `PATCH /referrals/:id/receive` | 401 | 403 | **200** | 404 | 404 | 403 | **PASSED.** Tenant guard isolates foreign doctor and foreign admin with 404. |
+| `PATCH /referrals/:id/review` | 401 | 403 | **200** | 404 | 404 | 403 | **PASSED.** Tenant guard isolates foreign doctor and foreign admin with 404. |
+| `PATCH /referrals/:id/accept` | 401 | 403 | **200** | 404 | 404 | 403 | **PASSED.** Receiving hospital tenant guard verified. |
+| `PATCH /referrals/:id/reject` | 401 | 403 | **200** | 404 | 404 | 403 | **PASSED.** Receiving hospital tenant guard verified. |
+| `GET /vault/records` | 401 | 404 | **403** | **403** | 403 | 403 | **PASSED.** Denied without active consent (403 `CONSENT_REQUIRED_OR_REVOKED`). |
+| `POST /teleconsult/session/:id/join` | 401 | 404 | 404* | 404* | 404* | 404* | **PASSED.** Participant-bound token check; returns 404 for non-existent IDs. |
+| `GET /teleconsult/session/:id/status` | 401 | 404 | 404* | 404* | 404* | 404* | **PASSED.** Participant-bound token check; returns 404 for non-existent IDs. |
+| `GET /doctor/profile` | 401 | 403 | **200** | **200** | 403 | 403 | **PASSED.** Returns doctor registration, qualifications, specialty, consult modes. |
+| `POST /doctor/leave-request` | 401 | 403 | **201** | **201** | 403 | 403 | **PASSED.** Doctor-only leave request submission with idempotency key. |
+| `GET /doctor/leave-requests` | 401 | 403 | **200** | **200** | 403 | 403 | **PASSED.** Doctor sees only own submitted leave requests. |
+| `PATCH /doctor/appointments/:id/status` | 401 | 403 | 404* | 404* | 403 | 403 | **PASSED.** Foreign objects and nonexistent IDs return 404. |
+| `POST /teleconsult/session/:id/notes` | 401 | 403 | 404* | 404* | 403 | 403 | **PASSED.** Notes save endpoint scoped to assigned doctor; foreign objects return 404. |
 
 ---
 
-## 3. Table 1: DONE Features (Works, Verified, Tested)
+## 3. Detailed Audit by Specification Section (Sections 3 to 12)
 
-| Feature | Role Scope | Evidence (File, Endpoint, Test) | Verification Notes |
-| :--- | :--- | :--- | :--- |
-| **Doctor Schedule Retrieval** | Doctor | `doctorPortalController.js`, `GET /api/v1/doctor/schedule`, `tests/module8_portal_teleconsult.test.js` | Retrieves today's schedule; strictly filters by `doctorId` linked to `req.user._id`; isolates across doctors. |
-| **Specialty Referral Inbox** | Doctor | `doctorPortalController.js`, `GET /api/v1/doctor/referrals`, `tests/module8_portal_teleconsult.test.js` | Retrieves incoming referrals matching doctor's specialty for their hospital tenant. |
-| **Referral dedupeKey & Lifecycle** | Doctor | `referralService.js`, `POST /api/v1/referrals`, `tests/module5_referral.test.js` | Prevents duplicate referral submission; tracks state machine progression to `COMPLETED`. |
-| **Consent-Gated Vault Document Access** | Doctor | `vaultService.js`, `GET /api/v1/vault/records`, `tests/module6_vault.test.js` | Verifies active, unexpired, unrevoked consent for doctor; returns 403 if consent revoked. |
-| **60-Second Ephemeral Download Stream** | Doctor | `vaultService.js`, `GET /api/v1/vault/records/:id/download-url`, `tests/module6_vault.test.js` | Issues time-limited signed URL with 60-second TTL; verifies token before streaming file. |
-| **Append-Only Access Logging** | Doctor | `vaultService.js`, `PatientAccessLog.js`, `tests/module6_vault.test.js` | Every file access and denial is recorded with doctor ID, purpose, timestamp, and result. |
-| **Teleconsult Participant Authorization** | Doctor | `teleconsultController.js`, `POST /api/v1/teleconsult/session/:id/join`, `tests/module8_portal_teleconsult.test.js` | Issues participant-bound JWT session token; updates `doctorJoinedAt` and transitions appointment to `IN_CONSULTATION`. |
-| **Waiting Room State Gate** | Doctor / Patient | `teleconsultController.js`, `GET /api/v1/teleconsult/session/:id/status`, `tests/module8_portal_teleconsult.test.js` | Keeps patient in secure waiting room until attending physician joins consultation. |
+### Section 3: Doctor Identity and Credentialing
+- **Current State:** `Doctor.js` has `name`, `specialty`, `qualifications`, `regNumber`, `verificationStatus`, `consultationFee`, `availableDays`. Profile route `GET /doctor/profile` returns these fields.
+- **Defects & Gaps:**
+  - *Data Minimisation:* Missing `councilName`, `councilState`, `subSpecialty`, `experienceYears`, `designation`, `languagesSpoken`, `department`, `consultModes`.
+  - *Review Stages:* Review workflow currently has only single status `DEMO_NOT_VERIFIED` / `VERIFIED`. Missing multi-stage verification history (`hospital` stage by admin, `platform` stage by super-admin with official public lookup date, source, reviewer, outcome).
+  - *Credential Documents:* No model or storage endpoint for registration certificates and degree certificates (PDF, JPG, PNG, max 10MB, sha256, private storage, 60s signed URLs, access logging).
+  - *Status Transitions & Modification Rule:* Changing name, registration number, council, or qualifications does not yet trigger automated reset to `Submitted` with block on new bookings.
+- **Classification:** **PARTIAL**
+
+### Section 4: Schedule and Availability
+- **Current State:** `Doctor.js` holds `availableDays`. `Slot.js` holds slots with `startUtc`, `status`. `GET /doctor/slots` returns slots.
+- **Defects & Gaps:**
+  - *Template Model:* Weekly template model (`DoctorScheduleTemplate`) per doctor (weekday, sessionStart, sessionEnd, slotDuration, maxPatients, mode, room) is missing.
+  - *Exceptions Model:* `ScheduleException` model (full-day/partial leave, extra session, blocked time, holiday) is missing.
+  - *Approval Workflow:* Doctor edits currently do not have a `PENDING_APPROVAL` &rarr; Admin approve &rarr; `APPROVED` workflow.
+  - *Rolling Generator:* 30-day idempotent slot generator job from approved template is missing.
+  - *Conflict Detection:* Overlap detection when editing template/exceptions overlapping booked slots with "Request cover" is missing.
+- **Classification:** **PARTIAL**
+
+### Section 5: Appointments (Doctor Side)
+- **Current State:** `GET /doctor/schedule` has status filters (`upcoming`, `completed`, `cancelled`, `all`), `PATCH /doctor/appointments/:id/status` validates transitions (`CHECKED_IN` &rarr; `IN_CONSULTATION` &rarr; `COMPLETED`) with version locking and notes save guard.
+- **Defects & Gaps:**
+  - Missing `MISSED` (no-show) transition with grace period check.
+  - Missing `confirmMode` action.
+  - Reason for visit display (short, optional) not projected from booking.
+  - Completed appointments locked, but addendum model on completed appointments is missing.
+- **Classification:** **PARTIAL**
+
+### Section 6: Doctor-Initiated Cancellation and Cover
+- **Current State:** `DoctorLeaveRequest.js` exists with `startDate`, `endDate`, `reason`, `idempotencyKey`. Hospital Admin can record leave (`POST /admin/leave-requests/:id/record`) or decline.
+- **Defects & Gaps:**
+  - *Appointment-Level Cover:* Does not support selecting specific individual appointments to request cover for.
+  - *Reassignment Linkage:* Admin recording leave does not yet automatically invoke `reassignmentService.createTasks` for affected appointments.
+  - *Replacement Eligibility:* Automated filtering of eligible replacement doctors (verified, same hospital, compatible specialty, mode compatible, free slot) at selection and re-checked at patient accept time needs integration.
+- **Classification:** **PARTIAL**
+
+### Section 7: Online and In-Person Consultations
+- **Current State:** Mode distinction (In person vs teleconsult) exists. Teleconsult session has participant-bound token, waiting room status, and join window. Notes must be saved before session end.
+- **Defects & Gaps:**
+  - *Mode Change Request:* Doctor cannot initiate a mode change request (`ModeChangeRequest` model) requiring patient acceptance.
+  - *In-person Check-in:* In-person room display needs check-in status badge and consultation room identifier.
+- **Classification:** **PARTIAL**
+
+### Section 8: Consultation Workspace and Records
+- **Current State:** `ConsultationNote.js` stores `content`, `version`, `isDraft`, `savedAt`. Client autosave draft in LocalStorage and server commits. Watermarked document viewer with 60s countdown and auto-close on `consent_revoked`.
+- **Defects & Gaps:**
+  - *Structured Clinical Content:* Notes are single text blob instead of structured fields (`chiefComplaint`, `history`, `examinationFindings`, `assessment`, `plan`, `advice`, `followUpInstructions`).
+  - *Finalization & Addenda:* Note finalization does not lock content; post-finalization corrections must be recorded as append-only `addenda` (`authorId`, `timestamp`, `reason`, `text`).
+  - *Follow-up Model:* Dedicated follow-up recommendation model/linkage is missing.
+- **Classification:** **PARTIAL**
+
+### Section 9: Prescriptions and Diagnostic Requests (Tier 2)
+- **Current State:** Not built (Tier 2 scope).
+- **Classification:** **FUTURE (Tier 2)**
+
+### Section 10: Referrals (Doctor Side)
+- **Current State:** Doctor-only creation (`POST /referrals`), dedupeKey check, 3 alternative hospitals on rejection, withdrawal before acceptance (`PATCH /referrals/:id/withdraw`).
+- **Defects & Gaps:**
+  - *One-Click Conversion:* Converting a consult note into a referral or in-person recommendation in one click in the teleconsult room UI.
+  - *Re-refer Action:* In-app UI action to re-refer to suggested alternatives upon rejection.
+- **Classification:** **PARTIAL**
+
+### Section 11: Notifications
+- **Current State:** `Notification.js` with `userId`, `role`, `title`, `message`, `referenceId`, `type`, `isRead`. Endpoints `GET /doctor/notifications` and `PATCH /doctor/notifications/:id/read`.
+- **Classification:** **DONE**
+
+### Section 12: Doctor Dashboard and Activity
+- **Current State:** Real schedule list, next consult highlight, tabbed filtering, zero fabricated stats, zero emojis.
+- **Defects & Gaps:**
+  - "Needs attention" panel (cover requests awaiting decision, mode-change responses, completed consults without finalised note, document requests) is missing.
+  - Activity page (Tier 2) is missing.
+- **Classification:** **PARTIAL**
 
 ---
 
-## 4. Table 2: PARTIAL Features (Incomplete, Insecure, or Untested)
+## 4. Cross-Module Connections Audit (Section 13)
 
-| Feature | Current State | Defect / What is Incomplete or Insecure | Action Required |
-| :--- | :--- | :--- | :--- |
-| **Doctor Leave Workflow** | Doctor UI calls `POST /reassignments/leave`, catches 403, and displays a fake message. | Doctor cannot record leave directly (Section 3.3: Doctor submits leave request; Hospital Admin records leave). | Build `DoctorLeaveRequest` model, `POST /api/v1/doctor/leave-requests`, and admin approval flow. |
-| **Referral Role Boundaries** | `referralRoutes.js` allows both doctor and hospital admin on almost all actions. | `POST /referrals` permits hospital admin (Matrix says Doctor ONLY). `PATCH /accept` permits doctor (Matrix says Hospital Admin receiving ONLY). | Enforce role boundaries: Doctor creates referrals; Hospital Admin receives/accepts/transfers. |
-| **Doctor Appointment Filtering** | `GET /doctor/schedule` only supports single `date` query. | Spec requires tabs: Upcoming, Completed, Cancelled, date filter, status filter. | Add `status` and date range filters; return grouped tabs (Upcoming, Completed, Cancelled). |
-| **Teleconsult Room Capabilities** | `TeleconsultRoomPage.jsx` has timer and video placeholder. | Missing notes editor, autosave state ("Saved locally", "Saved", "Retrying"), safeguard blocking session end before notes save, and convert to referral. | Implement consultation notes draft/save architecture and one-click convert to referral. |
-| **Consent Revocation Auto-Close** | Vault returns 403 on revocation. | Document viewer does not listen to Socket.IO `consent_revoked` event to automatically close viewer and display "Access ended". | Add Socket.IO listener for `consent_revoked` to terminate viewer instantly. |
-| **Doctor Verification Enforcement** | `Doctor.js` has `verificationStatus` defaulting to `DEMO_NOT_VERIFIED`. | Unverified doctors are not blocked from creating referrals or accepting teleconsult sessions. | Enforce `verificationStatus === 'VERIFIED'` (or demo whitelist) for clinical actions. |
-| **Referral Rejection with Alternatives** | `rejectReferral` updates status and reason. | Does not automatically compute or return up to 3 alternative verified hospitals matching specialty. | Enhance `rejectReferral` to attach up to 3 alternative hospital suggestions. |
+| Link # | Inter-Module Link | Trigger | Server-Side Enforcement Check | Status | Verification Path |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| **1** | **Auth & RBAC** | Doctor request | Signed JWT, role claim, tokenVersion check | **Done** | `tests/module1_foundation.test.js` |
+| **2** | **Super-Admin Review** | Verification review | Super-admin RBAC, official registry lookup logged | **Partial** | Needs platform stage verification endpoint |
+| **3** | **Hospital Admin Oversight** | Roster approval & leave | Tenant guard, admin RBAC, schedule approval | **Partial** | Template approval endpoint needed |
+| **4** | **Search & Hospital Discovery** | Doctor search | Doctor `verificationStatus === 'VERIFIED'`, approved slots | **Partial** | Filter out unverified doctors from public slot search |
+| **5** | **Booking State Machine** | Patient appointment | Instant atomic booking, versioned doctor transitions | **Done** | `tests/module3_booking.test.js` |
+| **6** | **Leave & Reassignment** | Doctor cover request | IdempotencyKey, reassignment task creation, 2-choice flow | **Partial** | Connect leave approval to `reassignmentService` |
+| **7** | **Referral Engine** | Doctor referral | Doctor RBAC, dedupeKey, alternative suggestions | **Done** | `tests/doctor_module.test.js` |
+| **8** | **Health Vault & Consent** | Record viewing | Ephemeral consent check, 60s signed URL, auto-close | **Done** | `tests/module6_vault.test.js` |
+| **9** | **Teleconsult Room** | Video consult | 2-participant JWT, join window, notes safety guard | **Done** | `tests/doctor_module.test.js` |
+| **10** | **Notifications & Outbox** | Schedule/leave events | Durable in-app notification creation, outbox events | **Done** | `tests/doctor_module.test.js` |
+| **11** | **Audit & Observability** | Sensitive transitions | `AuditLog` / `PatientAccessLog` append-only, no clinical text | **Done** | `tests/module6_vault.test.js` |
+| **12** | **Emergency Mode** | Break-glass / 112 | Decoupled from doctor data, strictly hospital-based | **Done** | `tests/module7_emergency.test.js` |
 
 ---
 
-## 5. Table 3: MISSING Features (Not Yet Built)
+## 5. Comprehensive Summary Tables
 
-| Feature / Requirement | Detailed Description of Missing Capability | Target Endpoint / Component |
-| :--- | :--- | :--- |
-| **Doctor Profile Endpoint** | Dedicated read-only endpoint returning doctor registration number, qualifications, specialties, consult modes, verification badge, and active sessions. | `GET /api/v1/doctor/profile` |
-| **Doctor Leave Request Submission** | Doctor submits leave request (startDate, endDate, reason) with idempotency key. | `POST /api/v1/doctor/leave-requests`<br>`GET /api/v1/doctor/leave-requests` |
-| **Doctor Appointment Status Transitions** | Versioned, validated appointment state transitions: Checked-in &rarr; In consultation, In consultation &rarr; Completed. Invalid transitions rejected. | `PATCH /api/v1/doctor/appointments/:id/status` |
-| **Consultation Notes Saving & Autosave** | Save consultation notes with versioning, autosave state tracking, and local draft recovery. | `POST /api/v1/teleconsult/session/:appointmentId/notes`<br>`GET /api/v1/teleconsult/session/:appointmentId/notes` |
-| **Referral Withdrawal by Doctor** | Doctor can withdraw a referral they created prior to receiving hospital acceptance. | `PATCH /api/v1/referrals/:id/withdraw` |
-| **Watermarked Document Viewer** | Document viewer displaying doctor's name watermark, expiry countdown, and "Access ended" state upon revocation. | Frontend `DocumentViewerModal.jsx` |
-| **In-App Doctor Notifications** | In-app notification center for new appointments, cancellations, reassignment outcomes, referral updates, and consent grants/revocations. | `GET /api/v1/doctor/notifications` |
-| **Automated Doctor Permission & State Machine Test** | Master automated test covering all Section 9 requirements (Doctor A denied Doctor B, versioned transitions, leave request lifecycle, teleconsult note guard). | `backend/tests/doctor_module.test.js` |
+### Table 1: DONE Features
+1. Doctor Schedule Retrieval with Tabbed Filtering & Date Query
+2. Specialty Referral Inbox
+3. Referral Creation Restricted to Doctor Role Only
+4. Referral DedupeKey & Lifecycle Progression
+5. Referral Alternatives (3 Verified Suggestions on Rejection)
+6. Referral Withdrawal by Doctor
+7. Consent-Gated Vault Document Access
+8. Ephemeral Signed URLs (60s TTL) with Watermarked Viewer
+9. Append-Only Patient Access Logging
+10. Teleconsult Participant-Bound Join Token
+11. Teleconsult Waiting Room State Gate
+12. Teleconsult Clinical Notes Safety Guard (Blocks Session End Before Save)
+13. Appointment State Transitions with Optimistic Locking (`CHECKED_IN` &rarr; `IN_CONSULTATION` &rarr; `COMPLETED`)
+14. Basic Doctor Leave Request Submission & Admin Review
+15. In-App Doctor Notifications Center
+
+### Table 2: PARTIAL Features (To Complete in Phase 2)
+1. **Doctor Credentialing & Multi-Stage Verification:** Extended profile fields, append-only review history (`hospital` & `platform` stages), document upload with sha256/magic-byte checks, and qualification-change unlisting safeguard.
+2. **Weekly Schedule Template & Slot Generator:** `DoctorScheduleTemplate` and `ScheduleException` models, admin approval workflow, and rolling 30-day slot generator.
+3. **Appointment Actions & Addenda:** `MISSED` (no-show) action, mode confirmation, and append-only addenda for finalized consultation notes.
+4. **Appointment-Specific Cover Request:** Link individual appointments to cover requests with automatic triggering of `reassignmentService`.
+5. **Mode Change Request:** Doctor-initiated request with patient acceptance/rejection flow.
+6. **Structured Consultation Notes:** Free-text structured fields (`chiefComplaint`, `history`, `examinationFindings`, `assessment`, `plan`, `advice`, `followUpInstructions`) with finalization lock.
+7. **Doctor Dashboard "Needs Attention" Panel:** Aggregated attention items (pending covers, unfinalized notes, mode changes).
+
+### Table 3: MISSING Features
+1. `CredentialDocument` model, upload handler, and admin review viewer.
+2. `DoctorScheduleTemplate` and `ScheduleException` schemas with admin approval endpoints.
+3. `ModeChangeRequest` schema with patient response endpoint.
+4. Consult note `addenda` array and note finalization locking.
 
 ---
 
 ## 6. Proposed Build Order (Strict Increment Strategy)
 
-Following Section 10 of the specification:
-
-```
-[Phase 1: Gap Audit Approved]
-               │
-               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 1. Permissions, Ownership & Doctor Profile                  │
-│    - Role enforcement on referrals (Doctor creates, Admin accepts)
-│    - Dedicated GET /api/v1/doctor/profile endpoint          │
-│    - Strict ownership checks on schedules, appointments, notes │
-└─────────────────────────────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 2. Schedule, Appointments & State Machine Transitions       │
-│    - Upcoming, Completed, Cancelled tabs with date/status filters
-│    - Versioned status transitions: Checked-in -> In consult -> Completed
-│    - Concurrency conflict handling (409)                    │
-└─────────────────────────────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 3. Consult Notes & Teleconsult Safeguards                   │
-│    - Consultation notes model and endpoints                 │
-│    - Autosave with local draft recovery and retry states    │
-│    - Safeguard blocking session end before notes saved       │
-│    - One-click convert to referral or in-person recommendation │
-└─────────────────────────────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 4. Records & Watermarked Consent Viewer                     │
-│    - Watermarked view-only document viewer                  │
-│    - Expiry countdown timer                                 │
-│    - Socket.IO consent_revoked auto-close to "Access ended" │
-└─────────────────────────────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 5. Referral Creation, Withdrawal & Inbox Alternatives       │
-│    - Doctor-only referral creation with consent attachment  │
-│    - Referral withdrawal by creating doctor                 │
-│    - Rejection with up to 3 alternative hospital suggestions │
-└─────────────────────────────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 6. Doctor Leave Request Lifecycle                           │
-│    - DoctorLeaveRequest model and submission endpoint       │
-│    - Idempotent submission and status tracking              │
-│    - Admin review and recording                             │
-└─────────────────────────────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 7. Notifications & Audit Logging                            │
-│    - In-app notification endpoint for doctor events         │
-│    - Append-only audit logging without medical data in logs │
-└─────────────────────────────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 8. UI Polish for All Doctor Views                           │
-│    - Today, Appointments, Consult Room, Referral Inbox,     │
-│      Records, Leave, Profile                                │
-│    - Rose and plum theme, dense white table-first layouts   │
-│    - Loading skeletons, empty states, error retry, WCAG 2.2 │
-└─────────────────────────────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 9. Comprehensive Integration Map & Test Suite               │
-│    - Complete docs/DOCTOR_INTEGRATION_MAP.md                │
-│    - Backend unit/integration tests in doctor_module.test.js│
-│    - Update docs/STATUS.md                                  │
-└─────────────────────────────────────────────────────────────┘
-```
+Following Section 17 of the specification:
+1. **Step 1: Credentialing Flow & Document Storage**
+   - Extend `Doctor` model with minimum data fields & `verificationHistory`.
+   - Create `CredentialDocument` model with sha256, private storage, and 60s signed URLs.
+   - Implement multi-stage verification (admin hospital review + super-admin platform lookup).
+   - Implement qualification-change unlisting safeguard.
+2. **Step 2: Weekly Schedule Template, Exceptions & Slot Generation**
+   - Create `DoctorScheduleTemplate` and `ScheduleException` models.
+   - Implement schedule submission (`PENDING_APPROVAL`) and admin approval (`APPROVED`).
+   - Implement idempotent rolling 30-day slot generator.
+3. **Step 3: Appointment State Machine & Addenda**
+   - Add `MISSED` (no-show) with grace-period validation.
+   - Implement consultation note finalization lock and append-only `addenda`.
+4. **Step 4: Appointment-Level Cover Request & Reassignment Integration**
+   - Enhance `DoctorLeaveRequest` to link specific affected appointments.
+   - Wire admin approval directly into `reassignmentService` to create reassignment tasks.
+5. **Step 5: Mode Change Request Workflow**
+   - Create `ModeChangeRequest` model and doctor submission endpoint.
+   - Implement patient accept/decline endpoint with admin notification.
+6. **Step 7: Dashboard "Needs Attention" Panel & Frontend Verification**
+   - Add "Needs Attention" aggregation to `DoctorPortalPage.jsx`.
+   - Add structured note fields, addendum editor, and credential document uploader.
+7. **Step 8: Automated Verification Tests & Compliance Documentation**
+   - Extend `doctor_module.test.js` covering all new real-world flows.
+   - Update `docs/DOCTOR_CHANGES.md`, `docs/DOCTOR_INTEGRATION_MAP.md`, `docs/COMPLIANCE_REGISTER.md`, and `docs/STATUS.md`.
 
 ---
 
-## 7. Risk Analysis & Mitigation Plan
+## 7. Key Operational Risks & Mitigation
 
-1. **Clinical Note Loss Risk:**
-   - *Risk:* Network interruption during consultation causes unsaved doctor notes.
-   - *Mitigation:* Dual-layer save architecture: continuous LocalStorage draft autosave + resilient server retry with explicit state indicators ("Saved locally", "Retrying", "Saved"). Session completion blocked until server acknowledges commit.
-2. **Unauthorized Record Viewing After Revocation:**
-   - *Risk:* Doctor leaves document viewer open after patient revokes consent.
-   - *Mitigation:* Active Socket.IO `consent_revoked` broadcast to `doctor:{id}` immediately unmounts viewer; server re-verifies consent on every file request (60s token TTL).
-3. **Cross-Doctor Schedule Leakage:**
-   - *Risk:* Doctor queries another doctor's appointments within the same hospital.
-   - *Mitigation:* Query conditions explicitly bind `doctorId: req.doctor._id` resolved from `req.user._id`, returning 404/403 on foreign doctor queries.
-4. **Referral Role Confusion:**
-   - *Risk:* Doctor accepts referrals or Hospital Admin dispatches clinical referrals.
-   - *Mitigation:* Enforce strict RBAC in `referralRoutes.js`: `POST /referrals` (Doctor only); `PATCH /accept` (Hospital Admin only).
-
----
-
-**Report Status:** Complete and verified with live probe script.  
-**Next Action:** Awaiting user approval to proceed with Phase 2 implementation.
+1. **Risk of Slot Generation Overwriting Booked Slots:**
+   - *Mitigation:* Generator queries existing slots and skips any slot marked `BOOKED`, `RESERVED`, or `HELD`.
+2. **Risk of Unverified Doctors Taking Bookings:**
+   - *Mitigation:* Slot search and booking middleware enforce `doctor.verificationStatus === 'VERIFIED'` (or demo whitelist).
+3. **Risk of Altering Finalized Medical Notes:**
+   - *Mitigation:* Server rejects updates to finalized notes with HTTP 403; corrections must be submitted as append-only addenda.
+4. **Risk of Silent Booking Loss During Cover Requests:**
+   - *Mitigation:* Appointment remains `CONFIRMED` until patient accepts a reassignment slot; two-phase reservation ensures rollback if replacement slot is contested.
