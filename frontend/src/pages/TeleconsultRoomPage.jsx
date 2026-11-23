@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { socket } from '../services/socket';
 import { useAuth } from '../context/AuthContext';
+import { generatePrescriptionPDF } from '../utils/prescriptionPdf';
 import {
   Video,
   VideoOff,
@@ -26,7 +27,10 @@ import {
   Activity,
   HeartPulse,
   User,
-  Stethoscope
+  Stethoscope,
+  Download,
+  MessageSquare,
+  SendHorizontal
 } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import Button from '../components/ui/Button';
@@ -49,8 +53,10 @@ export default function TeleconsultRoomPage() {
   const localVideoRef = useRef(null);
   const localStreamRef = useRef(null);
 
+  const isDoctor = user?.role === 'doctor';
+
   // Clinical Consultation Desk States
-  const [activeTab, setActiveTab] = useState('notes'); // 'notes', 'prescription', 'vault'
+  const [activeTab, setActiveTab] = useState(isDoctor ? 'notes' : 'prescription'); // 'notes' / 'doctor_info', 'prescription', 'vault', 'chat'
   const [notesContent, setNotesContent] = useState(
     'SOAP CLINICAL EVALUATION:\n' +
     'Subjective: Patient reports mild chest tightness during morning walks. Zero resting angina.\n' +
@@ -69,6 +75,29 @@ export default function TeleconsultRoomPage() {
   const [newDose, setNewDose] = useState('');
   const [newFreq, setNewFreq] = useState('1-0-0 (Morning)');
   const [newDuration, setNewDuration] = useState('15 Days');
+
+  // Real-time In-Call Chat Messages
+  const [chatMessages, setChatMessages] = useState([
+    { sender: 'doctor', name: 'Dr. M. Revathi', time: '10:00 AM', text: 'Good morning. Welcome to your MediBridge teleconsultation session. Can you hear and see me properly?' },
+    { sender: 'patient', name: 'Roma R', time: '10:01 AM', text: 'Good morning Doctor. Yes, audio and video are working perfectly.' },
+    { sender: 'doctor', name: 'Dr. M. Revathi', time: '10:02 AM', text: 'Excellent. I have reviewed your latest vitals. Your BP is 118/78 mmHg, which is well controlled.' }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+
+  const handleSendChat = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const newMsg = {
+      sender: isDoctor ? 'doctor' : 'patient',
+      name: user?.fullName || (isDoctor ? 'Dr. M. Revathi' : 'Roma R'),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      text: chatInput.trim()
+    };
+
+    setChatMessages((prev) => [...prev, newMsg]);
+    setChatInput('');
+  };
 
   const localDraftKey = `teleconsult_draft_${id}`;
 
@@ -635,24 +664,47 @@ export default function TeleconsultRoomPage() {
           }}
         >
           {/* Clinical Desk Tabs Header */}
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', backgroundColor: '#FAF6F7' }}>
-            <button
-              type="button"
-              onClick={() => setActiveTab('notes')}
-              style={{
-                flex: 1,
-                padding: '14px 10px',
-                border: 'none',
-                backgroundColor: activeTab === 'notes' ? '#FFFFFF' : 'transparent',
-                borderBottom: activeTab === 'notes' ? '2px solid var(--color-primary)' : 'none',
-                color: activeTab === 'notes' ? 'var(--color-primary)' : 'var(--text-muted)',
-                fontWeight: '700',
-                fontSize: '0.8125rem',
-                cursor: 'pointer'
-              }}
-            >
-              SOAP Notes
-            </button>
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', backgroundColor: '#FAF6F7', overflowX: 'auto' }}>
+            {isDoctor ? (
+              <button
+                type="button"
+                onClick={() => setActiveTab('notes')}
+                style={{
+                  flex: 1,
+                  padding: '14px 10px',
+                  border: 'none',
+                  backgroundColor: activeTab === 'notes' ? '#FFFFFF' : 'transparent',
+                  borderBottom: activeTab === 'notes' ? '2px solid var(--color-primary)' : 'none',
+                  color: activeTab === 'notes' ? 'var(--color-primary)' : 'var(--text-muted)',
+                  fontWeight: '700',
+                  fontSize: '0.8125rem',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                SOAP Notes
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setActiveTab('doctor_info')}
+                style={{
+                  flex: 1,
+                  padding: '14px 10px',
+                  border: 'none',
+                  backgroundColor: activeTab === 'doctor_info' ? '#FFFFFF' : 'transparent',
+                  borderBottom: activeTab === 'doctor_info' ? '2px solid var(--color-primary)' : 'none',
+                  color: activeTab === 'doctor_info' ? 'var(--color-primary)' : 'var(--text-muted)',
+                  fontWeight: '700',
+                  fontSize: '0.8125rem',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Attending Physician
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setActiveTab('prescription')}
@@ -665,11 +717,32 @@ export default function TeleconsultRoomPage() {
                 color: activeTab === 'prescription' ? 'var(--color-primary)' : 'var(--text-muted)',
                 fontWeight: '700',
                 fontSize: '0.8125rem',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
               }}
             >
               e-Prescription ({prescriptions.length})
             </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('chat')}
+              style={{
+                flex: 1,
+                padding: '14px 10px',
+                border: 'none',
+                backgroundColor: activeTab === 'chat' ? '#FFFFFF' : 'transparent',
+                borderBottom: activeTab === 'chat' ? '2px solid var(--color-primary)' : 'none',
+                color: activeTab === 'chat' ? 'var(--color-primary)' : 'var(--text-muted)',
+                fontWeight: '700',
+                fontSize: '0.8125rem',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              Live Chat ({chatMessages.length})
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveTab('vault')}
@@ -682,16 +755,17 @@ export default function TeleconsultRoomPage() {
                 color: activeTab === 'vault' ? 'var(--color-primary)' : 'var(--text-muted)',
                 fontWeight: '700',
                 fontSize: '0.8125rem',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap'
               }}
             >
-              Patient Vault
+              {isDoctor ? 'Patient Vault' : 'My Records'}
             </button>
           </div>
 
           <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-            {/* TAB 1: SOAP CLINICAL NOTES */}
-            {activeTab === 'notes' && (
+            {/* DOCTOR VIEW: SOAP CLINICAL NOTES */}
+            {isDoctor && activeTab === 'notes' && (
               <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
@@ -746,18 +820,108 @@ export default function TeleconsultRoomPage() {
               </div>
             )}
 
-            {/* TAB 2: DIGITAL E-PRESCRIPTION PAD */}
+            {/* PATIENT VIEW: ATTENDING PHYSICIAN PROFILE */}
+            {!isDoctor && activeTab === 'doctor_info' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ padding: '16px', backgroundColor: 'var(--color-pale-rose)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: 'var(--color-blush-pink)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '1.125rem' }}>
+                      DR
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                        {sessionData?.participantName || 'Dr. M. Revathi'}
+                      </h4>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: '700' }}>
+                        Consultant Interventional Cardiologist
+                      </p>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8125rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #FAF6F7', paddingBottom: '6px' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Hospital:</span>
+                      <span style={{ fontWeight: '700', color: 'var(--color-heading)' }}>Kovai Medical Center & Hospital (KMCH)</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #FAF6F7', paddingBottom: '6px' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Council Reg No:</span>
+                      <span style={{ fontFamily: 'monospace', fontWeight: '700' }}>TNMC/2018/09283</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #FAF6F7', paddingBottom: '6px' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Degrees:</span>
+                      <span style={{ fontWeight: '600' }}>MBBS, MD (Gen Med), DM (Cardiology), FACC</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #FAF6F7', paddingBottom: '6px' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Clinic Room:</span>
+                      <span style={{ fontWeight: '700', color: 'var(--color-primary)' }}>Cardiology OPD Room 204</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Status:</span>
+                      <span className="badge badge-pill badge-success">Verified Active</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ padding: '14px', backgroundColor: '#FAF6F7', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--color-heading)' }}>Doctor's Clinical Instructions:</span>
+                  <p style={{ margin: '6px 0 0 0', fontSize: '0.8125rem', color: 'var(--text)', lineHeight: '1.5' }}>
+                    "Please keep your morning blood pressure readings and current prescription ready. If experiencing shortness of breath or dizziness, inform immediately during the video call."
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: DIGITAL E-PRESCRIPTION PAD (Shared between Doctor and Patient) */}
             {activeTab === 'prescription' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                    Active Medication Regimen
-                  </span>
-                  <span className="badge badge-pill badge-primary">Digital Rx</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                      {isDoctor ? 'Active Medication Regimen' : 'Prescribed Medications for This Visit'}
+                    </span>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Prescription Ref: {sessionData?.referenceNumber || 'RX-202611-0491'}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      generatePrescriptionPDF(
+                        {
+                          id: id,
+                          rxNumber: sessionData?.referenceNumber || 'RX-202611-0491',
+                          patientName: isDoctor ? sessionData?.participantName : (user?.fullName || 'Roma R'),
+                          patientAge: '42 / Female',
+                          date: new Date().toLocaleDateString('en-GB'),
+                          diagnosis: 'Coronary Artery Disease & Essential Hypertension',
+                          medications: prescriptions.map((p) => ({
+                            name: p.drug,
+                            dose: p.dose,
+                            freq: p.freq,
+                            duration: p.duration
+                          }))
+                        },
+                        {
+                          fullName: isDoctor ? (user?.fullName || 'Dr. M. Revathi') : 'Dr. M. Revathi',
+                          qualifications: 'MBBS, MD (Gen Med), DM (Cardiology), FACC',
+                          regNumber: 'TNMC/2018/09283',
+                          councilName: 'Tamil Nadu Medical Council',
+                          department: 'Department of Cardiology (Room 204)'
+                        }
+                      );
+                      setActionMsg({ type: 'success', text: 'Downloaded official medical prescription PDF.' });
+                    }}
+                    className="btn btn-sm btn-outline"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  >
+                    <Download size={13} />
+                    <span>Download Prescription PDF</span>
+                  </button>
                 </div>
 
                 {/* Medication Items List */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
                   {prescriptions.map((med) => (
                     <div
                       key={med.id}
@@ -779,85 +943,162 @@ export default function TeleconsultRoomPage() {
                           {med.freq} &bull; {med.duration}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMedication(med.id)}
-                        style={{ background: 'none', border: 'none', color: 'var(--status-critical-solid)', cursor: 'pointer', padding: '4px' }}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      {isDoctor && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveMedication(med.id)}
+                          style={{ background: 'none', border: 'none', color: 'var(--status-critical-solid)', cursor: 'pointer', padding: '4px' }}
+                          title="Remove Medication"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
 
-                {/* Add Drug Form */}
-                <form onSubmit={handleAddMedication} style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
-                    <input
-                      type="text"
-                      placeholder="Medication name (e.g. Tab Ramipril)"
-                      value={newDrug}
-                      onChange={(e) => setNewDrug(e.target.value)}
-                      style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.8125rem' }}
-                      required
-                    />
-                    <input
-                      type="text"
-                      placeholder="Dose (5mg)"
-                      value={newDose}
-                      onChange={(e) => setNewDose(e.target.value)}
-                      style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.8125rem' }}
-                    />
-                  </div>
+                {/* DOCTOR ONLY: Add Drug Form */}
+                {isDoctor && (
+                  <form onSubmit={handleAddMedication} style={{ display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '8px' }}>
+                      <input
+                        type="text"
+                        placeholder="Medication name (e.g. Tab Ramipril)"
+                        value={newDrug}
+                        onChange={(e) => setNewDrug(e.target.value)}
+                        style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                        required
+                      />
+                      <input
+                        type="text"
+                        placeholder="Dose (5mg)"
+                        value={newDose}
+                        onChange={(e) => setNewDose(e.target.value)}
+                        style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                      />
+                    </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <select
-                      value={newFreq}
-                      onChange={(e) => setNewFreq(e.target.value)}
-                      style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <select
+                        value={newFreq}
+                        onChange={(e) => setNewFreq(e.target.value)}
+                        style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                      >
+                        <option value="1-0-0 (Morning)">1-0-0 (Morning)</option>
+                        <option value="0-0-1 (Night)">0-0-1 (Night)</option>
+                        <option value="1-0-1 (Morning & Night)">1-0-1 (Morning & Night)</option>
+                        <option value="1-1-1 (Thrice Daily)">1-1-1 (Thrice Daily)</option>
+                        <option value="SOS (When Needed)">SOS (When Needed)</option>
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Duration (e.g. 30 Days)"
+                        value={newDuration}
+                        onChange={(e) => setNewDuration(e.target.value)}
+                        style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="btn btn-sm btn-outline"
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                     >
-                      <option value="1-0-0 (Morning)">1-0-0 (Morning)</option>
-                      <option value="0-0-1 (Night)">0-0-1 (Night)</option>
-                      <option value="1-0-1 (Morning & Night)">1-0-1 (Morning & Night)</option>
-                      <option value="1-1-1 (Thrice Daily)">1-1-1 (Thrice Daily)</option>
-                      <option value="SOS (When Needed)">SOS (When Needed)</option>
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Duration (e.g. 30 Days)"
-                      value={newDuration}
-                      onChange={(e) => setNewDuration(e.target.value)}
-                      style={{ padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.8125rem' }}
-                    />
-                  </div>
+                      <Plus size={14} />
+                      <span>Add to Prescription</span>
+                    </button>
+                  </form>
+                )}
 
+                {isDoctor && (
                   <button
-                    type="submit"
-                    className="btn btn-sm btn-outline"
-                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                    type="button"
+                    onClick={() => setActionMsg({ type: 'success', text: 'Digital prescription signed and transferred to Patient Health Vault.' })}
+                    className="btn btn-sm btn-primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '6px' }}
                   >
-                    <Plus size={14} />
-                    <span>Add to Prescription</span>
+                    <Send size={14} />
+                    <span>Sign & Transmit Rx to Patient Vault</span>
                   </button>
-                </form>
-
-                <button
-                  type="button"
-                  onClick={() => setActionMsg({ type: 'success', text: 'Digital prescription signed and transferred to Patient Health Vault.' })}
-                  className="btn btn-sm btn-primary"
-                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '6px' }}
-                >
-                  <Send size={14} />
-                  <span>Sign & Transmit Rx to Patient Vault</span>
-                </button>
+                )}
               </div>
             )}
 
-            {/* TAB 3: PATIENT VAULT RECORDS */}
+            {/* TAB: LIVE CHAT (Shared Messaging between Doctor and Patient) */}
+            {activeTab === 'chat' && (
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '320px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                    In-Consultation Secure Messaging
+                  </span>
+                  <span className="badge badge-pill badge-success">Encrypted</span>
+                </div>
+
+                <div
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    padding: '12px',
+                    backgroundColor: '#FAF6F7',
+                    borderRadius: '12px',
+                    border: '1px solid var(--border)',
+                    overflowY: 'auto',
+                    maxHeight: '240px'
+                  }}
+                >
+                  {chatMessages.map((msg, idx) => {
+                    const isMe = (isDoctor && msg.sender === 'doctor') || (!isDoctor && msg.sender === 'patient');
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          alignSelf: isMe ? 'flex-end' : 'flex-start',
+                          maxWidth: '80%',
+                          padding: '10px 14px',
+                          borderRadius: '12px',
+                          backgroundColor: isMe ? 'var(--color-primary)' : '#FFFFFF',
+                          color: isMe ? '#FFFFFF' : 'var(--color-heading)',
+                          border: isMe ? 'none' : '1px solid var(--border)',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', fontSize: '0.6875rem', opacity: 0.85, marginBottom: '2px' }}>
+                          <span style={{ fontWeight: '700' }}>{msg.name}</span>
+                          <span>{msg.time}</span>
+                        </div>
+                        <div style={{ fontSize: '0.8125rem', lineHeight: '1.4' }}>{msg.text}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <form onSubmit={handleSendChat} style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Type a clinical message..."
+                    style={{ flex: 1, height: '40px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                  />
+                  <button
+                    type="submit"
+                    className="btn btn-sm btn-primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '0 16px' }}
+                  >
+                    <SendHorizontal size={14} />
+                    <span>Send</span>
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* TAB: HEALTH VAULT RECORDS */}
             {activeTab === 'vault' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <span style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                  Patient Diagnostic History
+                  {isDoctor ? 'Patient Diagnostic History' : 'My Health Vault Documents'}
                 </span>
                 {[
                   { name: 'Comprehensive Lipid Profile.pdf', date: '20 Nov 2026', type: 'Lab Report' },

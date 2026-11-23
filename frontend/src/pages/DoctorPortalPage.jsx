@@ -8,6 +8,7 @@ import PageHeader from '../components/PageHeader';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Modal from '../components/ui/Modal';
+import { generatePrescriptionPDF } from '../utils/prescriptionPdf';
 import {
   Calendar,
   Clock,
@@ -43,7 +44,13 @@ import {
   Sparkles,
   HelpCircle,
   ChevronRight,
-  Filter
+  Filter,
+  Save,
+  Printer,
+  Pill,
+  Award,
+  CheckSquare,
+  MessageSquare
 } from 'lucide-react';
 
 export default function DoctorPortalPage() {
@@ -154,18 +161,94 @@ export default function DoctorPortalPage() {
     { id: 'apt-8', time: '05:15 PM', patient: 'Kavitha S', mode: 'Online', reason: 'Lab Review', status: 'Confirmed', actionType: 'consult', sub: 'upcoming' }
   ]);
 
+  // Active Patient for Clinical Consultation Desk (Room 204)
+  const [activeDeskPatient, setActiveDeskPatient] = useState(null);
+
   // ==========================================================================
-  // 3. AVAILABILITY & DUTY SCHEDULE DEMO DATA
+  // 3. AVAILABILITY & DUTY SCHEDULE DEMO DATA (Persisted in localStorage)
   // ==========================================================================
   const [isDoctorAvailable, setIsDoctorAvailable] = useState(true);
-  const [leaveRequests, setLeaveRequests] = useState([
-    { id: 'l-1', dates: '24-25 Dec 2026', type: 'CME Conference Leave', reason: 'Annual Cardiological Society CME Conference', status: 'APPROVED' },
-    { id: 'l-2', dates: '02-03 Jan 2027', type: 'Personal Leave', reason: 'Family engagement', status: 'PENDING' }
-  ]);
+  const [leaveRequests, setLeaveRequests] = useState(() => {
+    const saved = localStorage.getItem('medibridge_doctor_leave_requests');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return [
+      { id: 'l-1', dates: '24-25 Dec 2026', type: 'CME Conference Leave', duration: '2 Days', reason: 'Annual Cardiological Society CME Conference', status: 'APPROVED', coveringDoctor: 'Dr. K. Sundaram (Cardiology)' },
+      { id: 'l-2', dates: '02-03 Jan 2027', type: 'Personal Leave', duration: '2 Days', reason: 'Family engagement & travel', status: 'PENDING', coveringDoctor: 'Dr. Prakash R (Orthopedics)' }
+    ];
+  });
+
+  const [leaveBalances, setLeaveBalances] = useState(() => {
+    const saved = localStorage.getItem('medibridge_doctor_leave_balances');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return { casual: 6, sick: 10, cme: 4 };
+  });
+
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [leaveType, setLeaveType] = useState('Casual / Personal Leave');
   const [leaveStartDate, setLeaveStartDate] = useState('2026-12-28');
   const [leaveEndDate, setLeaveEndDate] = useState('2026-12-29');
+  const [coveringDoctor, setCoveringDoctor] = useState('Dr. K. Sundaram (Consultant Cardiologist)');
   const [leaveReason, setLeaveReason] = useState('');
+  const [emergencyLeaveContact, setEmergencyLeaveContact] = useState('+91 98421 99887');
+
+  const calculateLeaveDays = (start, end) => {
+    if (!start || !end) return 1;
+    const d1 = new Date(start);
+    const d2 = new Date(end);
+    const diff = Math.max(0, d2 - d1);
+    return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+  };
+
+  const handleRequestLeave = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!leaveStartDate || !leaveEndDate) {
+      setMsg({ type: 'error', text: 'Please select both start date and end date.' });
+      return;
+    }
+
+    const durationDays = calculateLeaveDays(leaveStartDate, leaveEndDate);
+    const newLeave = {
+      id: `l-${Date.now()}`,
+      dates: `${leaveStartDate} to ${leaveEndDate}`,
+      duration: `${durationDays} ${durationDays === 1 ? 'Day' : 'Days'}`,
+      type: leaveType || 'Casual / Personal Leave',
+      reason: leaveReason || 'Planned medical specialist out-of-office leave',
+      status: 'PENDING',
+      coveringDoctor: coveringDoctor || 'Dr. K. Sundaram (Consultant Cardiologist)',
+      emergencyContact: emergencyLeaveContact || '+91 98421 99887'
+    };
+
+    const updated = [newLeave, ...leaveRequests];
+    setLeaveRequests(updated);
+    localStorage.setItem('medibridge_doctor_leave_requests', JSON.stringify(updated));
+
+    // Update quota
+    const newBal = { ...leaveBalances };
+    if (leaveType.includes('Casual')) {
+      newBal.casual = Math.max(0, newBal.casual - durationDays);
+    } else if (leaveType.includes('Sick')) {
+      newBal.sick = Math.max(0, newBal.sick - durationDays);
+    } else if (leaveType.includes('CME')) {
+      newBal.cme = Math.max(0, newBal.cme - durationDays);
+    }
+    setLeaveBalances(newBal);
+    localStorage.setItem('medibridge_doctor_leave_balances', JSON.stringify(newBal));
+
+    setShowLeaveModal(false);
+    setLeaveReason('');
+    setMsg({
+      type: 'success',
+      text: `Leave request for ${leaveStartDate} to ${leaveEndDate} (${durationDays} days) submitted successfully to KMCH Medical Administration.`
+    });
+  };
 
   // ==========================================================================
   // 4. PRESCRIPTIONS DEMO DATA
@@ -405,6 +488,7 @@ export default function DoctorPortalPage() {
     };
   });
   const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('identity'); // 'identity', 'fees', 'contact', 'alerts'
 
   const handleSaveDoctorSettings = (e) => {
     e.preventDefault();
@@ -733,14 +817,6 @@ export default function DoctorPortalPage() {
                 Integrated patient consultation queue, clinical consultation management, and appointment scheduler.
               </p>
             </div>
-            <Link
-              to="/teleconsult/room/TC-LIVE-01"
-              className="btn btn-primary"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
-            >
-              <Video size={16} />
-              <span>Launch Teleconsult Room</span>
-            </Link>
           </div>
 
           {/* Sub-tabs pills */}
@@ -851,10 +927,12 @@ export default function DoctorPortalPage() {
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => setMsg({ type: 'success', text: `Clinical Desk opened for ${apt.patient} in OPD Room 204.` })}
+                                onClick={() => setActiveDeskPatient(apt)}
                                 className="btn btn-sm btn-outline"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                               >
-                                Open Desk
+                                <Stethoscope size={13} />
+                                <span>Open Desk</span>
                               </button>
                             )}
                           </td>
@@ -1059,7 +1137,9 @@ export default function DoctorPortalPage() {
                 <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
                   <tr>
                     <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Dates</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Duration</th>
                     <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Leave Type</th>
+                    <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Handover Physician</th>
                     <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Reason & Justification</th>
                     <th style={{ padding: '12px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Approval Status</th>
                   </tr>
@@ -1068,7 +1148,9 @@ export default function DoctorPortalPage() {
                   {leaveRequests.map((l) => (
                     <tr key={l.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '14px 20px', fontWeight: '700', color: 'var(--color-heading)' }}>{l.dates}</td>
+                      <td style={{ padding: '14px 20px', fontWeight: '600', color: 'var(--color-primary)' }}>{l.duration || '2 Days'}</td>
                       <td style={{ padding: '14px 20px' }}>{l.type}</td>
+                      <td style={{ padding: '14px 20px', fontSize: '0.8125rem' }}>{l.coveringDoctor || 'Dr. K. Sundaram (Cardiology)'}</td>
                       <td style={{ padding: '14px 20px', fontSize: '0.8125rem' }}>{l.reason}</td>
                       <td style={{ padding: '14px 20px' }}>
                         <span className={`badge badge-pill ${l.status === 'APPROVED' ? 'badge-success' : 'badge-warning'}`}>
@@ -1176,7 +1258,10 @@ export default function DoctorPortalPage() {
                       <td style={{ padding: '14px 20px' }}>
                         <button
                           type="button"
-                          onClick={() => setMsg({ type: 'success', text: `Downloading certified PDF for ${rx.rxNumber} (${rx.patientName})...` })}
+                          onClick={() => {
+                            generatePrescriptionPDF(rx, doctorSettings);
+                            setMsg({ type: 'success', text: `Generated & downloaded official prescription PDF for ${rx.rxNumber} (${rx.patientName}).` });
+                          }}
                           className="btn btn-sm btn-outline"
                           style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                         >
@@ -1684,7 +1769,7 @@ export default function DoctorPortalPage() {
           ================================================================ */}
       {(currentTab === 'profile' || currentTab === 'settings') && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Header */}
+          {/* Executive Doctor Hero Card */}
           <div
             className="card"
             style={{
@@ -1697,19 +1782,63 @@ export default function DoctorPortalPage() {
               justifyContent: 'space-between',
               alignItems: 'center',
               flexWrap: 'wrap',
-              gap: '16px'
+              gap: '20px'
             }}
           >
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h1 style={{ margin: 0, fontSize: '1.375rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                  Doctor Profile & Practice Settings
-                </h1>
-                <span className="badge badge-pill badge-primary">Unified Module</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+              <div
+                style={{
+                  width: '68px',
+                  height: '68px',
+                  borderRadius: '16px',
+                  backgroundColor: 'var(--color-blush-pink)',
+                  color: 'var(--color-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: '800',
+                  fontSize: '1.5rem',
+                  border: '2px solid var(--border)',
+                  position: 'relative'
+                }}
+              >
+                {doctorSettings.fullName?.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase() || 'DR'}
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '-4px',
+                    right: '-4px',
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    backgroundColor: 'var(--status-success-solid)',
+                    color: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Check size={12} strokeWidth={3} />
+                </div>
               </div>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                Configure doctor personal details, affiliated hospital department, consultation fees, and practice preferences.
-              </p>
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <h1 style={{ margin: 0, fontSize: '1.375rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                    {doctorSettings.fullName}
+                  </h1>
+                  <span className="badge badge-pill badge-primary">Consultant Specialist</span>
+                  <span className="badge badge-pill badge-success">Verified Active</span>
+                </div>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'var(--color-heading)', fontWeight: '600' }}>
+                  {doctorSettings.specialty} ({doctorSettings.subSpecialty || 'Interventional Cardiology'}) &bull; {doctorSettings.hospitalName}
+                </p>
+                <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginTop: '6px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  <span><strong>Council Reg:</strong> {doctorSettings.regNumber} ({doctorSettings.councilName})</span>
+                  <span><strong>Qualifications:</strong> {doctorSettings.qualifications}</span>
+                  <span><strong>Clinic:</strong> {doctorSettings.department}</span>
+                </div>
+              </div>
             </div>
 
             <button
@@ -1717,245 +1846,807 @@ export default function DoctorPortalPage() {
               onClick={handleSaveDoctorSettings}
               disabled={savingSettings}
               className="btn btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 22px' }}
             >
-              {savingSettings ? 'Saving Settings...' : 'Save Profile & Settings'}
+              <Save size={16} />
+              <span>{savingSettings ? 'Saving Settings...' : 'Save Profile & Settings'}</span>
             </button>
           </div>
 
-          <form onSubmit={handleSaveDoctorSettings} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Section 1: Doctor Identity & Medical Council Details */}
-            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                1. Doctor Identity & Hospital Affiliation
-              </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Full Name</label>
-                  <Input
-                    type="text"
-                    value={doctorSettings.fullName}
-                    onChange={(e) => setDoctorSettings({ ...doctorSettings, fullName: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Medical Registration No.</label>
-                  <Input
-                    type="text"
-                    value={doctorSettings.regNumber}
-                    onChange={(e) => setDoctorSettings({ ...doctorSettings, regNumber: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Specialty</label>
-                  <Input
-                    type="text"
-                    value={doctorSettings.specialty}
-                    onChange={(e) => setDoctorSettings({ ...doctorSettings, specialty: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Affiliated Hospital</label>
-                  <Input
-                    type="text"
-                    value={doctorSettings.hospitalName}
-                    onChange={(e) => setDoctorSettings({ ...doctorSettings, hospitalName: e.target.value })}
-                    required
-                  />
-                </div>
+          {/* Quick Metrics Strip */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'var(--color-pale-rose)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Clock size={20} />
+              </div>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Clinical Experience</span>
+                <div style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>14+ Years</div>
               </div>
             </div>
 
-            {/* Section 2: Consultation Fees & Slot Settings */}
-            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                2. Consultation Settings & Pricing
-              </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>In-Person Consultation Fee (₹)</label>
-                  <Input
-                    type="number"
-                    value={doctorSettings.inPersonFee}
-                    onChange={(e) => setDoctorSettings({ ...doctorSettings, inPersonFee: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Online Teleconsultation Fee (₹)</label>
-                  <Input
-                    type="number"
-                    value={doctorSettings.teleconsultFee}
-                    onChange={(e) => setDoctorSettings({ ...doctorSettings, teleconsultFee: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Slot Duration</label>
-                  <select
-                    className="form-select"
-                    value={doctorSettings.slotDuration}
-                    onChange={(e) => setDoctorSettings({ ...doctorSettings, slotDuration: e.target.value })}
-                    style={{ width: '100%', height: '42px', borderRadius: '10px' }}
-                  >
-                    <option value="15 mins">15 Minutes</option>
-                    <option value="20 mins">20 Minutes</option>
-                    <option value="30 mins">30 Minutes</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Max Daily Consultations</label>
-                  <Input
-                    type="number"
-                    value={doctorSettings.maxDailyPatients}
-                    onChange={(e) => setDoctorSettings({ ...doctorSettings, maxDailyPatients: e.target.value })}
-                    required
-                  />
-                </div>
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'var(--color-pale-rose)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <UserCheck size={20} />
+              </div>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Consultations</span>
+                <div style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>1,850+ Verified</div>
               </div>
             </div>
 
-            {/* Section 3: Official Contact & Desk Details */}
-            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                3. Official Hospital Contact & Direct Extensions
-              </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Official Hospital Email</label>
-                  <Input
-                    type="email"
-                    value={doctorSettings.officialEmail}
-                    onChange={(e) => setDoctorSettings({ ...doctorSettings, officialEmail: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Clinical Desk Phone</label>
-                  <Input
-                    type="text"
-                    value={doctorSettings.deskPhone}
-                    onChange={(e) => setDoctorSettings({ ...doctorSettings, deskPhone: e.target.value })}
-                    required
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Emergency On-Call Mobile</label>
-                  <Input
-                    type="text"
-                    value={doctorSettings.emergencyPhone}
-                    onChange={(e) => setDoctorSettings({ ...doctorSettings, emergencyPhone: e.target.value })}
-                    required
-                  />
-                </div>
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'var(--color-pale-rose)', color: 'var(--status-success-solid)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Council Standing</span>
+                <div style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--status-success-solid)' }}>Good Standing (NDHM)</div>
               </div>
             </div>
 
-            {/* Section 4: Practice Preferences & Alerts */}
-            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
-              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                4. Practice Notification & Security Settings
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#FAF6F7', borderRadius: '10px' }}>
+            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'var(--color-pale-rose)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Building2 size={20} />
+              </div>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>OPD Location</span>
+                <div style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>Room 204, KMCH</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sub-Tabs Pills */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {[
+              { id: 'identity', label: '1. Professional Identity & Credentials' },
+              { id: 'fees', label: '2. Consultation Fees & OPD Rules' },
+              { id: 'contact', label: '3. Hospital Extensions & Communications' },
+              { id: 'alerts', label: '4. Practice Alerts & Security' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSettingsTab(tab.id)}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '9999px',
+                  fontSize: '0.8125rem',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  border: '1px solid',
+                  borderColor: settingsTab === tab.id ? 'var(--color-primary)' : 'var(--border)',
+                  backgroundColor: settingsTab === tab.id ? 'var(--color-primary)' : '#FFFFFF',
+                  color: settingsTab === tab.id ? '#FFFFFF' : 'var(--color-heading)',
+                  boxShadow: settingsTab === tab.id ? '0 2px 6px rgba(184, 61, 131, 0.25)' : 'none'
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={handleSaveDoctorSettings} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* SUB-TAB 1: PROFESSIONAL IDENTITY */}
+            {settingsTab === 'identity' && (
+              <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
+                <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                  Professional Medical Credentials
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
                   <div>
-                    <div style={{ fontWeight: '700', fontSize: '0.875rem' }}>SMS Notifications for Urgent Bookings</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Receive SMS alerts when urgent consultation slots are requested</div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Doctor Full Name & Honorific</label>
+                    <input
+                      type="text"
+                      value={doctorSettings.fullName}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, fullName: e.target.value })}
+                      required
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                    />
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={doctorSettings.smsAlerts}
-                    onChange={(e) => setDoctorSettings({ ...doctorSettings, smsAlerts: e.target.checked })}
-                    style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
-                  />
-                </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: '#FAF6F7', borderRadius: '10px' }}>
                   <div>
-                    <div style={{ fontWeight: '700', fontSize: '0.875rem' }}>WhatsApp Video Consultation Links</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Get direct WebRTC consultation links delivered to WhatsApp 10 minutes prior</div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>State Medical Council Registration No.</label>
+                    <input
+                      type="text"
+                      value={doctorSettings.regNumber}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, regNumber: e.target.value })}
+                      required
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem', fontFamily: 'monospace' }}
+                    />
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={doctorSettings.whatsappLinks}
-                    onChange={(e) => setDoctorSettings({ ...doctorSettings, whatsappLinks: e.target.checked })}
-                    style={{ width: '20px', height: '20px', accentColor: 'var(--color-primary)' }}
-                  />
-                </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', backgroundColor: 'var(--color-pale-rose)', borderRadius: '10px' }}>
                   <div>
-                    <div style={{ fontWeight: '700', fontSize: '0.875rem' }}>108 Emergency Divert Casualty Broadcasts</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Statutory alerts for inbound Level 1 trauma cases (Always Active)</div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>State Medical Council</label>
+                    <input
+                      type="text"
+                      value={doctorSettings.councilName}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, councilName: e.target.value })}
+                      required
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                    />
                   </div>
-                  <span className="badge badge-pill badge-primary">Active</span>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Clinical Qualifications & Fellowships</label>
+                    <input
+                      type="text"
+                      value={doctorSettings.qualifications}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, qualifications: e.target.value })}
+                      required
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Primary Specialty</label>
+                    <input
+                      type="text"
+                      value={doctorSettings.specialty}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, specialty: e.target.value })}
+                      required
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Sub-Specialty / Super-Specialization</label>
+                    <input
+                      type="text"
+                      value={doctorSettings.subSpecialty}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, subSpecialty: e.target.value })}
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Affiliated Hospital Network</label>
+                    <input
+                      type="text"
+                      value={doctorSettings.hospitalName}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, hospitalName: e.target.value })}
+                      required
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Hospital Department & OPD Room</label>
+                    <input
+                      type="text"
+                      value={doctorSettings.department}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, department: e.target.value })}
+                      required
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* SUB-TAB 2: CONSULTATION FEES & PRICING */}
+            {settingsTab === 'fees' && (
+              <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
+                <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                  Consultation Pricing & Slot Rules
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>In-Person OPD Consultation Fee (₹)</label>
+                    <input
+                      type="number"
+                      value={doctorSettings.inPersonFee}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, inPersonFee: e.target.value })}
+                      required
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Online HD Teleconsultation Fee (₹)</label>
+                    <input
+                      type="number"
+                      value={doctorSettings.teleconsultFee}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, teleconsultFee: e.target.value })}
+                      required
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>OPD Consultation Slot Duration</label>
+                    <select
+                      className="form-select"
+                      value={doctorSettings.slotDuration}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, slotDuration: e.target.value })}
+                      style={{ width: '100%', height: '42px', borderRadius: '10px' }}
+                    >
+                      <option value="15 mins">15 Minutes (Fast-Track / Follow-up)</option>
+                      <option value="20 mins">20 Minutes (Standard Review)</option>
+                      <option value="30 mins">30 Minutes (Comprehensive Cardiac Evaluation)</option>
+                      <option value="45 mins">45 Minutes (Initial Super-Specialty Workup)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Maximum Daily OPD Patient Quota</label>
+                    <input
+                      type="number"
+                      value={doctorSettings.maxDailyPatients}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, maxDailyPatients: e.target.value })}
+                      required
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 3: HOSPITAL EXTENSIONS & COMMUNICATIONS */}
+            {settingsTab === 'contact' && (
+              <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
+                <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                  Hospital Internal Communications & Extensions
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Official Clinical Email</label>
+                    <input
+                      type="email"
+                      value={doctorSettings.officialEmail}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, officialEmail: e.target.value })}
+                      required
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Clinical Desk Phone (EPABX)</label>
+                    <input
+                      type="text"
+                      value={doctorSettings.deskPhone}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, deskPhone: e.target.value })}
+                      required
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Emergency On-Call Mobile (Physician Handset)</label>
+                    <input
+                      type="text"
+                      value={doctorSettings.emergencyPhone}
+                      onChange={(e) => setDoctorSettings({ ...doctorSettings, emergencyPhone: e.target.value })}
+                      required
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>Hospital Emergency Pager ID</label>
+                    <input
+                      type="text"
+                      defaultValue="PGR-KMCH-CARDIO-04"
+                      readOnly
+                      style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.875rem', backgroundColor: '#FAF6F7' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUB-TAB 4: PRACTICE ALERTS & SECURITY */}
+            {settingsTab === 'alerts' && (
+              <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
+                <h3 style={{ margin: '0 0 16px 0', fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)', borderBottom: '1px solid var(--border)', paddingBottom: '10px' }}>
+                  Practice Notifications & Clinical Safety Alerts
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', backgroundColor: '#FAF6F7', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                    <div>
+                      <div style={{ fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>SMS Notifications for Urgent OPD Bookings</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Receive immediate SMS alerts on doctor handset when high-priority slots are requested</div>
+                    </div>
+                    <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="checkbox"
+                        checked={doctorSettings.smsAlerts}
+                        onChange={(e) => setDoctorSettings({ ...doctorSettings, smsAlerts: e.target.checked })}
+                        style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)' }}
+                      />
+                      <span style={{ fontSize: '0.8125rem', fontWeight: '700', color: doctorSettings.smsAlerts ? 'var(--color-primary)' : 'var(--text-muted)' }}>
+                        {doctorSettings.smsAlerts ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', backgroundColor: '#FAF6F7', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                    <div>
+                      <div style={{ fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>WhatsApp Direct Teleconsultation Room Link</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Receive direct encrypted WebRTC room bridge link on WhatsApp 10 minutes prior to online appointments</div>
+                    </div>
+                    <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="checkbox"
+                        checked={doctorSettings.whatsappLinks}
+                        onChange={(e) => setDoctorSettings({ ...doctorSettings, whatsappLinks: e.target.checked })}
+                        style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)' }}
+                      />
+                      <span style={{ fontSize: '0.8125rem', fontWeight: '700', color: doctorSettings.whatsappLinks ? 'var(--color-primary)' : 'var(--text-muted)' }}>
+                        {doctorSettings.whatsappLinks ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', backgroundColor: '#FAF6F7', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                    <div>
+                      <div style={{ fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>Critical Diagnostic Lab Panic Value Escalations</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Immediate push notification when high-risk laboratory reports (Troponin-I, Serum K+) are validated</div>
+                    </div>
+                    <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="checkbox"
+                        checked={doctorSettings.emergencyTriageAlerts}
+                        onChange={(e) => setDoctorSettings({ ...doctorSettings, emergencyTriageAlerts: e.target.checked })}
+                        style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)' }}
+                      />
+                      <span style={{ fontSize: '0.8125rem', fontWeight: '700', color: doctorSettings.emergencyTriageAlerts ? 'var(--color-primary)' : 'var(--text-muted)' }}>
+                        {doctorSettings.emergencyTriageAlerts ? 'Enabled' : 'Disabled'}
+                      </span>
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', backgroundColor: 'var(--color-pale-rose)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                    <div>
+                      <div style={{ fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>108 Emergency Divert Casualty Broadcasts</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Mandatory statutory alerts for inbound Level 1 cardiac trauma triage (Hospital Policy: Always Active)</div>
+                    </div>
+                    <span className="badge badge-pill badge-primary">Active</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
                 type="submit"
                 disabled={savingSettings}
                 className="btn btn-primary"
-                style={{ minWidth: '180px' }}
+                style={{ minWidth: '200px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
               >
-                {savingSettings ? 'Saving Settings...' : 'Save Profile & Settings'}
+                <Save size={16} />
+                <span>{savingSettings ? 'Saving Settings...' : 'Save Profile & Settings'}</span>
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* MODAL 1: REQUEST LEAVE */}
+      {/* MODAL 1: REQUEST LEAVE (Enhanced with Persistence, Validation & Handover) */}
       {showLeaveModal && (
         <Modal
           isOpen={showLeaveModal}
           onClose={() => setShowLeaveModal(false)}
           title="Request Out-of-Office Leave"
+          maxWidth="640px"
         >
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const newL = {
-                id: `l-${Date.now()}`,
-                dates: `${leaveStartDate} to ${leaveEndDate}`,
-                type: 'Specialist Planned Leave',
-                reason: leaveReason || 'Clinical training/leave',
-                status: 'PENDING'
-              };
-              setLeaveRequests([newL, ...leaveRequests]);
-              setShowLeaveModal(false);
-              setLeaveReason('');
-              setMsg({ type: 'success', text: 'Leave request submitted for Hospital Admin review.' });
-            }}
-            style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
-          >
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Leave allowance summary */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'var(--color-pale-rose)',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                border: '1px solid var(--border)'
+              }}
+            >
               <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>Start Date</label>
-                <Input type="date" value={leaveStartDate} onChange={(e) => setLeaveStartDate(e.target.value)} required />
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Annual Leave Allowance</span>
+                <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--color-heading)' }}>
+                    Casual: <strong style={{ color: 'var(--color-primary)' }}>{leaveBalances.casual}</strong> Days
+                  </span>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--color-heading)' }}>
+                    Sick: <strong style={{ color: 'var(--color-primary)' }}>{leaveBalances.sick}</strong> Days
+                  </span>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--color-heading)' }}>
+                    CME: <strong style={{ color: 'var(--color-primary)' }}>{leaveBalances.cme}</strong> Days
+                  </span>
+                </div>
               </div>
+              <span className="badge badge-pill badge-primary">KMCH Medical Staff</span>
+            </div>
+
+            <form
+              onSubmit={handleRequestLeave}
+              style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
+            >
               <div>
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>End Date</label>
-                <Input type="date" value={leaveEndDate} onChange={(e) => setLeaveEndDate(e.target.value)} required />
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>
+                  Leave Type
+                </label>
+                <select
+                  value={leaveType}
+                  onChange={(e) => setLeaveType(e.target.value)}
+                  className="form-select"
+                  style={{ width: '100%', height: '42px', borderRadius: '10px' }}
+                  required
+                >
+                  <option value="Casual / Personal Leave">Casual / Personal Leave (Remaining: {leaveBalances.casual} days)</option>
+                  <option value="Sick / Medical Leave">Sick / Medical Leave (Remaining: {leaveBalances.sick} days)</option>
+                  <option value="CME Conference Leave">CME & Academic Conference Leave (Remaining: {leaveBalances.cme} days)</option>
+                  <option value="Academic & Clinical Training">Academic & Clinical Training Duty</option>
+                  <option value="Emergency Personal Leave">Emergency Personal Leave</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    value={leaveStartDate}
+                    onChange={(e) => setLeaveStartDate(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      height: '42px',
+                      padding: '8px 12px',
+                      borderRadius: '10px',
+                      border: '1px solid var(--border)',
+                      fontSize: '0.875rem'
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    value={leaveEndDate}
+                    onChange={(e) => setLeaveEndDate(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      height: '42px',
+                      padding: '8px 12px',
+                      borderRadius: '10px',
+                      border: '1px solid var(--border)',
+                      fontSize: '0.875rem'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Calculated duration preview badge */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: '#FAF6F7', borderRadius: '8px' }}>
+                <Clock size={15} style={{ color: 'var(--color-primary)' }} />
+                <span style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--color-heading)' }}>
+                  Calculated Duration: {calculateLeaveDays(leaveStartDate, leaveEndDate)} Days
+                </span>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>
+                  Covering / Relieving Physician (OPD Handover)
+                </label>
+                <select
+                  value={coveringDoctor}
+                  onChange={(e) => setCoveringDoctor(e.target.value)}
+                  className="form-select"
+                  style={{ width: '100%', height: '42px', borderRadius: '10px' }}
+                >
+                  <option value="Dr. K. Sundaram (Consultant Cardiologist)">Dr. K. Sundaram (Consultant Cardiologist)</option>
+                  <option value="Dr. M. Revathi (Interventional Cardiology)">Dr. M. Revathi (Interventional Cardiology)</option>
+                  <option value="Dr. Prakash R (Orthopedics & Trauma)">Dr. Prakash R (Orthopedics & Trauma)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>
+                  Reason & Clinical Justification
+                </label>
+                <textarea
+                  rows="3"
+                  value={leaveReason}
+                  onChange={(e) => setLeaveReason(e.target.value)}
+                  placeholder="State reason for absence or conference participation..."
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border)',
+                    fontSize: '0.875rem',
+                    fontFamily: 'inherit'
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>
+                  Emergency Contact During Leave
+                </label>
+                <input
+                  type="text"
+                  value={emergencyLeaveContact}
+                  onChange={(e) => setEmergencyLeaveContact(e.target.value)}
+                  placeholder="+91 98421 99887"
+                  style={{
+                    width: '100%',
+                    height: '42px',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border)',
+                    fontSize: '0.875rem'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                <Button type="button" variant="outline" onClick={() => setShowLeaveModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleRequestLeave}
+                >
+                  Submit Leave Request
+                </Button>
+              </div>
+            </form>
+          </div>
+        </Modal>
+      )}
+
+      {/* MODAL: OPD CLINICAL CONSULTATION DESK (Room 204 Workstation) */}
+      {activeDeskPatient && (
+        <Modal
+          isOpen={Boolean(activeDeskPatient)}
+          onClose={() => setActiveDeskPatient(null)}
+          title={`Clinical Consultation Desk • ${activeDeskPatient.patient} (Room 204)`}
+          maxWidth="840px"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            {/* Patient Demographic Banner */}
+            <div
+              style={{
+                backgroundColor: 'var(--color-pale-rose)',
+                border: '1px solid var(--border)',
+                borderRadius: '14px',
+                padding: '16px 20px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div
+                  style={{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '12px',
+                    backgroundColor: 'var(--color-blush-pink)',
+                    color: 'var(--color-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: '800',
+                    fontSize: '1.125rem'
+                  }}
+                >
+                  {activeDeskPatient.patient?.substring(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
+                      {activeDeskPatient.patient}
+                    </h3>
+                    <span className="badge badge-pill badge-primary">OPD Token #04</span>
+                  </div>
+                  <p style={{ margin: '3px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    42 Yrs &bull; Female &bull; UHID: KMCH-UHID-884920 &bull; {activeDeskPatient.time} &bull; {activeDeskPatient.mode}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className={`badge badge-pill ${activeDeskPatient.status === 'Completed' ? 'badge-success' : 'badge-primary'}`}>
+                  {activeDeskPatient.status}
+                </span>
               </div>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>Reason</label>
-              <textarea
-                rows="3"
-                value={leaveReason}
-                onChange={(e) => setLeaveReason(e.target.value)}
-                placeholder="Reason for leave / conference..."
-                style={{ width: '100%', padding: '8px 10px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.8125rem' }}
-                required
-              />
+
+            {/* Vitals Strip */}
+            <div
+              style={{
+                backgroundColor: '#FFFFFF',
+                border: '1px solid var(--border)',
+                borderRadius: '12px',
+                padding: '12px 18px',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(5, 1fr)',
+                gap: '12px',
+                textAlign: 'center'
+              }}
+            >
+              <div>
+                <span style={{ fontSize: '0.6875rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Blood Pressure</span>
+                <div style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-heading)', marginTop: '2px' }}>122/80 mmHg</div>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.6875rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Heart Rate</span>
+                <div style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-primary)', marginTop: '2px' }}>72 bpm</div>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.6875rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>SpO2</span>
+                <div style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--status-success-solid)', marginTop: '2px' }}>99%</div>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.6875rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Temp</span>
+                <div style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-heading)', marginTop: '2px' }}>98.4 °F</div>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.6875rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Weight / BMI</span>
+                <div style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-heading)', marginTop: '2px' }}>64 kg (24.2)</div>
+              </div>
             </div>
-            <Button type="submit" variant="primary">Submit Leave Request</Button>
-          </form>
+
+            {/* Clinical Evaluation Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>
+                  Chief Complaints & Clinical Presentation
+                </label>
+                <textarea
+                  rows="3"
+                  defaultValue="Patient presents for follow-up review. Reports mild exertional dyspnea on ascending 2 flights of stairs. Zero chest pain at rest. Regular compliance with morning cardiac medications."
+                  style={{ width: '100%', padding: '10px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '6px' }}>
+                  Provisional Diagnosis (ICD-10)
+                </label>
+                <input
+                  type="text"
+                  defaultValue="I25.10 - Atherosclerotic heart disease of native coronary artery & Essential Hypertension"
+                  style={{ width: '100%', height: '42px', padding: '8px 12px', borderRadius: '10px', border: '1px solid var(--border)', fontSize: '0.8125rem', fontWeight: '600' }}
+                />
+                <div style={{ marginTop: '8px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: '700', marginBottom: '4px' }}>
+                    Physical Examination Findings
+                  </label>
+                  <input
+                    type="text"
+                    defaultValue="S1 S2 heard normal. Chest clear bilaterally. No peripheral ankle edema."
+                    style={{ width: '100%', height: '36px', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Prescriptions Section in Desk */}
+            <div style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '14px', backgroundColor: '#FFFFFF' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Stethoscope size={16} style={{ color: 'var(--color-primary)' }} />
+                  <span style={{ fontSize: '0.875rem', fontWeight: '800', color: 'var(--color-heading)' }}>Prescribed Medications (Rx Pad)</span>
+                </div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Issued under Dr. M. Revathi (TNMC/2018/09283)</span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {[
+                  { name: 'Tab Atorvastatin', dose: '20mg', freq: '0-0-1 (Night, After Food)', duration: '30 Days' },
+                  { name: 'Tab Metoprolol Succinate', dose: '25mg', freq: '1-0-0 (Morning, Empty Stomach)', duration: '30 Days' },
+                  { name: 'Tab Ecosprin', dose: '75mg', freq: '0-1-0 (After Lunch)', duration: '30 Days' }
+                ].map((m, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px 12px',
+                      backgroundColor: '#FAF6F7',
+                      borderRadius: '8px',
+                      fontSize: '0.8125rem'
+                    }}
+                  >
+                    <span style={{ fontWeight: '700', color: 'var(--color-heading)' }}>{idx + 1}. {m.name} ({m.dose})</span>
+                    <span style={{ color: 'var(--text)' }}>{m.freq}</span>
+                    <span style={{ fontWeight: '600', color: 'var(--color-primary)' }}>{m.duration}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  generatePrescriptionPDF(
+                    {
+                      id: activeDeskPatient.id,
+                      rxNumber: `RX-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-0491`,
+                      patientName: activeDeskPatient.patient,
+                      patientAge: '42 / Female',
+                      date: new Date().toLocaleDateString('en-GB'),
+                      diagnosis: 'Coronary Artery Disease & Essential Hypertension',
+                      medications: [
+                        { name: 'Tab Atorvastatin', dose: '20mg', freq: '0-0-1 (Night, After Food)', duration: '30 Days' },
+                        { name: 'Tab Metoprolol Succinate', dose: '25mg', freq: '1-0-0 (Morning, Empty Stomach)', duration: '30 Days' },
+                        { name: 'Tab Ecosprin', dose: '75mg', freq: '0-1-0 (After Lunch)', duration: '30 Days' }
+                      ]
+                    },
+                    doctorSettings
+                  );
+                }}
+                icon={Download}
+              >
+                Download Prescription PDF
+              </Button>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <Button type="button" variant="tertiary" onClick={() => setActiveDeskPatient(null)}>
+                  Close Desk
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  icon={CheckCircle}
+                  onClick={() => {
+                    // Mark appointment completed
+                    const updated = screen5Appointments.map((a) =>
+                      a.id === activeDeskPatient.id ? { ...a, status: 'Completed' } : a
+                    );
+                    setScreen5Appointments(updated);
+
+                    // Generate Rx in list
+                    const newRx = {
+                      id: `rx-${Date.now()}`,
+                      rxNumber: `RX-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-049${Math.floor(Math.random() * 80 + 10)}`,
+                      patientName: activeDeskPatient.patient,
+                      patientAge: '42 / Female',
+                      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+                      diagnosis: 'Coronary Artery Disease & Essential Hypertension',
+                      status: 'Signed & Sent to Vault',
+                      medications: [
+                        { name: 'Tab Atorvastatin', dose: '20mg', freq: '0-0-1 (Night)', duration: '30 Days' },
+                        { name: 'Tab Metoprolol Succinate', dose: '25mg', freq: '1-0-0 (Morning)', duration: '30 Days' },
+                        { name: 'Tab Ecosprin', dose: '75mg', freq: '0-1-0 (After Lunch)', duration: '30 Days' }
+                      ]
+                    };
+                    setPrescriptionsList([newRx, ...prescriptionsList]);
+
+                    // Auto download PDF
+                    generatePrescriptionPDF(newRx, doctorSettings);
+
+                    setActiveDeskPatient(null);
+                    setMsg({
+                      type: 'success',
+                      text: `Consultation completed for ${activeDeskPatient.patient}. Medical prescription issued and certified PDF downloaded.`
+                    });
+                  }}
+                >
+                  Complete Visit & Issue Rx
+                </Button>
+              </div>
+            </div>
+          </div>
         </Modal>
       )}
 
