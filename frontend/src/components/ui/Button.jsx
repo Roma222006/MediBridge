@@ -16,7 +16,10 @@ export default function Button({
     primary: 'btn-primary',
     secondary: 'btn-secondary',
     tertiary: 'btn-tertiary',
-    danger: 'btn-danger'
+    danger: 'btn-danger',
+    outline: 'btn-outline',
+    success: 'btn-success',
+    neutral: 'btn-secondary'
   }[variant] || 'btn-primary';
 
   const sizeClass = {
@@ -26,6 +29,14 @@ export default function Button({
     lg: 'btn-lg'
   }[size] || '';
 
+  const renderIcon = () => {
+    if (!Icon) return null;
+    if (React.isValidElement(Icon)) {
+      return Icon;
+    }
+    return <Icon size={18} strokeWidth={1.75} aria-hidden="true" />;
+  };
+
   return (
     <button
       className={`btn ${variantClass} ${sizeClass} ${className}`.trim()}
@@ -33,13 +44,9 @@ export default function Button({
       {...props}
     >
       {loading && <Loader2 size={16} strokeWidth={1.75} className="spin-icon" aria-hidden="true" />}
-      {!loading && Icon && iconPosition === 'left' && (
-        <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
-      )}
+      {!loading && Icon && iconPosition === 'left' && renderIcon()}
       <span>{children}</span>
-      {!loading && Icon && iconPosition === 'right' && (
-        <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
-      )}
+      {!loading && Icon && iconPosition === 'right' && renderIcon()}
     </button>
   );
 }

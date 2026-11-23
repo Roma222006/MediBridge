@@ -113,6 +113,38 @@ export default function SearchPage() {
         subtitle="Real-time facility capacity, specialist schedules, and verified scheme acceptance across Tamil Nadu."
       />
 
+      {/* User Guidance Banner */}
+      <div
+        style={{
+          backgroundColor: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderLeft: '4px solid var(--color-primary)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '14px 18px',
+          marginBottom: 'var(--space-5)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}
+      >
+        <div>
+          <span style={{ fontWeight: '700', color: 'var(--color-heading)', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Sparkles size={16} style={{ color: 'var(--color-primary)' }} />
+            Hospital Discovery & Real-Time Capacity
+          </span>
+          <p style={{ margin: '2px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            Search verified healthcare facilities in Coimbatore. View real-time General & ICU bed counts, check CMCHIS government scheme empanelment, and book appointments with verified specialists.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <span className="badge badge-pill badge-neutral" style={{ fontSize: '0.75rem' }}>
+            Live Bed Socket: Active
+          </span>
+        </div>
+      </div>
+
       {/* Full-width Search Bar and Aligned Filter Controls */}
       <div className="card" style={{ marginBottom: 'var(--space-6)', padding: 'var(--space-4)' }}>
         <form onSubmit={handleSearchSubmit}>

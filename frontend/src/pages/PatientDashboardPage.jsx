@@ -129,6 +129,26 @@ export default function PatientDashboardPage() {
         subtitle={`Active Profile: ${activeProfile?.fullName || user?.name} (${activeProfile?.relationship || 'Self'}) • Family ID: ${activeProfile?._id || ''}`}
       />
 
+      {/* Patient Guidance Banner */}
+      <div
+        style={{
+          backgroundColor: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderLeft: '4px solid var(--color-primary)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '14px 18px',
+          marginBottom: 'var(--space-5)'
+        }}
+      >
+        <h2 style={{ fontSize: '0.9375rem', fontWeight: '800', color: 'var(--color-heading)', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Calendar size={16} style={{ color: 'var(--color-primary)' }} />
+          Patient Dashboard & Health Vault Guide
+        </h2>
+        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+          View and manage your confirmed hospital appointments, enter live teleconsultation rooms, securely store your personal diagnostic documents in your private Health Vault, and control which doctors can review your records under the DPDP Act 2023.
+        </p>
+      </div>
+
       {/* Message Banner */}
       {msg && (
         <div

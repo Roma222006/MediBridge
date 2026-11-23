@@ -43,3 +43,20 @@
 - **Vite Build**: Production bundle built successfully (zero errors).
 - **Frontend Dev Server**: Active on `http://localhost:3000` (task-1826).
 - **Backend API Server**: Active on `http://127.0.0.1:5000` (task-2476).
+
+---
+
+## UI/UX Resolution & Page Guidance Update (Doctor Portal & Multi-Role)
+
+- **Empty Doctor Portal Page Resolution**:
+  - Identified root cause in `Button.jsx`: component was instantiating `icon` as `<Icon />` assuming a component function, whereas `DoctorPortalPage.jsx` passed JSX element instances (`<Calendar size={14} />`). This threw `Uncaught Error: Element type is invalid: expected a string or a class/function but got: object`, crashing the un-bracketed React tree to a blank white screen.
+  - Enhanced `Button.jsx`: added polymorphic support for both React elements (`React.isValidElement(Icon)`) and component functions (`<Icon ... />`), plus support for `outline` and `success` button variants.
+  - Added `ErrorBoundary.jsx` in `App.jsx`: wraps all application routes with a graceful fallback card featuring Reload and Return to Home buttons.
+  - Enhanced `EmptyState.jsx`: supports `title` and `description` props with centered, accessible layouts.
+  - Enhanced `DoctorPortalPage.jsx` loading resiliency: wrapped endpoint calls in `Promise.allSettled` to prevent partial API network failures from blocking render.
+
+- **Page Clarity & Human-Centred Guidance Across All Views**:
+  - **Doctor Clinical Desk**: Added explanatory clinical desk guide banner and contextual guidance bars across all 6 tabs (Today's Clinic, Appointments Ledger, Specialty Referrals, Consented Health Vault under DPDP Act 2023, Leave Requests & Cover Arrangements, and Medical Council Credentials).
+  - **Hospital Discovery & Live Availability**: Added prominent guidance banner explaining spatial search, live bed capacity sockets, and scheme filters.
+  - **Patient Care Portal & Health Vault**: Added guidance banner explaining appointment access, private vault storage, and DPDP Act 2023 doctor consent management.
+  - **Hospital Operations Console**: Added administrative guidance banner explaining real-time bed updates, slot publishing, doctor leave reassignments, and referral coordination.

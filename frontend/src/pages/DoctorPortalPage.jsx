@@ -29,7 +29,9 @@ import {
   PlusCircle,
   FileCheck,
   Eye,
-  X
+  X,
+  Stethoscope,
+  Info
 } from 'lucide-react';
 
 export default function DoctorPortalPage() {
@@ -158,32 +160,38 @@ export default function DoctorPortalPage() {
   const loadInitialData = async () => {
     setLoading(true);
     try {
-      // 1. Doctor Profile
-      const profRes = await api.get('/doctor/profile');
-      if (profRes.data.success) {
-        setDoctorProfile(profRes.data.data);
-      }
+      await Promise.allSettled([
+        // 1. Doctor Profile
+        api.get('/doctor/profile').then((res) => {
+          if (res.data?.success) setDoctorProfile(res.data.data);
+        }).catch((err) => {
+          console.warn('[DoctorPortal] Profile fetch warning:', err.response?.data?.error?.message || err.message);
+        }),
 
-      // 2. Today's Schedule
-      const schedRes = await api.get('/doctor/schedule');
-      if (schedRes.data.success) {
-        setTodayData(schedRes.data.data);
-      }
+        // 2. Today's Schedule
+        api.get('/doctor/schedule').then((res) => {
+          if (res.data?.success) setTodayData(res.data.data);
+        }).catch((err) => {
+          console.warn('[DoctorPortal] Schedule fetch warning:', err.response?.data?.error?.message || err.message);
+        }),
 
-      // 3. Specialty Referrals
-      const refRes = await api.get('/doctor/referrals');
-      if (refRes.data.success) {
-        setReferralsList(refRes.data.data);
-      }
+        // 3. Specialty Referrals
+        api.get('/doctor/referrals').then((res) => {
+          if (res.data?.success) setReferralsList(res.data.data || []);
+        }).catch((err) => {
+          console.warn('[DoctorPortal] Referrals fetch warning:', err.response?.data?.error?.message || err.message);
+        }),
 
-      // 4. Hospitals Catalog for Referral Dispatch
-      const hospRes = await api.get('/search?district=Coimbatore');
-      if (hospRes.data.success) {
-        setHospitalsCatalog(hospRes.data.data);
-        if (hospRes.data.data.length > 0) {
-          setRefReceivingHospitalId(hospRes.data.data[0].id || hospRes.data.data[0]._id);
-        }
-      }
+        // 4. Hospitals Catalog for Referral Dispatch
+        api.get('/search?district=Coimbatore').then((res) => {
+          if (res.data?.success && res.data.data?.length > 0) {
+            setHospitalsCatalog(res.data.data);
+            setRefReceivingHospitalId(res.data.data[0].id || res.data.data[0]._id);
+          }
+        }).catch((err) => {
+          console.warn('[DoctorPortal] Catalog fetch warning:', err.message);
+        })
+      ]);
     } catch (err) {
       console.error('[DoctorPortal] Initial load failed:', err.message);
     } finally {
@@ -532,6 +540,38 @@ export default function DoctorPortalPage() {
         }
       />
 
+      {/* Explanatory Clinical Desk Guide Banner */}
+      <div
+        style={{
+          backgroundColor: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderLeft: '4px solid var(--color-primary)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '16px 20px',
+          marginBottom: '20px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 600px' }}>
+            <h2 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--color-heading)', margin: '0 0 6px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Stethoscope size={18} style={{ color: 'var(--color-primary)' }} />
+              Doctor Clinical Operations Portal
+            </h2>
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+              Welcome to your outpatient clinical workspace. Manage your daily consultation queue, launch secure WebRTC video sessions, verify and review patient diagnostic files under active consent (DPDP Act 2023), coordinate inter-hospital specialty handovers, and manage your Medical Council licensing.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <span className="badge badge-pill badge-neutral" style={{ fontSize: '0.75rem' }}>
+              Role: Attending Physician
+            </span>
+            <span className="badge badge-pill badge-info" style={{ fontSize: '0.75rem' }}>
+              Hospital Tenant Guard Active
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Doctor Status Banner */}
       <div
         style={{
@@ -563,7 +603,7 @@ export default function DoctorPortalPage() {
             {doctorProfile?.verificationStatus === 'VERIFIED' ? 'Verified Practitioner' : 'Demo, not verified'}
           </span>
           <span style={{ color: 'var(--text-muted)' }}>
-            Hospital Tenant: <strong>{doctorProfile?.hospital?.name}</strong> ({doctorProfile?.hospital?.district})
+            Hospital Tenant: <strong>{doctorProfile?.hospital?.name || 'Assigned Facility'}</strong> ({doctorProfile?.hospital?.district || 'Coimbatore'})
           </span>
         </div>
         <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
@@ -614,6 +654,25 @@ export default function DoctorPortalPage() {
             </div>
             <span className="badge badge-pill badge-neutral">
               {todayData?.count || 0} Scheduled
+            </span>
+          </div>
+
+          {/* Tab 1 Guidance Strip */}
+          <div
+            style={{
+              padding: '10px 16px',
+              backgroundColor: 'var(--bg-app)',
+              borderBottom: '1px solid var(--border)',
+              fontSize: '0.8125rem',
+              color: 'var(--text)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+          >
+            <Clock size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+            <span>
+              <strong>Active Clinic Workflow:</strong> In-person patients arrive at reception and display <strong>CHECKED IN</strong>. For remote visits, click <strong>Enter Consult Room</strong> to open the encrypted WebRTC consultation. Click <strong>Begin Consultation</strong> to call a patient, and <strong>Complete Visit</strong> when concluding the encounter.
             </span>
           </div>
 
@@ -766,6 +825,25 @@ export default function DoctorPortalPage() {
             </div>
           </div>
 
+          {/* Tab 2 Guidance Strip */}
+          <div
+            style={{
+              padding: '10px 16px',
+              backgroundColor: 'var(--bg-app)',
+              borderBottom: '1px solid var(--border)',
+              fontSize: '0.8125rem',
+              color: 'var(--text)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+          >
+            <Calendar size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+            <span>
+              <strong>Appointments Ledger:</strong> Filter consultations across all dates. Use the sub-tabs to switch between Upcoming visits, Completed encounters, and Cancelled appointments. Click 'Room' to enter scheduled teleconsultation rooms.
+            </span>
+          </div>
+
           <div className="table-container">
             {loadingAppts ? (
               <div style={{ padding: '30px' }}><Skeleton height="150px" /></div>
@@ -864,6 +942,25 @@ export default function DoctorPortalPage() {
             </Button>
           </div>
 
+          {/* Tab 3 Guidance Strip */}
+          <div
+            style={{
+              padding: '10px 16px',
+              backgroundColor: 'var(--bg-app)',
+              borderBottom: '1px solid var(--border)',
+              fontSize: '0.8125rem',
+              color: 'var(--text)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+          >
+            <Send size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+            <span>
+              <strong>Inter-Hospital Specialty Handover:</strong> Dispatch patients requiring specialized tertiary evaluation. Triaged by priority SLA: <strong>Critical (12h)</strong>, <strong>Urgent (24h)</strong>, and <strong>Routine (48h)</strong>.
+            </span>
+          </div>
+
           <div className="table-container">
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead style={{ backgroundColor: 'var(--bg-app)', borderBottom: '1px solid var(--border)' }}>
@@ -947,8 +1044,28 @@ export default function DoctorPortalPage() {
               Consent-Gated Patient Diagnostic Documents
             </h3>
             <p style={{ margin: '4px 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Requires active, unexpired, and unrevoked patient consent. Instant 403 Forbidden is enforced upon patient revocation.
+              Requires active, unexpired, and unrevoked patient consent under the Digital Personal Data Protection (DPDP) Act 2023. Instant 403 Forbidden is enforced upon patient revocation.
             </p>
+          </div>
+
+          <div
+            style={{
+              padding: '12px 16px',
+              backgroundColor: 'var(--bg-app)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)',
+              marginBottom: '20px',
+              fontSize: '0.8125rem',
+              color: 'var(--text)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+          >
+            <Lock size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+            <span>
+              <strong>Clinical Vault Access:</strong> Enter the Patient Profile ID (from today's clinic schedule or referral) to request and verify consent. Verified records can be opened in the watermarked viewer, which automatically terminates access after 60 seconds.
+            </span>
           </div>
 
           <form onSubmit={handleFetchRecords} style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
@@ -1077,6 +1194,25 @@ export default function DoctorPortalPage() {
             >
               Submit Leave Request
             </Button>
+          </div>
+
+          {/* Tab 5 Guidance Strip */}
+          <div
+            style={{
+              padding: '10px 16px',
+              backgroundColor: 'var(--bg-app)',
+              borderBottom: '1px solid var(--border)',
+              fontSize: '0.8125rem',
+              color: 'var(--text)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+          >
+            <Calendar size={16} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+            <span>
+              <strong>Absence & Coverage Arrangement:</strong> When you file leave, hospital administration is notified. The admin records your absence in the hospital roster and reassigns any affected patient bookings to cover doctors.
+            </span>
           </div>
 
           <div className="table-container">

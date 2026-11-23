@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import SearchPage from './pages/SearchPage';
 import HospitalDetailsPage from './pages/HospitalDetailsPage';
@@ -44,51 +45,53 @@ export default function App() {
           <div className="app-main">
             <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
             <main className="main-content">
-              <Routes>
-                <Route path="/" element={<SearchPage />} />
-                <Route path="/hospital/:id" element={<HospitalDetailsPage />} />
-                <Route path="/emergency" element={<EmergencyPage />} />
-                <Route path="/login" element={<LoginPage />} />
+              <ErrorBoundary>
+                <Routes>
+                  <Route path="/" element={<SearchPage />} />
+                  <Route path="/hospital/:id" element={<HospitalDetailsPage />} />
+                  <Route path="/emergency" element={<EmergencyPage />} />
+                  <Route path="/login" element={<LoginPage />} />
 
-                {/* Protected Routes */}
-                <Route
-                  path="/patient-dashboard"
-                  element={
-                    <ProtectedRoute allowedRoles={['patient', 'super_admin']}>
-                      <PatientDashboardPage />
-                    </ProtectedRoute>
-                  }
-                />
+                  {/* Protected Routes */}
+                  <Route
+                    path="/patient-dashboard"
+                    element={
+                      <ProtectedRoute allowedRoles={['patient', 'super_admin']}>
+                        <PatientDashboardPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                <Route
-                  path="/doctor-portal"
-                  element={
-                    <ProtectedRoute allowedRoles={['doctor', 'super_admin']}>
-                      <DoctorPortalPage />
-                    </ProtectedRoute>
-                  }
-                />
+                  <Route
+                    path="/doctor-portal"
+                    element={
+                      <ProtectedRoute allowedRoles={['doctor', 'super_admin']}>
+                        <DoctorPortalPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                <Route
-                  path="/admin-console"
-                  element={
-                    <ProtectedRoute allowedRoles={['hospital_admin', 'super_admin']}>
-                      <AdminConsolePage />
-                    </ProtectedRoute>
-                  }
-                />
+                  <Route
+                    path="/admin-console"
+                    element={
+                      <ProtectedRoute allowedRoles={['hospital_admin', 'super_admin']}>
+                        <AdminConsolePage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                <Route
-                  path="/teleconsult/room/:id"
-                  element={
-                    <ProtectedRoute>
-                      <TeleconsultRoomPage />
-                    </ProtectedRoute>
-                  }
-                />
+                  <Route
+                    path="/teleconsult/room/:id"
+                    element={
+                      <ProtectedRoute>
+                        <TeleconsultRoomPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </ErrorBoundary>
             </main>
             <Footer />
           </div>

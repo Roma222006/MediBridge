@@ -186,10 +186,30 @@ export default function AdminConsolePage() {
         title="Hospital Operations Console"
         subtitle={`Facility: ${overview?.hospital?.name || 'Medical Center'} | Multi-tenant isolated administrative control plane`}
         breadcrumbs={[
-          { label: 'Administration', path: '/admin/console' },
+          { label: 'Administration', path: '/admin-console' },
           { label: 'Operations Console' }
         ]}
       />
+
+      {/* Admin Guidance Banner */}
+      <div
+        style={{
+          backgroundColor: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderLeft: '4px solid var(--color-primary)',
+          borderRadius: 'var(--radius-sm)',
+          padding: '14px 18px',
+          marginBottom: '20px'
+        }}
+      >
+        <h2 style={{ fontSize: '0.9375rem', fontWeight: '800', color: 'var(--color-heading)', margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Activity size={16} style={{ color: 'var(--color-primary)' }} />
+          Hospital Administration & Capacity Control
+        </h2>
+        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+          Real-time hospital control plane: Update live General & ICU bed counts, publish new consultation slots for hospital doctors, manage doctor leave requests with automatic patient coverage safeguards, and review inter-hospital specialty referrals.
+        </p>
+      </div>
 
       {/* Trust & Safety Status Bar */}
       <div
