@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Menu, PhoneCall, LogOut, User as UserIcon, Bell, ShieldCheck, Check, ChevronDown, Stethoscope, Building2, Calendar } from 'lucide-react';
+import { Menu, PhoneCall, LogOut, User as UserIcon, Bell } from 'lucide-react';
 
 export default function Header({ onMenuClick }) {
-  const { user, profiles, activeProfile, switchProfile, logout, login } = useAuth();
+  const { user, profiles, activeProfile, switchProfile, logout } = useAuth();
   const location = useLocation();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showRoleMenu, setShowRoleMenu] = useState(false);
 
   const getSectionTitle = () => {
     const path = location.pathname;
@@ -20,15 +19,6 @@ export default function Header({ onMenuClick }) {
     if (path.startsWith('/teleconsult/')) return 'Teleconsultation Session';
     if (path === '/login') return 'Authentication Gateway';
     return 'Healthcare Coordination';
-  };
-
-  const handleQuickSwitch = async (email, pass) => {
-    try {
-      await login(email, pass);
-      setShowRoleMenu(false);
-    } catch (e) {
-      console.error('Switch failed', e);
-    }
   };
 
   return (
@@ -46,142 +36,6 @@ export default function Header({ onMenuClick }) {
       </div>
 
       <div className="header-right">
-        {/* Quick Demo Role Switcher Dropdown */}
-        <div style={{ position: 'relative' }}>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline"
-            onClick={() => setShowRoleMenu(!showRoleMenu)}
-            style={{
-              fontSize: '0.75rem',
-              fontWeight: '700',
-              borderColor: 'var(--color-primary)',
-              color: 'var(--color-heading)',
-              backgroundColor: 'var(--color-pale-rose)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 10px'
-            }}
-          >
-            <span>Role: {user ? user.role.replace('_', ' ').toUpperCase() : 'DEMO SELECT'}</span>
-            <ChevronDown size={14} />
-          </button>
-
-          {showRoleMenu && (
-            <div
-              style={{
-                position: 'absolute',
-                right: 0,
-                top: '38px',
-                width: '260px',
-                backgroundColor: '#FFFFFF',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-card)',
-                boxShadow: '0 10px 25px rgba(112, 43, 89, 0.12)',
-                zIndex: 1000,
-                padding: '8px'
-              }}
-            >
-              <div style={{ padding: '6px 10px', fontSize: '0.7rem', fontWeight: '800', color: 'var(--color-heading)', textTransform: 'uppercase' }}>
-                Instant Switch Demo Role
-              </div>
-
-              <button
-                type="button"
-                onClick={() => handleQuickSwitch('roma.patient@medibridge.org', 'PatientPass123!')}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  border: 'none',
-                  backgroundColor: user?.role === 'patient' ? 'var(--color-pale-rose)' : 'transparent',
-                  cursor: 'pointer',
-                  borderRadius: '4px',
-                  textAlign: 'left'
-                }}
-              >
-                <Calendar size={15} style={{ color: 'var(--color-primary)' }} />
-                <div>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--color-heading)' }}>Patient (Roma R)</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Health Vault & Appointments</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickSwitch('dr.revathi@medibridge.org', 'DoctorPass123!')}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  border: 'none',
-                  backgroundColor: user?.role === 'doctor' ? 'var(--color-pale-rose)' : 'transparent',
-                  cursor: 'pointer',
-                  borderRadius: '4px',
-                  textAlign: 'left'
-                }}
-              >
-                <Stethoscope size={15} style={{ color: 'var(--color-primary)' }} />
-                <div>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--color-heading)' }}>Doctor (Dr. Revathi)</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Cardiology Desk - KMCH</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickSwitch('admin.kmch@medibridge.org', 'AdminPass123!')}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  border: 'none',
-                  backgroundColor: user?.role === 'hospital_admin' ? 'var(--color-pale-rose)' : 'transparent',
-                  cursor: 'pointer',
-                  borderRadius: '4px',
-                  textAlign: 'left'
-                }}
-              >
-                <Building2 size={15} style={{ color: 'var(--color-primary)' }} />
-                <div>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--color-heading)' }}>Hospital Admin</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>KMCH Operations Console</div>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickSwitch('superadmin@medibridge.org', 'SuperAdmin123!')}
-                style={{
-                  width: '100%',
-                  padding: '8px 10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  border: 'none',
-                  backgroundColor: user?.role === 'super_admin' ? 'var(--color-pale-rose)' : 'transparent',
-                  cursor: 'pointer',
-                  borderRadius: '4px',
-                  textAlign: 'left'
-                }}
-              >
-                <ShieldCheck size={15} style={{ color: 'var(--color-primary)' }} />
-                <div>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--color-heading)' }}>Super Admin</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Statewide Governance</div>
-                </div>
-              </button>
-            </div>
-          )}
-        </div>
-
         {/* Rapid 112 / 108 Emergency Action */}
         <Link
           to="/emergency"
@@ -252,7 +106,7 @@ export default function Header({ onMenuClick }) {
           </div>
         )}
 
-        {/* Patient Profile Switcher */}
+        {/* Patient Profile Switcher (Only visible for Patient role) */}
         {user?.role === 'patient' && profiles.length > 0 && (
           <div className="header-profile-selector">
             <label htmlFor="header-profile-select" className="header-profile-label">
@@ -278,7 +132,7 @@ export default function Header({ onMenuClick }) {
           <div className="header-user-block">
             <span className="badge badge-info" style={{ textTransform: 'capitalize', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
               <UserIcon size={12} strokeWidth={1.75} aria-hidden="true" />
-              <span>{user.role.replace('_', ' ')}</span>
+              <span>{user.name ? `${user.name} (${user.role.replace('_', ' ')})` : user.role.replace('_', ' ')}</span>
             </span>
             <button
               type="button"
@@ -292,7 +146,7 @@ export default function Header({ onMenuClick }) {
           </div>
         ) : (
           <Link to="/login" className="btn btn-sm btn-primary">
-            Login
+            Sign In
           </Link>
         )}
       </div>
