@@ -1666,3 +1666,81 @@ tr.selected td {
   height: 8px;
   border-radius: 50%;
 }
+
+/* ====================================================================
+   AUTHENTICATION SPLIT-SCREEN RESPONSIVE LAYOUT
+   ==================================================================== */
+.auth-split-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #FFFFFF;
+}
+
+.auth-hero-section {
+  flex: 1 1 58%;
+  min-height: 100vh;
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 36px 40px;
+  overflow: hidden;
+}
+
+.auth-panel-container {
+  flex: 0 0 42%;
+  min-width: 380px;
+  max-width: 540px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 40px 36px;
+  background-color: #FFFFFF;
+  border-left: 1px solid var(--border, #E8E3E5);
+  overflow-y: auto;
+  z-index: 2;
+  box-shadow: -4px 0 24px rgba(112, 43, 89, 0.04);
+}
+
+@media (max-width: 1024px) {
+  .auth-hero-section {
+    flex: 1 1 45%;
+    padding: 24px 28px;
+  }
+  .auth-panel-container {
+    flex: 0 0 55%;
+    padding: 32px 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .auth-split-layout {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .auth-hero-section {
+    flex: none;
+    min-height: 240px;
+    height: 260px;
+    padding: 20px;
+  }
+  .auth-hero-section .auth-hero-bottom-card {
+    display: none;
+  }
+  .auth-panel-container {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--border, #E8E3E5);
+    padding: 28px 20px;
+  }
+}

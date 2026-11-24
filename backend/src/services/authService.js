@@ -4,6 +4,8 @@ const config = require('../config');
 const User = require('../models/User');
 const RefreshToken = require('../models/RefreshToken');
 const PatientProfile = require('../models/PatientProfile');
+const Doctor = require('../models/Doctor');
+const Hospital = require('../models/Hospital');
 const AuditLog = require('../models/AuditLog');
 
 class AuthService {
@@ -40,13 +42,24 @@ class AuthService {
     };
   }
 
-  async register({ email, phone, password, role = 'patient', hospitalId = null, fullName = '' }) {
+  async register({ email, phone, password, role = 'patient', hospitalId = null, fullName = '', ...extra }) {
     const existing = await User.findOne({ email });
     if (existing) {
       const err = new Error('An account with this email address already exists.');
       err.code = 'EMAIL_EXISTS';
       err.statusCode = 409;
       throw err;
+    }
+
+    // Security Gate: Super Admin registration requires Master Platform Activation Key
+    if (role === 'super_admin') {
+      const validKey = process.env.MEDIBRIDGE_SUPERADMIN_KEY || 'MEDIBRIDGE_SUPERADMIN_SECURE_2026';
+      if (!extra.platformKey || extra.platformKey.trim() !== validKey) {
+        const err = new Error('Access Denied: Invalid Master Platform Activation Key for Super Administrator provisioning.');
+        err.code = 'SUPERADMIN_KEY_INVALID';
+        err.statusCode = 403;
+        throw err;
+      }
     }
 
     const user = await User.create({
@@ -70,6 +83,61 @@ class AuthService {
       });
     }
 
+    // Role: Doctor - Create Doctor directory profile & verification request
+    if (role === 'doctor') {
+      let hId = hospitalId;
+      if (!hId) {
+        const defaultHospital = await Hospital.findOne();
+        hId = defaultHospital ? defaultHospital._id : null;
+      }
+      user.hospitalId = hId;
+      await user.save();
+
+      await Doctor.create({
+        userId: user._id,
+        hospitalId: hId,
+        name: fullName.startsWith('Dr.') ? fullName : `Dr. ${fullName || email.split('@')[0]}`,
+        specialty: extra.specialty || 'General Medicine',
+        qualifications: extra.qualifications || 'MBBS, MD',
+        regNumber: extra.regNumber || `TNMC/${new Date().getFullYear()}/${Math.floor(10000 + Math.random() * 90000)}`,
+        department: extra.department || extra.specialty || 'General Medicine',
+        consultationFee: extra.consultationFee ? Number(extra.consultationFee) : 500,
+        verificationStatus: 'UNDER_REVIEW',
+        reviewStage: 'HOSPITAL_STAGE'
+      });
+    }
+
+    // Role: Hospital Admin - Link or register hospital
+    if (role === 'hospital_admin') {
+      let hId = hospitalId;
+      if (!hId && extra.hospitalName) {
+        let existingHosp = await Hospital.findOne({ name: extra.hospitalName.trim() });
+        if (!existingHosp) {
+          existingHosp = await Hospital.create({
+            name: extra.hospitalName.trim(),
+            licenseNumber: extra.licenseNumber || `LIC-TN-CBE-${Math.floor(100 + Math.random() * 900)}`,
+            type: extra.hospitalType || 'private',
+            location: { type: 'Point', coordinates: [76.9558, 11.0168] },
+            address: {
+              street: extra.street || 'Hospital Boulevard',
+              area: extra.area || 'Peelamedu',
+              city: extra.city || 'Coimbatore',
+              district: extra.district || 'Coimbatore',
+              state: 'Tamil Nadu',
+              pincode: extra.pincode || '641014'
+            },
+            phone: phone,
+            email: email
+          });
+        }
+        hId = existingHosp._id;
+      }
+      if (hId) {
+        user.hospitalId = hId;
+        await user.save();
+      }
+    }
+
     const tokens = await this.generateTokens(user);
 
     await AuditLog.create({
@@ -79,7 +147,13 @@ class AuthService {
       resourceType: 'User',
       resourceId: user._id.toString(),
       action: 'REGISTER',
-      status: 'EXECUTED'
+      status: 'EXECUTED',
+      metadata: {
+        role,
+        email,
+        fullName: fullName || null,
+        hospitalId: user.hospitalId || null
+      }
     });
 
     return {

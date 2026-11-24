@@ -15,6 +15,7 @@ import AdminConsolePage from './pages/AdminConsolePage';
 import EmergencyPage from './pages/EmergencyPage';
 import TeleconsultRoomPage from './pages/TeleconsultRoomPage';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 
 function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading, switchDemoRole } = useAuth();
@@ -328,6 +329,7 @@ export default function App() {
         <Routes>
           {/* Dedicated Independent Authentication Route (Clean split-screen, no sidebar/header) */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
           {/* All other routes render within MainLayout */}
           <Route path="/*" element={<MainLayout />} />
