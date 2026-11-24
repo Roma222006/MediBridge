@@ -161,6 +161,33 @@ export default function DoctorVerificationView({ onToast, onDoctorUpdated }) {
 
     setVerificationQueue(updated);
     localStorage.setItem('medibridge_doctor_verifications', JSON.stringify(updated));
+
+    // Record in Audit Ledger
+    const savedLogs = localStorage.getItem('medibridge_audit_logs');
+    if (savedLogs) {
+      try {
+        const auditList = JSON.parse(savedLogs);
+        const randomHex = Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+        const logEntry = {
+          id: `AUD-${Math.floor(9100 + Math.random() * 899)}`,
+          timestamp: `Today, ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+          category: 'Doctor Credentialing',
+          eventType: 'DOCTOR_VERIFIED',
+          actor: 'Admin: Dr. Ramesh Kumar',
+          actorRole: 'Medical Superintendent',
+          terminal: 'Peelamedu Admin Desk #1 (192.168.1.104)',
+          target: `${selectedDoc?.doctorName} (${selectedDoc?.specialty})`,
+          details: `Approved Medical Council registration (${selectedDoc?.regNumber || 'Verified'}) and granted institutional OPD clinical privileges.`,
+          oldValue: `Status: ${selectedDoc?.status || 'Under Verification'}`,
+          newValue: 'Status: Verified & Privileged',
+          status: 'SUCCESS',
+          hash: `SHA256:${randomHex}`,
+          certInCompliant: true
+        };
+        localStorage.setItem('medibridge_audit_logs', JSON.stringify([logEntry, ...auditList]));
+      } catch (e) {}
+    }
+
     window.dispatchEvent(new Event('storage'));
 
     // Also update doctors list if handler provided
@@ -194,6 +221,33 @@ export default function DoctorVerificationView({ onToast, onDoctorUpdated }) {
 
     setVerificationQueue(updated);
     localStorage.setItem('medibridge_doctor_verifications', JSON.stringify(updated));
+
+    // Record in Audit Ledger
+    const savedLogsReq = localStorage.getItem('medibridge_audit_logs');
+    if (savedLogsReq) {
+      try {
+        const auditList = JSON.parse(savedLogsReq);
+        const randomHex = Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+        const logEntry = {
+          id: `AUD-${Math.floor(9100 + Math.random() * 899)}`,
+          timestamp: `Today, ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+          category: 'Doctor Credentialing',
+          eventType: 'DOCTOR_INFO_REQUESTED',
+          actor: 'Admin: Dr. Ramesh Kumar',
+          actorRole: 'Medical Superintendent',
+          terminal: 'Peelamedu Admin Desk #1 (192.168.1.104)',
+          target: `${selectedDoc?.doctorName} (${selectedDoc?.specialty})`,
+          details: `Requested additional documentation from ${selectedDoc?.doctorName}: ${actionReason || 'Document clarification requested by Medical Board.'}`,
+          oldValue: `Status: ${selectedDoc?.status || 'Under Verification'}`,
+          newValue: 'Status: Info Requested',
+          status: 'SUCCESS',
+          hash: `SHA256:${randomHex}`,
+          certInCompliant: true
+        };
+        localStorage.setItem('medibridge_audit_logs', JSON.stringify([logEntry, ...auditList]));
+      } catch (e) {}
+    }
+
     window.dispatchEvent(new Event('storage'));
     setShowInfoModal(false);
     setShowReviewModal(false);
@@ -224,6 +278,33 @@ export default function DoctorVerificationView({ onToast, onDoctorUpdated }) {
 
     setVerificationQueue(updated);
     localStorage.setItem('medibridge_doctor_verifications', JSON.stringify(updated));
+
+    // Record in Audit Ledger
+    const savedLogs = localStorage.getItem('medibridge_audit_logs');
+    if (savedLogs) {
+      try {
+        const auditList = JSON.parse(savedLogs);
+        const randomHex = Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+        const logEntry = {
+          id: `AUD-${Math.floor(9100 + Math.random() * 899)}`,
+          timestamp: `Today, ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+          category: 'Doctor Credentialing',
+          eventType: 'DOCTOR_CREDENTIAL_DECLINED',
+          actor: 'Admin: Dr. Ramesh Kumar',
+          actorRole: 'Medical Superintendent',
+          terminal: 'Peelamedu Admin Desk #1 (192.168.1.104)',
+          target: `${selectedDoc?.doctorName} (${selectedDoc?.specialty})`,
+          details: `Declined credentials for ${selectedDoc?.doctorName}: ${actionReason || 'Medical council registration mismatch or expired license.'}`,
+          oldValue: `Status: ${selectedDoc?.status || 'Under Verification'}`,
+          newValue: 'Status: Rejected & Barred',
+          status: 'SUCCESS',
+          hash: `SHA256:${randomHex}`,
+          certInCompliant: true
+        };
+        localStorage.setItem('medibridge_audit_logs', JSON.stringify([logEntry, ...auditList]));
+      } catch (e) {}
+    }
+
     window.dispatchEvent(new Event('storage'));
     setShowRejectModal(false);
     setShowReviewModal(false);

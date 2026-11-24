@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ScrollText,
   Search,
@@ -134,6 +134,72 @@ export default function AuditLogsView({ onToast }) {
       }
     ];
   });
+
+  useEffect(() => {
+    // 1. Ensure initial audit logs are in localStorage
+    if (!localStorage.getItem('medibridge_audit_logs')) {
+      localStorage.setItem('medibridge_audit_logs', JSON.stringify(logs));
+    }
+
+    // 2. Auto-scan medibridge_hospital_doctors to ensure any newly added doctor is registered in audit logs
+    try {
+      const savedDocs = localStorage.getItem('medibridge_hospital_doctors');
+      const savedLogs = localStorage.getItem('medibridge_audit_logs');
+      let currentLogs = savedLogs ? JSON.parse(savedLogs) : logs;
+      
+      if (savedDocs) {
+        const docs = JSON.parse(savedDocs);
+        let addedNew = false;
+        docs.forEach((doc) => {
+          if (!['doc-1', 'doc-2', 'doc-3', 'doc-4', 'doc-5', 'doc-6'].includes(doc.id)) {
+            const alreadyLogged = currentLogs.some((l) => l.target && l.target.toLowerCase().includes(doc.name.toLowerCase()));
+            if (!alreadyLogged) {
+              const randomHex = Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+              const newEntry = {
+                id: `AUD-${Math.floor(9100 + Math.random() * 899)}`,
+                timestamp: 'Today, Just now',
+                category: 'Doctor Credentialing',
+                eventType: 'DOCTOR_ADDED',
+                actor: 'Admin: Medical Superintendent',
+                actorRole: 'Hospital Administrator',
+                terminal: 'Peelamedu Admin Desk #1 (192.168.1.104)',
+                target: `${doc.name} (${doc.specialty || 'Specialist'})`,
+                details: `New physician onboarded into ${doc.department || doc.specialty || 'Clinical'} Department. Council Reg #${doc.regNumber || 'TNMC-Pending'}. Stage 2 verification initiated.`,
+                oldValue: 'Unregistered',
+                newValue: `Doctor ID: ${doc.id} (Status: ${doc.verification || 'Pending'})`,
+                status: 'SUCCESS',
+                hash: `SHA256:${randomHex}`,
+                certInCompliant: true
+              };
+              currentLogs = [newEntry, ...currentLogs];
+              addedNew = true;
+            }
+          }
+        });
+        if (addedNew) {
+          localStorage.setItem('medibridge_audit_logs', JSON.stringify(currentLogs));
+          setLogs(currentLogs);
+        }
+      }
+    } catch (e) {}
+
+    // 3. Storage & Focus listener so new logs reflect immediately
+    const handleSync = () => {
+      const savedLogs = localStorage.getItem('medibridge_audit_logs');
+      if (savedLogs) {
+        try {
+          setLogs(JSON.parse(savedLogs));
+        } catch (e) {}
+      }
+    };
+
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('focus', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
+  }, []);
 
   const handleOpenDetail = (log) => {
     setSelectedLog(log);

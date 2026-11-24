@@ -322,6 +322,29 @@ export default function AdminConsolePage() {
     setShowEditDoctorModal(true);
   };
 
+  // Helper to record events in the immutable audit trail
+  const logAuditEvent = (eventData) => {
+    let currentLogs = [];
+    const savedLogs = localStorage.getItem('medibridge_audit_logs');
+    if (savedLogs) {
+      try {
+        currentLogs = JSON.parse(savedLogs);
+      } catch (e) {}
+    }
+    const randomHex = Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+    const newLog = {
+      id: `AUD-${Math.floor(9100 + Math.random() * 899)}`,
+      timestamp: `Today, ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+      status: 'SUCCESS',
+      hash: `SHA256:${randomHex}`,
+      certInCompliant: true,
+      ...eventData
+    };
+    const updated = [newLog, ...currentLogs];
+    localStorage.setItem('medibridge_audit_logs', JSON.stringify(updated));
+    return newLog;
+  };
+
   // Submit Edit Doctor
   const handleEditDoctorSubmit = (e) => {
     e.preventDefault();
@@ -390,12 +413,25 @@ export default function AdminConsolePage() {
       } catch (err) {}
     }
 
+    // Record in Audit Trail
+    logAuditEvent({
+      category: 'Doctor Credentialing',
+      eventType: 'DOCTOR_RECORD_MODIFIED',
+      actor: user?.name ? `Admin: ${user.name}` : 'Admin: Medical Superintendent',
+      actorRole: 'Hospital Administrator',
+      terminal: 'Peelamedu Admin Desk #1 (192.168.1.104)',
+      target: `${editDoctorForm.name.trim()} (${editDoctorForm.specialty})`,
+      details: `Modified credentials for ${editDoctorForm.name.trim()} (${editDoctorForm.department}). Availability set to ${editDoctorForm.availability}, Verification set to ${editDoctorForm.verification}.`,
+      oldValue: `Verification: ${editingDoctor.verification || 'Pending'}, Availability: ${editingDoctor.availability || 'Available'}`,
+      newValue: `Verification: ${editDoctorForm.verification}, Availability: ${editDoctorForm.availability}`
+    });
+
     window.dispatchEvent(new Event('storage'));
     refreshDynamicMetrics();
 
     setShowEditDoctorModal(false);
     setEditingDoctor(null);
-    setMsg({ type: 'success', text: `Doctor record for ${editDoctorForm.name.trim()} updated across all hospital modules.` });
+    setMsg({ type: 'success', text: `Doctor record for ${editDoctorForm.name.trim()} updated across all hospital modules and logged in audit ledger.` });
   };
 
   // Add New Doctor and sync to all modules (Doctor Management, Verification, Availability, Dashboard)
@@ -483,12 +519,25 @@ export default function AdminConsolePage() {
     const updatedSchedules = [newSchedule, ...schedules];
     localStorage.setItem('medibridge_doctor_availability_schedules', JSON.stringify(updatedSchedules));
 
+    // Record Doctor Onboarding in Immutable Audit Ledger
+    logAuditEvent({
+      category: 'Doctor Credentialing',
+      eventType: 'DOCTOR_ADDED',
+      actor: user?.name ? `Admin: ${user.name}` : 'Admin: Medical Superintendent',
+      actorRole: 'Hospital Administrator',
+      terminal: 'Peelamedu Admin Desk #1 (192.168.1.104)',
+      target: `${newDoctorForm.name.trim()} (${newDoctorForm.specialty})`,
+      details: `New physician onboarded into ${newDoctorForm.department} Department. Council Reg #${newDoctorForm.regNumber || 'TNMC-Pending'}. Credentials placed into Stage 2 Document Verification queue.`,
+      oldValue: 'Unregistered',
+      newValue: `Doctor ID: ${newId} (Status: Pending Verification)`
+    });
+
     window.dispatchEvent(new Event('storage'));
     refreshDynamicMetrics();
 
     setShowAddDoctorModal(false);
     setNewDoctorForm({ name: '', specialty: 'Cardiology', regNumber: '', qualifications: '', department: 'Cardiology' });
-    setMsg({ type: 'success', text: `Doctor ${newDoctorForm.name.trim()} successfully added to hospital staff, credential verification queue, and OPD scheduling.` });
+    setMsg({ type: 'success', text: `Doctor ${newDoctorForm.name.trim()} successfully added to hospital staff, credential verification queue, OPD scheduling, and logged in Audit Ledger.` });
   };
 
   const handleReviewHospitalApproval = (appr) => {
