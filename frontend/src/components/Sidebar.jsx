@@ -44,6 +44,9 @@ export default function Sidebar({ isOpen, onClose }) {
     if (path === '/') {
       return location.pathname === '/' && !location.search.includes('tab=');
     }
+    if (path === '/patient-dashboard') {
+      return location.pathname === '/patient-dashboard' && (!location.search || location.search.includes('tab=dashboard'));
+    }
     return location.pathname === path && (!location.search || !location.search.includes('tab='));
   };
 
@@ -166,6 +169,16 @@ export default function Sidebar({ isOpen, onClose }) {
                   >
                     <AlertTriangle size={17} strokeWidth={1.75} />
                     <span>Emergency (108)</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    to="/patient-dashboard?tab=profile"
+                    className={`nav-link ${isCurrent('/patient-dashboard', 'profile') ? 'active' : ''}`}
+                    onClick={onClose}
+                  >
+                    <UserCheck size={17} strokeWidth={1.75} />
+                    <span>My Profile</span>
                   </Link>
                 </li>
                 <li>

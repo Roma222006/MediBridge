@@ -31,7 +31,73 @@ io.on('connection', (socket) => {
     socket.join(`doctor:${doctorId}`);
   });
 
+  // WebRTC Teleconsultation Signaling Channels
+  socket.on('join_teleconsult_room', ({ roomId, participantName, role, userId }) => {
+    const roomKey = `teleconsult:${roomId}`;
+    socket.join(roomKey);
+    socket.teleconsultRoomId = roomId;
+    socket.participantName = participantName;
+    socket.participantRole = role;
+    if (config.env !== 'test') {
+      console.log(`[Socket.IO] ${role || 'Participant'} ${participantName || socket.id} joined ${roomKey}`);
+    }
+    // Notify other peers in this teleconsult room
+    socket.to(roomKey).emit('participant_joined', {
+      socketId: socket.id,
+      participantName,
+      role,
+      userId
+    });
+  });
+
+  socket.on('webrtc_offer', ({ roomId, offer }) => {
+    const roomKey = `teleconsult:${roomId}`;
+    socket.to(roomKey).emit('webrtc_offer', {
+      socketId: socket.id,
+      offer
+    });
+  });
+
+  socket.on('webrtc_answer', ({ roomId, answer }) => {
+    const roomKey = `teleconsult:${roomId}`;
+    socket.to(roomKey).emit('webrtc_answer', {
+      socketId: socket.id,
+      answer
+    });
+  });
+
+  socket.on('webrtc_ice_candidate', ({ roomId, candidate }) => {
+    const roomKey = `teleconsult:${roomId}`;
+    socket.to(roomKey).emit('webrtc_ice_candidate', {
+      socketId: socket.id,
+      candidate
+    });
+  });
+
+  socket.on('teleconsult_chat', ({ roomId, message }) => {
+    const roomKey = `teleconsult:${roomId}`;
+    socket.to(roomKey).emit('teleconsult_chat', message);
+  });
+
+  socket.on('leave_teleconsult_room', ({ roomId }) => {
+    const roomKey = `teleconsult:${roomId}`;
+    socket.leave(roomKey);
+    socket.to(roomKey).emit('participant_left', {
+      socketId: socket.id,
+      participantName: socket.participantName,
+      role: socket.participantRole
+    });
+  });
+
   socket.on('disconnect', () => {
+    if (socket.teleconsultRoomId) {
+      const roomKey = `teleconsult:${socket.teleconsultRoomId}`;
+      socket.to(roomKey).emit('participant_left', {
+        socketId: socket.id,
+        participantName: socket.participantName,
+        role: socket.participantRole
+      });
+    }
     if (config.env !== 'test') {
       console.log(`[Socket.IO] Client disconnected: ${socket.id}`);
     }

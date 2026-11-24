@@ -42,6 +42,17 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (email, password) => {
+    // Clear any legacy un-namespaced patient cache to guarantee complete user isolation
+    localStorage.removeItem('medibridge_family_profiles');
+    localStorage.removeItem('medibridge_active_family_id');
+    localStorage.removeItem('mb_settings_name');
+    localStorage.removeItem('mb_settings_email');
+    localStorage.removeItem('mb_settings_phone');
+    localStorage.removeItem('mb_settings_dob');
+    localStorage.removeItem('mb_settings_gender');
+    localStorage.removeItem('mb_settings_blood');
+    localStorage.removeItem('mb_settings_lang');
+
     const res = await api.post('/auth/login', { email, password });
     if (res.data.success) {
       const { user: userData, tokens } = res.data.data;
@@ -55,6 +66,14 @@ export function AuthProvider({ children }) {
       }
       return userData;
     }
+  };
+
+  const updateUser = (updatedFields) => {
+    setUser((prev) => {
+      const nextUser = { ...prev, ...updatedFields };
+      localStorage.setItem('medibridge_user', JSON.stringify(nextUser));
+      return nextUser;
+    });
   };
 
   const logout = async () => {
@@ -132,6 +151,7 @@ export function AuthProvider({ children }) {
         logout,
         switchProfile,
         switchDemoRole,
+        updateUser,
         refreshProfiles: fetchPatientProfiles
       }}
     >

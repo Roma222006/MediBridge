@@ -156,12 +156,31 @@ class AuthService {
       }
     });
 
+    let resolvedName = user.email.split('@')[0];
+    if (user.role === 'patient') {
+      const profile = (await PatientProfile.findOne({ userId: user._id, isDefault: true })) || (await PatientProfile.findOne({ userId: user._id }));
+      if (profile && profile.fullName) {
+        resolvedName = profile.fullName;
+      }
+    } else if (user.role === 'doctor') {
+      const doctor = await Doctor.findOne({ userId: user._id });
+      if (doctor && doctor.name) {
+        resolvedName = doctor.name;
+      }
+    } else if (user.role === 'super_admin') {
+      resolvedName = 'Super Administrator';
+    } else if (user.role === 'hospital_admin') {
+      resolvedName = 'Hospital Administrator';
+    }
+
     return {
       user: {
         id: user._id,
+        _id: user._id,
         email: user.email,
         phone: user.phone,
         role: user.role,
+        fullName: resolvedName,
         hospitalId: user.hospitalId
       },
       tokens
@@ -224,12 +243,31 @@ class AuthService {
       userAgent
     });
 
+    let resolvedName = user.email.split('@')[0];
+    if (user.role === 'patient') {
+      const profile = (await PatientProfile.findOne({ userId: user._id, isDefault: true })) || (await PatientProfile.findOne({ userId: user._id }));
+      if (profile && profile.fullName) {
+        resolvedName = profile.fullName;
+      }
+    } else if (user.role === 'doctor') {
+      const doctor = await Doctor.findOne({ userId: user._id });
+      if (doctor && doctor.name) {
+        resolvedName = doctor.name;
+      }
+    } else if (user.role === 'super_admin') {
+      resolvedName = 'Super Administrator';
+    } else if (user.role === 'hospital_admin') {
+      resolvedName = 'Hospital Administrator';
+    }
+
     return {
       user: {
         id: user._id,
+        _id: user._id,
         email: user.email,
         phone: user.phone,
         role: user.role,
+        fullName: resolvedName,
         hospitalId: user.hospitalId
       },
       tokens

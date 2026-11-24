@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Menu, PhoneCall, LogOut, User as UserIcon, Bell, Search } from 'lucide-react';
@@ -13,10 +13,40 @@ export default function Header({ onMenuClick }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuperAdminSearch, setShowSuperAdminSearch] = useState(false);
   const [showSuperAdminNotifications, setShowSuperAdminNotifications] = useState(false);
+  const notificationRef = useRef(null);
+
+  // Close notifications popover on click outside or Escape
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (notificationRef.current && !notificationRef.current.contains(e.target)) {
+        setShowNotifications(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowNotifications(false);
+      }
+    };
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showNotifications]);
 
   const getUserInitials = () => {
     if (!user) return 'G';
-    if (user.role === 'patient') return 'R';
+    const name = activeProfile?.fullName || user.fullName || user.email || '';
+    if (user.role === 'patient') {
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 2 && parts[0] && parts[1]) {
+        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+      }
+      return parts[0] ? parts[0][0].toUpperCase() : 'P';
+    }
     if (user.role === 'doctor') return 'Dr';
     if (user.role === 'hospital_admin') return 'H';
     if (user.role === 'super_admin') return 'SA';
@@ -106,7 +136,7 @@ export default function Header({ onMenuClick }) {
 
         {/* Notification Bell */}
         {user && (
-          <div style={{ position: 'relative' }}>
+          <div ref={notificationRef} style={{ position: 'relative' }}>
             <button
               type="button"
               className="btn btn-sm btn-secondary"
@@ -128,7 +158,8 @@ export default function Header({ onMenuClick }) {
                 justifyContent: 'center',
                 position: 'relative',
                 border: '1px solid var(--border)',
-                backgroundColor: '#FFFFFF'
+                backgroundColor: '#FFFFFF',
+                cursor: 'pointer'
               }}
             >
               <Bell size={17} strokeWidth={1.75} style={{ color: 'var(--color-heading)' }} />
@@ -200,10 +231,24 @@ export default function Header({ onMenuClick }) {
           </div>
         )}
 
-        {/* User Avatar Circle and Details (exact match to reference images) */}
+        {/* User Avatar Circle and Details (Interactive Profile Redirect) */}
         {user ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div
+            <button
+              type="button"
+              onClick={() => {
+                if (user?.role === 'patient') {
+                  navigate('/patient-dashboard?tab=profile');
+                } else if (user?.role === 'doctor') {
+                  navigate('/doctor-portal');
+                } else if (user?.role === 'hospital_admin') {
+                  navigate('/admin-console');
+                } else if (user?.role === 'super_admin') {
+                  navigate('/admin-console?tab=platform');
+                }
+              }}
+              title={user?.role === 'patient' ? "View Patient Profile" : "Profile Details"}
+              aria-label="Patient Profile Navigation"
               style={{
                 width: '36px',
                 height: '36px',
@@ -215,11 +260,16 @@ export default function Header({ onMenuClick }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 2px 6px rgba(184, 61, 131, 0.25)'
+                boxShadow: '0 2px 6px rgba(184, 61, 131, 0.25)',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease'
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.08)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
               {getUserInitials()}
-            </div>
+            </button>
             <button
               type="button"
               onClick={logout}
