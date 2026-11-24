@@ -41,8 +41,8 @@ export default function Sidebar({ isOpen, onClose }) {
     if (tab) {
       return location.pathname === path && location.search.includes(`tab=${tab}`);
     }
-    if (path === '/') {
-      return location.pathname === '/' && !location.search.includes('tab=');
+    if (path === '/' || path === '/discover') {
+      return (location.pathname === '/' || location.pathname === '/discover') && !location.search.includes('tab=');
     }
     if (path === '/patient-dashboard') {
       return location.pathname === '/patient-dashboard' && (!location.search || location.search.includes('tab=dashboard'));
@@ -102,8 +102,8 @@ export default function Sidebar({ isOpen, onClose }) {
                 </li>
                 <li>
                   <Link
-                    to="/"
-                    className={`nav-link ${isCurrent('/') ? 'active' : ''}`}
+                    to="/discover"
+                    className={`nav-link ${isCurrent('/discover') ? 'active' : ''}`}
                     onClick={onClose}
                   >
                     <Building2 size={17} strokeWidth={1.75} />

@@ -124,6 +124,27 @@ function ProtectedRoute({ children, allowedRoles }) {
   return children;
 }
 
+function RootRoute() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-app)' }}>
+        <div style={{ width: '42px', height: '42px', border: '3px solid var(--border)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      </div>
+    );
+  }
+
+  if (user) {
+    if (user.role === 'doctor') return <Navigate to="/doctor-portal" replace />;
+    if (user.role === 'hospital_admin') return <Navigate to="/admin-console" replace />;
+    if (user.role === 'super_admin') return <Navigate to="/admin-console?tab=platform" replace />;
+    return <Navigate to="/patient-dashboard" replace />;
+  }
+
+  return <LoginPage />;
+}
+
 function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -133,65 +154,67 @@ function MainLayout() {
       <div className="app-main">
         <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
         <main className="main-content">
-            <ErrorBoundary>
-              <Routes>
-                <Route path="/" element={<SearchPage />} />
-                <Route path="/hospital/:id" element={<HospitalDetailsPage />} />
-                <Route path="/emergency" element={<EmergencyPage />} />
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/discover" element={<SearchPage />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/hospital/:id" element={<HospitalDetailsPage />} />
+              <Route path="/emergency" element={<EmergencyPage />} />
 
-                {/* Protected Routes */}
-                <Route
-                  path="/patient-dashboard"
-                  element={
-                    <ProtectedRoute allowedRoles={['patient', 'super_admin']}>
-                      <PatientDashboardPage />
-                    </ProtectedRoute>
-                  }
-                />
+              {/* Protected Routes */}
+              <Route
+                path="/patient-dashboard"
+                element={
+                  <ProtectedRoute allowedRoles={['patient', 'super_admin']}>
+                    <PatientDashboardPage />
+                  </ProtectedRoute>
+                }
+              />
 
-                <Route
-                  path="/doctor-portal"
-                  element={
-                    <ProtectedRoute allowedRoles={['doctor', 'super_admin']}>
-                      <DoctorPortalPage />
-                    </ProtectedRoute>
-                  }
-                />
+              <Route
+                path="/doctor-portal"
+                element={
+                  <ProtectedRoute allowedRoles={['doctor', 'super_admin']}>
+                    <DoctorPortalPage />
+                  </ProtectedRoute>
+                }
+              />
 
-                <Route
-                  path="/admin-console"
-                  element={
-                    <ProtectedRoute allowedRoles={['hospital_admin', 'super_admin']}>
-                      <AdminConsolePage />
-                    </ProtectedRoute>
-                  }
-                />
+              <Route
+                path="/admin-console"
+                element={
+                  <ProtectedRoute allowedRoles={['hospital_admin', 'super_admin']}>
+                    <AdminConsolePage />
+                  </ProtectedRoute>
+                }
+              />
 
-                <Route
-                  path="/teleconsult/room/:id"
-                  element={
-                    <ProtectedRoute>
-                      <TeleconsultRoomPage />
-                    </ProtectedRoute>
-                  }
-                />
+              <Route
+                path="/teleconsult/room/:id"
+                element={
+                  <ProtectedRoute>
+                    <TeleconsultRoomPage />
+                  </ProtectedRoute>
+                }
+              />
 
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </ErrorBoundary>
-          </main>
-          <Footer />
-        </div>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ErrorBoundary>
+        </main>
+        <Footer />
       </div>
-    );
-  }
+    </div>
+  );
+}
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Dedicated Independent Authentication Route (Clean split-screen, no sidebar/header) */}
+          {/* Default Root / Route directly displays Login Page (or role dashboard if authenticated) */}
+          <Route path="/" element={<RootRoute />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
 

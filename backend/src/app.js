@@ -93,6 +93,24 @@ app.use('/api/v1/doctor', doctorRoutes);
 app.use('/api/v1/teleconsult', teleconsultRoutes);
 app.use('/api/v1/super-admin', superAdminRoutes);
 
+// Serve Frontend Production Assets in Single Unified Deployment
+const path = require('path');
+const fs = require('fs');
+const frontendDist = path.resolve(__dirname, '../../frontend/dist');
+app.use(express.static(frontendDist));
+
+// SPA Fallback for client-side routing
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api/') || req.path.startsWith('/socket.io/')) {
+    return next();
+  }
+  const indexPath = path.join(frontendDist, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  next();
+});
+
 // 404 Handler for undefined routes
 app.use((req, res) => {
   res.status(404).json({
