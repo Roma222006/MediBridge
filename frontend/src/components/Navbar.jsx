@@ -9,14 +9,14 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Global Demonstration Environment Top Bar */}
-      <div className="demo-banner">
-        <div>
-          <span className="demo-badge">Techthon 2026</span>
-          <span>Demonstration Environment — Synthetic Health Data (Visionet Techthon Round 2)</span>
+      {/* State Health Network Top Bar */}
+      <div className="demo-banner" style={{ backgroundColor: 'var(--color-heading)', color: '#FFFFFF', padding: '6px 20px', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span className="badge badge-pill badge-primary" style={{ fontSize: '0.6875rem' }}>Verified Portal</span>
+          <span>Unified State Healthcare Coordination & Emergency Transit Network</span>
         </div>
-        <div>
-          <span>Sri Shakthi Institute of Engineering & Technology</span>
+        <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.85)' }}>
+          <span>&copy; 2026 MediBridge Healthcare Coordination Systems</span>
         </div>
       </div>
 

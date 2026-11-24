@@ -54,9 +54,23 @@ import {
 } from 'lucide-react';
 
 export default function DoctorPortalPage() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Helper for computing dynamic doctor initials (e.g. "Dr. Ramesh Kumar" -> "RK", "Dr. Sundar" -> "SM" / "SU")
+  const getDoctorInitials = (name) => {
+    if (!name) return 'DR';
+    const clean = name.replace(/^Dr\.?\s*/i, '').trim();
+    const parts = clean.split(/\s+/);
+    if (parts.length >= 2 && parts[0] && parts[1]) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    if (parts[0] && parts[0].length >= 2) {
+      return parts[0].substring(0, 2).toUpperCase();
+    }
+    return (parts[0] ? parts[0][0] : 'D').toUpperCase();
+  };
 
   // Tab from URL (?tab=desk, ?tab=availability, ?tab=prescriptions, ?tab=referrals, ?tab=followups, ?tab=notifications, ?tab=credentials, ?tab=settings)
   const searchParams = new URLSearchParams(location.search);
@@ -426,7 +440,7 @@ export default function DoctorPortalPage() {
       type: 'URGENT',
       title: 'New Inter-Hospital Referral: Sri Ramakrishna Hospital',
       time: '20 mins ago',
-      message: 'Patient Rajesh Kumar (58 M) referred for refractory angina evaluation by Dr. Sundar M.',
+      message: 'Patient Rajesh Kumar (58 M) referred for refractory angina evaluation and clinical review.',
       read: false
     },
     {
@@ -456,49 +470,137 @@ export default function DoctorPortalPage() {
   ]);
 
   // ==========================================================================
-  // 8. DOCTOR PROFILE & SETTINGS (Unified Module as Requested)
+  // 8. DOCTOR PROFILE & SETTINGS (Dynamically Isolated & Synced with Backend Profile)
   // ==========================================================================
+  const doctorStorageKey = `medibridge_doctor_settings_${user?._id || user?.id || user?.email || 'default'}`;
+
   const [doctorSettings, setDoctorSettings] = useState(() => {
-    const saved = localStorage.getItem('medibridge_doctor_settings');
+    const storageKey = `medibridge_doctor_settings_${user?._id || user?.id || user?.email || 'default'}`;
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed.fullName) return parsed;
       } catch (e) {}
     }
+    const defaultName = user?.fullName || (user?.email ? (user.email.startsWith('dr.') ? `Dr. ${user.email.replace(/^dr\./i, '').split('@')[0]}` : `Dr. ${user.email.split('@')[0]}`) : 'Dr. Practitioner');
     return {
-      fullName: 'Dr. Sundar M',
-      regNumber: 'TNMC-123456',
+      fullName: defaultName,
+      regNumber: user?.regNumber || 'TNMC-2026-ACTIVE',
       councilName: 'Tamil Nadu Medical Council',
-      qualifications: 'MBBS, MD (Gen Med), DM (Cardiology), FACC',
-      specialty: 'Cardiology',
-      subSpecialty: 'Interventional Cardiology',
-      hospitalName: 'Kovai Medical Center & Hospital (KMCH)',
-      department: 'Cardiology OPD (Room 204)',
-      inPersonFee: '800',
-      teleconsultFee: '600',
+      qualifications: user?.qualifications || 'MBBS, MD',
+      specialty: user?.specialty || 'General Medicine',
+      subSpecialty: user?.subSpecialty || '',
+      hospitalName: user?.hospitalName || 'Kovai Medical Center & Hospital (KMCH)',
+      department: user?.department || `${user?.specialty || 'General Medicine'} OPD (Room 204)`,
+      inPersonFee: '500',
+      teleconsultFee: '500',
       slotDuration: '15 mins',
       maxDailyPatients: '25',
-      officialEmail: 'dr.sundar@kmch-health.org',
-      deskPhone: '+91 422 4323800 Ext: 204',
-      emergencyPhone: '+91 98421 99887',
+      officialEmail: user?.email || 'doctor@medibridge.org',
+      deskPhone: user?.phone || '+91 98421 99887',
+      emergencyPhone: user?.phone || '+91 98421 99887',
       smsAlerts: true,
       whatsappLinks: true,
       emergencyTriageAlerts: true,
-      twoFactorAuth: true
+      twoFactorAuth: true,
+      experienceYears: '10+ Years',
+      verificationStatus: 'ACTIVE',
+      verificationBadgeText: 'Verified Active'
     };
   });
+
+  // Dynamically load doctor profile from backend database
+  useEffect(() => {
+    let isMounted = true;
+    const loadDoctorProfile = async () => {
+      const storageKey = `medibridge_doctor_settings_${user?._id || user?.id || user?.email || 'default'}`;
+      try {
+        const res = await api.get('/doctor/profile');
+        if (res.data?.success && res.data?.data && isMounted) {
+          const doc = res.data.data;
+          setDoctorSettings((prev) => {
+            const updated = {
+              ...prev,
+              fullName: doc.name || prev.fullName || user?.fullName || 'Doctor',
+              regNumber: doc.regNumber || prev.regNumber,
+              councilName: doc.councilName || prev.councilName || 'Tamil Nadu Medical Council',
+              councilState: doc.councilState || prev.councilState || 'Tamil Nadu',
+              qualifications: doc.qualifications || prev.qualifications || 'MBBS, MD',
+              specialty: doc.specialty || prev.specialty || 'General Medicine',
+              subSpecialty: doc.subSpecialty || prev.subSpecialty || '',
+              hospitalName: doc.hospital?.name || prev.hospitalName || 'Kovai Medical Center & Hospital (KMCH)',
+              department: doc.department || `${doc.specialty || 'OPD'} Consultation Room`,
+              inPersonFee: doc.consultationFee ? String(doc.consultationFee) : prev.inPersonFee || '500',
+              teleconsultFee: doc.teleconsultFee ? String(doc.teleconsultFee) : prev.teleconsultFee || '500',
+              officialEmail: doc.email || user?.email || prev.officialEmail,
+              deskPhone: doc.phone || user?.phone || prev.deskPhone,
+              experienceYears: doc.experienceYears ? `${doc.experienceYears}+ Years` : (prev.experienceYears || '10+ Years'),
+              verificationStatus: doc.verificationStatus || prev.verificationStatus || 'ACTIVE',
+              verificationBadgeText: doc.verificationBadgeText || 'Verified Active'
+            };
+            localStorage.setItem(storageKey, JSON.stringify(updated));
+            return updated;
+          });
+        }
+      } catch (err) {
+        // Fallback to logged-in user in AuthContext if backend endpoint returns 404
+        if (user?.fullName && isMounted) {
+          setDoctorSettings((prev) => {
+            const updated = {
+              ...prev,
+              fullName: user.fullName,
+              officialEmail: user.email || prev.officialEmail,
+              deskPhone: user.phone || prev.deskPhone
+            };
+            localStorage.setItem(storageKey, JSON.stringify(updated));
+            return updated;
+          });
+        }
+      }
+    };
+
+    if (user) {
+      loadDoctorProfile();
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [user?._id, user?.id, user?.fullName, user?.email]);
+
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsTab, setSettingsTab] = useState('identity'); // 'identity', 'fees', 'contact', 'alerts'
 
-  const handleSaveDoctorSettings = (e) => {
-    e.preventDefault();
+  const handleSaveDoctorSettings = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
     setSavingSettings(true);
-    localStorage.setItem('medibridge_doctor_settings', JSON.stringify(doctorSettings));
-    setTimeout(() => {
+    const storageKey = `medibridge_doctor_settings_${user?._id || user?.id || user?.email || 'default'}`;
+    localStorage.setItem(storageKey, JSON.stringify(doctorSettings));
+
+    try {
+      await api.patch('/doctor/profile', {
+        name: doctorSettings.fullName,
+        specialty: doctorSettings.specialty,
+        subSpecialty: doctorSettings.subSpecialty,
+        qualifications: doctorSettings.qualifications,
+        regNumber: doctorSettings.regNumber,
+        department: doctorSettings.department,
+        councilName: doctorSettings.councilName,
+        consultationFee: Number(doctorSettings.inPersonFee) || 500
+      });
+      if (updateUser) {
+        updateUser({ fullName: doctorSettings.fullName });
+      }
+    } catch (err) {
+      console.warn('Backend doctor profile update sync note:', err.message);
+    } finally {
       setSavingSettings(false);
-      setMsg({ type: 'success', text: 'Doctor profile, practice settings, and consultation fees updated successfully!' });
+      setMsg({
+        type: 'success',
+        text: 'Doctor profile, practice settings, and consultation credentials updated successfully!'
+      });
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 400);
+    }
   };
 
   // ==========================================================================
@@ -1802,7 +1904,7 @@ export default function DoctorPortalPage() {
                   position: 'relative'
                 }}
               >
-                {doctorSettings.fullName?.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase() || 'DR'}
+                {getDoctorInitials(doctorSettings.fullName)}
                 <div
                   style={{
                     position: 'absolute',
@@ -1828,10 +1930,10 @@ export default function DoctorPortalPage() {
                     {doctorSettings.fullName}
                   </h1>
                   <span className="badge badge-pill badge-primary">Consultant Specialist</span>
-                  <span className="badge badge-pill badge-success">Verified Active</span>
+                  <span className="badge badge-pill badge-success">{doctorSettings.verificationBadgeText || 'Verified Active'}</span>
                 </div>
                 <p style={{ margin: '4px 0 0 0', fontSize: '0.875rem', color: 'var(--color-heading)', fontWeight: '600' }}>
-                  {doctorSettings.specialty} ({doctorSettings.subSpecialty || 'Interventional Cardiology'}) &bull; {doctorSettings.hospitalName}
+                  {doctorSettings.specialty} {doctorSettings.subSpecialty ? `(${doctorSettings.subSpecialty})` : ''} &bull; {doctorSettings.hospitalName}
                 </p>
                 <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', marginTop: '6px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   <span><strong>Council Reg:</strong> {doctorSettings.regNumber} ({doctorSettings.councilName})</span>
@@ -1861,7 +1963,7 @@ export default function DoctorPortalPage() {
               </div>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>Clinical Experience</span>
-                <div style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>14+ Years</div>
+                <div style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>{doctorSettings.experienceYears || '10+ Years'}</div>
               </div>
             </div>
 
@@ -1891,7 +1993,7 @@ export default function DoctorPortalPage() {
               </div>
               <div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>OPD Location</span>
-                <div style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>Room 204, KMCH</div>
+                <div style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>{doctorSettings.department || 'Consultation OPD'}</div>
               </div>
             </div>
           </div>

@@ -126,148 +126,13 @@ function ProtectedRoute({ children, allowedRoles }) {
 
 function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, switchDemoRole } = useAuth();
-  const navigate = useNavigate();
-
-  const handlePortalSwitch = async (role, path) => {
-    if (switchDemoRole) {
-      const target = await switchDemoRole(role);
-      navigate(path || target);
-    } else {
-      navigate(path);
-    }
-  };
 
   return (
-    <>
-      <div
-        className="demo-banner"
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '8px',
-          padding: '8px 16px',
-          backgroundColor: 'var(--color-heading)',
-          color: '#FFFFFF'
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span className="demo-badge">Techthon 2026</span>
-          <span style={{ fontWeight: '700', fontSize: '0.75rem' }}>
-            MediBridge Multi-Portal Hub
-          </span>
-        </div>
-
-        {/* Instant Multi-Portal Launcher Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <span style={{ color: 'var(--color-blush-pink)', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase' }}>
-            All Portals:
-          </span>
-          <button
-            type="button"
-            onClick={() => handlePortalSwitch('patient', '/patient-dashboard')}
-            style={{
-              padding: '4px 10px',
-              borderRadius: '9999px',
-              border: '1px solid rgba(255,255,255,0.2)',
-              fontSize: '0.75rem',
-              fontWeight: '700',
-              cursor: 'pointer',
-              backgroundColor: user?.role === 'patient' ? 'var(--color-primary)' : 'rgba(255,255,255,0.12)',
-              color: '#FFFFFF'
-            }}
-          >
-            Patient Portal
-          </button>
-          <button
-            type="button"
-            onClick={() => handlePortalSwitch('doctor', '/doctor-portal')}
-            style={{
-              padding: '4px 10px',
-              borderRadius: '9999px',
-              border: '1px solid rgba(255,255,255,0.2)',
-              fontSize: '0.75rem',
-              fontWeight: '700',
-              cursor: 'pointer',
-              backgroundColor: user?.role === 'doctor' ? 'var(--color-primary)' : 'rgba(255,255,255,0.12)',
-              color: '#FFFFFF'
-            }}
-          >
-            Doctor Portal
-          </button>
-          <button
-            type="button"
-            onClick={() => handlePortalSwitch('hospital_admin', '/admin-console')}
-            style={{
-              padding: '4px 10px',
-              borderRadius: '9999px',
-              border: '1px solid rgba(255,255,255,0.2)',
-              fontSize: '0.75rem',
-              fontWeight: '700',
-              cursor: 'pointer',
-              backgroundColor: user?.role === 'hospital_admin' ? 'var(--color-primary)' : 'rgba(255,255,255,0.12)',
-              color: '#FFFFFF'
-            }}
-          >
-            Hospital Admin
-          </button>
-          <button
-            type="button"
-            onClick={() => handlePortalSwitch('super_admin', '/admin-console?tab=platform')}
-            style={{
-              padding: '4px 10px',
-              borderRadius: '9999px',
-              border: '1px solid rgba(255,255,255,0.2)',
-              fontSize: '0.75rem',
-              fontWeight: '700',
-              cursor: 'pointer',
-              backgroundColor: user?.role === 'super_admin' ? 'var(--color-primary)' : 'rgba(255,255,255,0.12)',
-              color: '#FFFFFF'
-            }}
-          >
-            Super Admin
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            style={{
-              padding: '4px 10px',
-              borderRadius: '9999px',
-              border: '1px solid rgba(255,255,255,0.2)',
-              fontSize: '0.75rem',
-              fontWeight: '700',
-              cursor: 'pointer',
-              backgroundColor: 'rgba(255,255,255,0.12)',
-              color: '#FFFFFF'
-            }}
-          >
-            Discover & Book
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/emergency')}
-            style={{
-              padding: '4px 10px',
-              borderRadius: '9999px',
-              border: '1px solid rgba(255,255,255,0.2)',
-              fontSize: '0.75rem',
-              fontWeight: '700',
-              cursor: 'pointer',
-              backgroundColor: 'rgba(184, 50, 69, 0.6)',
-              color: '#FFFFFF'
-            }}
-          >
-            Emergency 108
-          </button>
-        </div>
-      </div>
-      <div className="app-shell">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className="app-main">
-          <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-          <main className="main-content">
+    <div className="app-shell">
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="app-main">
+        <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+        <main className="main-content">
             <ErrorBoundary>
               <Routes>
                 <Route path="/" element={<SearchPage />} />
@@ -318,9 +183,8 @@ function MainLayout() {
           <Footer />
         </div>
       </div>
-    </>
-  );
-}
+    );
+  }
 
 export default function App() {
   return (
