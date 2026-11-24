@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Calendar,
   Clock,
@@ -10,7 +10,11 @@ import {
   UserCheck,
   Filter,
   Download,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  User,
+  Phone,
+  FileText
 } from 'lucide-react';
 import Modal from '../ui/Modal';
 
@@ -18,7 +22,7 @@ export default function AppointmentManagementView({ onToast, defaultPendingOnly 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState(defaultPendingOnly ? 'Pending' : 'All');
   const [deptFilter, setDeptFilter] = useState('All');
-  const [dateFilter, setDateFilter] = useState('Today');
+  const [modeFilter, setModeFilter] = useState('All');
 
   const [appointments, setAppointments] = useState(() => {
     const saved = localStorage.getItem('medibridge_hospital_appointments');
@@ -28,25 +32,45 @@ export default function AppointmentManagementView({ onToast, defaultPendingOnly 
       } catch (e) {}
     }
     return [
-      { id: 'apt-001', token: 'T-101', patientName: 'Priya R', age: 34, gender: 'Female', doctor: 'Dr. Sundar M', department: 'Cardiology', date: 'Today, 24 Nov', time: '09:00 AM', mode: 'In-Person', status: 'Completed', reason: 'Routine Cardiac Follow-up' },
-      { id: 'apt-002', token: 'T-102', patientName: 'Arun K', age: 48, gender: 'Male', doctor: 'Dr. Sundar M', department: 'Cardiology', date: 'Today, 24 Nov', time: '10:00 AM', mode: 'Online', status: 'In Consultation', reason: 'Hypertension Review' },
-      { id: 'apt-003', token: 'T-103', patientName: 'Anitha K', age: 29, gender: 'Female', doctor: 'Dr. Lavanya S', department: 'Neurology', date: 'Today, 24 Nov', time: '11:00 AM', mode: 'Online', status: 'Pending', reason: 'Migraine Assessment' },
-      { id: 'apt-004', token: 'T-104', patientName: 'Karthik S', age: 42, gender: 'Male', doctor: 'Dr. Prakash R', department: 'Orthopedics', date: 'Today, 24 Nov', time: '12:00 PM', mode: 'In-Person', status: 'Pending', reason: 'Knee Joint Pain Review' },
-      { id: 'apt-005', token: 'T-105', patientName: 'Suresh V', age: 56, gender: 'Male', doctor: 'Dr. M. Revathi', department: 'Cardiology', date: 'Today, 24 Nov', time: '02:00 PM', mode: 'Online', status: 'Confirmed', reason: 'Post-Angioplasty Follow-up' },
-      { id: 'apt-006', token: 'T-106', patientName: 'Deepa N', age: 38, gender: 'Female', doctor: 'Dr. Anand K', department: 'General Medicine', date: 'Today, 24 Nov', time: '03:30 PM', mode: 'In-Person', status: 'Confirmed', reason: 'Diabetes Management' },
-      { id: 'apt-007', token: 'T-107', patientName: 'Rajesh M', age: 52, gender: 'Male', doctor: 'Dr. Prakash R', department: 'Orthopedics', date: 'Today, 24 Nov', time: '04:30 PM', mode: 'In-Person', status: 'Confirmed', reason: 'Post-Operative Check' },
-      { id: 'apt-008', token: 'T-108', patientName: 'Kavitha S', age: 31, gender: 'Female', doctor: 'Dr. Priya Dharshini', department: 'Pediatrics', date: 'Today, 24 Nov', time: '05:15 PM', mode: 'Online', status: 'Pending', reason: 'Child Vaccination Follow-up' }
+      { id: 'apt-001', token: 'T-101', patientName: 'Priya R', age: 34, gender: 'Female', phone: '+91 98401 23456', doctor: 'Dr. Sundar M', department: 'Cardiology', date: 'Today, 24 Nov', time: '09:00 AM', mode: 'In-Person', status: 'Completed', reason: 'Routine Cardiac Follow-up' },
+      { id: 'apt-002', token: 'T-102', patientName: 'Arun K', age: 48, gender: 'Male', phone: '+91 97890 11223', doctor: 'Dr. Sundar M', department: 'Cardiology', date: 'Today, 24 Nov', time: '10:00 AM', mode: 'Online', status: 'In Consultation', reason: 'Hypertension Review' },
+      { id: 'apt-003', token: 'T-103', patientName: 'Anitha K', age: 29, gender: 'Female', phone: '+91 94432 44556', doctor: 'Dr. Lavanya S', department: 'Neurology', date: 'Today, 24 Nov', time: '11:00 AM', mode: 'Online', status: 'Pending', reason: 'Migraine Assessment' },
+      { id: 'apt-004', token: 'T-104', patientName: 'Karthik S', age: 42, gender: 'Male', phone: '+91 98421 66778', doctor: 'Dr. Prakash R', department: 'Orthopedics', date: 'Today, 24 Nov', time: '12:00 PM', mode: 'In-Person', status: 'Confirmed', reason: 'Knee Joint Pain Review' },
+      { id: 'apt-005', token: 'T-105', patientName: 'Suresh V', age: 56, gender: 'Male', phone: '+91 97890 88990', doctor: 'Dr. M. Revathi', department: 'Cardiology', date: 'Today, 24 Nov', time: '02:00 PM', mode: 'Online', status: 'Confirmed', reason: 'Post-Angioplasty Follow-up' },
+      { id: 'apt-006', token: 'T-106', patientName: 'Deepa N', age: 38, gender: 'Female', phone: '+91 98401 55443', doctor: 'Dr. Anand K', department: 'General Medicine', date: 'Today, 24 Nov', time: '03:30 PM', mode: 'In-Person', status: 'Confirmed', reason: 'Diabetes Management' },
+      { id: 'apt-007', token: 'T-107', patientName: 'Rajesh M', age: 52, gender: 'Male', phone: '+91 94432 99881', doctor: 'Dr. Prakash R', department: 'Orthopedics', date: 'Today, 24 Nov', time: '04:30 PM', mode: 'In-Person', status: 'Confirmed', reason: 'Post-Operative Check' },
+      { id: 'apt-008', token: 'T-108', patientName: 'Kavitha S', age: 31, gender: 'Female', phone: '+91 97890 33221', doctor: 'Dr. Priya Dharshini', department: 'Pediatrics', date: 'Today, 24 Nov', time: '05:15 PM', mode: 'Online', status: 'Pending', reason: 'Child Vaccination Follow-up' }
     ];
   });
 
   const [selectedApt, setSelectedApt] = useState(null);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [newDate, setNewDate] = useState('2026-11-25');
   const [newTime, setNewTime] = useState('10:30 AM');
+
+  useEffect(() => {
+    if (!localStorage.getItem('medibridge_hospital_appointments')) {
+      localStorage.setItem('medibridge_hospital_appointments', JSON.stringify(appointments));
+    }
+    const handleSync = () => {
+      const saved = localStorage.getItem('medibridge_hospital_appointments');
+      if (saved) {
+        try { setAppointments(JSON.parse(saved)); } catch (e) {}
+      }
+    };
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('focus', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
+  }, []);
 
   const persistAppointments = (updated) => {
     setAppointments(updated);
     localStorage.setItem('medibridge_hospital_appointments', JSON.stringify(updated));
+    window.dispatchEvent(new Event('storage'));
   };
 
   const handleConfirmPending = (id) => {
@@ -127,10 +151,12 @@ export default function AppointmentManagementView({ onToast, defaultPendingOnly 
       a.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       a.doctor.toLowerCase().includes(searchQuery.toLowerCase()) ||
       a.token.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.department.toLowerCase().includes(searchQuery.toLowerCase());
+      a.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (a.phone && a.phone.includes(searchQuery));
     const matchesDept = deptFilter === 'All' || a.department === deptFilter;
     const matchesStatus = statusFilter === 'All' || a.status === statusFilter;
-    return matchesSearch && matchesDept && matchesStatus;
+    const matchesMode = modeFilter === 'All' || a.mode === modeFilter;
+    return matchesSearch && matchesDept && matchesStatus && matchesMode;
   });
 
   return (
@@ -169,12 +195,56 @@ export default function AppointmentManagementView({ onToast, defaultPendingOnly 
         </div>
       </div>
 
+      {/* Summary KPI Strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+        <div className="ref-metric-card" style={{ padding: '16px' }}>
+          <div className="ref-metric-icon pink" style={{ width: '42px', height: '42px' }}>
+            <Calendar size={18} />
+          </div>
+          <div className="ref-metric-info">
+            <span className="ref-metric-value" style={{ fontSize: '1.35rem' }}>{appointments.length}</span>
+            <span className="ref-metric-label">Total Scheduled</span>
+          </div>
+        </div>
+
+        <div className="ref-metric-card" style={{ padding: '16px' }}>
+          <div className="ref-metric-icon pink" style={{ width: '42px', height: '42px' }}>
+            <Stethoscope size={18} />
+          </div>
+          <div className="ref-metric-info">
+            <span className="ref-metric-value" style={{ fontSize: '1.35rem' }}>{appointments.filter((a) => a.mode === 'In-Person').length}</span>
+            <span className="ref-metric-label">In-Person OPD</span>
+          </div>
+        </div>
+
+        <div className="ref-metric-card" style={{ padding: '16px' }}>
+          <div className="ref-metric-icon pink" style={{ width: '42px', height: '42px' }}>
+            <Video size={18} />
+          </div>
+          <div className="ref-metric-info">
+            <span className="ref-metric-value" style={{ fontSize: '1.35rem' }}>{appointments.filter((a) => a.mode === 'Online').length}</span>
+            <span className="ref-metric-label">Teleconsultations</span>
+          </div>
+        </div>
+
+        <div className="ref-metric-card" style={{ padding: '16px' }}>
+          <div className="ref-metric-icon pink" style={{ width: '42px', height: '42px' }}>
+            <Clock size={18} />
+          </div>
+          <div className="ref-metric-info">
+            <span className="ref-metric-value" style={{ fontSize: '1.35rem' }}>{appointments.filter((a) => a.status === 'Pending').length}</span>
+            <span className="ref-metric-label">Pending Requests</span>
+          </div>
+        </div>
+      </div>
+
       {/* Filter Tabs / Quick Counts */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
         {[
           { key: 'All', label: `All (${appointments.length})` },
           { key: 'Pending', label: `Pending Requests (${appointments.filter((a) => a.status === 'Pending').length})` },
           { key: 'Confirmed', label: `Confirmed (${appointments.filter((a) => a.status === 'Confirmed').length})` },
+          { key: 'In Consultation', label: `In Consultation (${appointments.filter((a) => a.status === 'In Consultation').length})` },
           { key: 'Completed', label: `Completed (${appointments.filter((a) => a.status === 'Completed').length})` }
         ].map((tab) => (
           <button
@@ -200,7 +270,7 @@ export default function AppointmentManagementView({ onToast, defaultPendingOnly 
 
       {/* Filter Bar */}
       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: '1 1 280px' }}>
+        <div style={{ position: 'relative', flex: '1 1 300px' }}>
           <Search
             size={16}
             style={{
@@ -250,9 +320,29 @@ export default function AppointmentManagementView({ onToast, defaultPendingOnly 
           <option value="General Medicine">General Medicine</option>
           <option value="Pediatrics">Pediatrics</option>
         </select>
+
+        <select
+          value={modeFilter}
+          onChange={(e) => setModeFilter(e.target.value)}
+          style={{
+            padding: '9px 16px',
+            borderRadius: '9999px',
+            border: '1px solid var(--border)',
+            backgroundColor: '#FFFFFF',
+            fontSize: '0.8125rem',
+            fontWeight: '600',
+            color: 'var(--text)',
+            cursor: 'pointer',
+            outline: 'none'
+          }}
+        >
+          <option value="All">All Modes ▾</option>
+          <option value="In-Person">In-Person OPD</option>
+          <option value="Online">Online Video Teleconsult</option>
+        </select>
       </div>
 
-      {/* Table */}
+      {/* Spacious, Highly Readable Table */}
       <div
         className="card"
         style={{
@@ -264,67 +354,73 @@ export default function AppointmentManagementView({ onToast, defaultPendingOnly 
           boxShadow: 'var(--shadow-card)'
         }}
       >
-        <div className="table-container">
+        <div className="table-container" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
               <tr>
-                <th style={{ padding: '12px 18px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Token & Patient</th>
-                <th style={{ padding: '12px 18px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Doctor & Dept</th>
-                <th style={{ padding: '12px 18px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Date & Slot</th>
-                <th style={{ padding: '12px 18px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Mode</th>
-                <th style={{ padding: '12px 18px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Reason</th>
-                <th style={{ padding: '12px 18px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Status</th>
-                <th style={{ padding: '12px 18px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700' }}>Actions</th>
+                <th style={{ padding: '14px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700', minWidth: '220px' }}>Token & Patient</th>
+                <th style={{ padding: '14px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700', minWidth: '190px' }}>Doctor & Department</th>
+                <th style={{ padding: '14px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700', minWidth: '150px' }}>Date & Slot</th>
+                <th style={{ padding: '14px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700', minWidth: '120px' }}>Mode</th>
+                <th style={{ padding: '14px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700', minWidth: '200px' }}>Chief Complaint</th>
+                <th style={{ padding: '14px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700', minWidth: '150px' }}>Status</th>
+                <th style={{ padding: '14px 20px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)', fontWeight: '700', minWidth: '190px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((a) => (
-                <tr key={a.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '14px 18px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <tr key={a.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background-color 0.15s' }}>
+                  <td style={{ padding: '16px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <span
                         style={{
-                          padding: '2px 6px',
-                          borderRadius: '4px',
+                          display: 'inline-block',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
                           backgroundColor: 'var(--surface-subtle)',
-                          fontSize: '0.75rem',
+                          fontSize: '0.8125rem',
                           fontWeight: '800',
-                          color: 'var(--color-primary)'
+                          color: 'var(--color-primary)',
+                          fontFamily: 'monospace',
+                          whiteSpace: 'nowrap',
+                          letterSpacing: '0.04em'
                         }}
                       >
                         {a.token}
                       </span>
-                      <span style={{ fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>
-                        {a.patientName}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {a.age} Yrs &bull; {a.gender}
+                      <div>
+                        <div style={{ fontWeight: '800', fontSize: '0.9375rem', color: 'var(--color-heading)', whiteSpace: 'nowrap' }}>
+                          {a.patientName}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                          {a.age} Yrs &bull; {a.gender} {a.phone ? `• ${a.phone}` : ''}
+                        </div>
+                      </div>
                     </div>
                   </td>
-                  <td style={{ padding: '14px 18px' }}>
-                    <div style={{ fontWeight: '700', fontSize: '0.8125rem', color: 'var(--color-heading)' }}>
+                  <td style={{ padding: '16px 20px' }}>
+                    <div style={{ fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)', whiteSpace: 'nowrap' }}>
                       {a.doctor}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: '600', marginTop: '2px', whiteSpace: 'nowrap' }}>
                       {a.department}
                     </div>
                   </td>
-                  <td style={{ padding: '14px 18px' }}>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: '700', color: 'var(--color-heading)' }}>
+                  <td style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: '0.875rem', fontWeight: '800', color: 'var(--color-heading)' }}>
                       {a.time}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                       {a.date}
                     </div>
                   </td>
-                  <td style={{ padding: '14px 18px' }}>
+                  <td style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>
                     <span
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '4px',
-                        padding: '3px 8px',
+                        gap: '6px',
+                        padding: '4px 10px',
                         borderRadius: '9999px',
                         fontSize: '0.75rem',
                         fontWeight: '700',
@@ -332,20 +428,22 @@ export default function AppointmentManagementView({ onToast, defaultPendingOnly 
                         color: a.mode === 'Online' ? '#7E22CE' : 'var(--color-primary)'
                       }}
                     >
-                      {a.mode === 'Online' ? <Video size={12} /> : <Stethoscope size={12} />}
+                      {a.mode === 'Online' ? <Video size={13} /> : <Stethoscope size={13} />}
                       {a.mode}
                     </span>
                   </td>
-                  <td style={{ padding: '14px 18px', fontSize: '0.8125rem', color: 'var(--text)' }}>
-                    {a.reason}
+                  <td style={{ padding: '16px 20px', fontSize: '0.8125rem', color: 'var(--text)' }}>
+                    <div style={{ fontWeight: '500', lineHeight: '1.4' }}>
+                      {a.reason}
+                    </div>
                   </td>
-                  <td style={{ padding: '14px 18px' }}>
+                  <td style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>
                     <span
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '4px',
-                        padding: '3px 10px',
+                        gap: '5px',
+                        padding: '4px 12px',
                         borderRadius: '9999px',
                         fontSize: '0.75rem',
                         fontWeight: '700',
@@ -374,21 +472,22 @@ export default function AppointmentManagementView({ onToast, defaultPendingOnly 
                       {a.status === 'Confirmed' || a.status === 'Completed' ? <Check size={12} strokeWidth={2.5} /> : '●'} {a.status}
                     </span>
                   </td>
-                  <td style={{ padding: '14px 18px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <td style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       {a.status === 'Pending' && (
                         <button
                           type="button"
                           onClick={() => handleConfirmPending(a.id)}
                           style={{
-                            padding: '4px 10px',
+                            padding: '5px 12px',
                             borderRadius: '9999px',
                             border: 'none',
                             backgroundColor: 'var(--color-primary)',
                             color: '#FFFFFF',
                             fontSize: '0.75rem',
                             fontWeight: '700',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 3px rgba(184, 61, 131, 0.2)'
                           }}
                         >
                           Confirm
@@ -399,13 +498,13 @@ export default function AppointmentManagementView({ onToast, defaultPendingOnly 
                           type="button"
                           onClick={() => handleMarkArrived(a.id)}
                           style={{
-                            padding: '4px 10px',
+                            padding: '5px 11px',
                             borderRadius: '9999px',
                             border: '1px solid var(--border)',
                             backgroundColor: '#FFFFFF',
                             color: 'var(--color-heading)',
                             fontSize: '0.75rem',
-                            fontWeight: '600',
+                            fontWeight: '700',
                             cursor: 'pointer'
                           }}
                         >
@@ -416,7 +515,7 @@ export default function AppointmentManagementView({ onToast, defaultPendingOnly 
                         type="button"
                         onClick={() => handleOpenReschedule(a)}
                         style={{
-                          padding: '4px 8px',
+                          padding: '5px 11px',
                           borderRadius: '9999px',
                           border: '1px solid var(--border)',
                           backgroundColor: '#FFFFFF',
@@ -433,7 +532,7 @@ export default function AppointmentManagementView({ onToast, defaultPendingOnly 
                           type="button"
                           onClick={() => handleCancelApt(a.id)}
                           style={{
-                            padding: '4px 8px',
+                            padding: '5px 10px',
                             borderRadius: '9999px',
                             border: '1px solid #FCA5A5',
                             backgroundColor: '#FFFFFF',

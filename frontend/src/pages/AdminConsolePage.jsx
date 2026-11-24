@@ -62,6 +62,7 @@ import PatientCoordinationView from '../components/admin/PatientCoordinationView
 import ReportsAnalyticsView from '../components/admin/ReportsAnalyticsView';
 import NotificationsView from '../components/admin/NotificationsView';
 import HospitalSettingsView from '../components/admin/HospitalSettingsView';
+import AuditLogsView from '../components/admin/AuditLogsView';
 
 export default function AdminConsolePage() {
   const { user } = useAuth();
@@ -104,6 +105,19 @@ export default function AdminConsolePage() {
   const [doctorDeptFilter, setDoctorDeptFilter] = useState('All');
   const [doctorStatusFilter, setDoctorStatusFilter] = useState('All');
 
+  // Edit Doctor Modal State
+  const [showEditDoctorModal, setShowEditDoctorModal] = useState(false);
+  const [editingDoctor, setEditingDoctor] = useState(null);
+  const [editDoctorForm, setEditDoctorForm] = useState({
+    name: '',
+    specialty: 'Cardiology',
+    department: 'Cardiology',
+    regNumber: '',
+    qualifications: '',
+    verification: 'Pending',
+    availability: 'Available'
+  });
+
   // Default Dataset for Doctor Management (Screen 8)
   const [screen8Doctors, setScreen8Doctors] = useState(() => {
     const saved = localStorage.getItem('medibridge_hospital_doctors');
@@ -112,15 +126,137 @@ export default function AdminConsolePage() {
         return JSON.parse(saved);
       } catch (e) {}
     }
-    return [
-      { id: 'doc-1', name: 'Dr. Sundar M', specialty: 'Cardiology', department: 'Cardiology', verification: 'Verified', availability: 'Available' },
-      { id: 'doc-2', name: 'Dr. Lavanya S', specialty: 'Neurology', department: 'Neurology', verification: 'Pending', availability: 'Unavailable' },
-      { id: 'doc-3', name: 'Dr. Prakash R', specialty: 'Orthopedics', department: 'Orthopedics', verification: 'Verified', availability: 'Available' },
-      { id: 'doc-4', name: 'Dr. Anand K', specialty: 'General Medicine', department: 'General Medicine', verification: 'Verified', availability: 'Available' },
-      { id: 'doc-5', name: 'Dr. Priya Dharshini', specialty: 'Pediatrics', department: 'Pediatrics', verification: 'Pending', availability: 'Available' },
-      { id: 'doc-6', name: 'Dr. M. Revathi', specialty: 'Cardiology', department: 'Cardiology', verification: 'Verified', availability: 'Available' }
+    const initialDocs = [
+      { id: 'doc-1', name: 'Dr. Sundar M', specialty: 'Cardiology', department: 'Cardiology', regNumber: 'TNMC/2012/04818', qualifications: 'MBBS, MD, DM', verification: 'Verified', availability: 'Available' },
+      { id: 'doc-2', name: 'Dr. Lavanya S', specialty: 'Neurology', department: 'Neurology', regNumber: 'TNMC/2017/09841', qualifications: 'MBBS, MD, DM', verification: 'Pending', availability: 'Unavailable' },
+      { id: 'doc-3', name: 'Dr. Prakash R', specialty: 'Orthopedics', department: 'Orthopedics', regNumber: 'TNMC/2011/03120', qualifications: 'MBBS, MS (Ortho)', verification: 'Verified', availability: 'Available' },
+      { id: 'doc-4', name: 'Dr. Anand K', specialty: 'General Medicine', department: 'General Medicine', regNumber: 'TNMC/2015/07621', qualifications: 'MBBS, MD (Gen Med)', verification: 'Verified', availability: 'Available' },
+      { id: 'doc-5', name: 'Dr. Priya Dharshini', specialty: 'Pediatrics', department: 'Pediatrics', regNumber: 'TNMC/2019/11234', qualifications: 'MBBS, MD (Pediatrics)', verification: 'Pending', availability: 'Available' },
+      { id: 'doc-6', name: 'Dr. M. Revathi', specialty: 'Cardiology', department: 'Cardiology', regNumber: 'TNMC/2016/08945', qualifications: 'MBBS, MD, DNB', verification: 'Verified', availability: 'Available' }
     ];
+    try {
+      localStorage.setItem('medibridge_hospital_doctors', JSON.stringify(initialDocs));
+    } catch (e) {}
+    return initialDocs;
   });
+
+  // Dynamic Dashboard Metrics State (Computed Live from Stores)
+  const [dynamicMetrics, setDynamicMetrics] = useState({
+    totalDoctors: 64,
+    verifiedDoctors: 58,
+    todayAppointments: 36,
+    pendingRequests: 8,
+    genAvailable: 278,
+    genTotal: 320,
+    icuAvailable: 7,
+    icuTotal: 28,
+    doctorVerificationsPending: 3,
+    cancellationsPending: 2,
+    replacementRequests: 1
+  });
+
+  const refreshDynamicMetrics = () => {
+    // 1. Doctors & Verifications Count
+    let docs = screen8Doctors;
+    const savedDocs = localStorage.getItem('medibridge_hospital_doctors');
+    if (savedDocs) {
+      try { docs = JSON.parse(savedDocs); } catch (e) {}
+    }
+    const totalDocs = Math.max(64, 64 + (docs.length - 6));
+    const verifiedDocs = 58 + docs.filter((d) => !['doc-1', 'doc-2', 'doc-3', 'doc-4', 'doc-5', 'doc-6'].includes(d.id) && d.verification === 'Verified').length;
+
+    // Doctor Verifications Pending
+    let docVerPending = 3;
+    const savedVer = localStorage.getItem('medibridge_doctor_verifications');
+    if (savedVer) {
+      try {
+        const verList = JSON.parse(savedVer);
+        docVerPending = verList.filter((v) => v.status !== 'Verified').length;
+      } catch (e) {}
+    }
+
+    // 2. Appointments
+    let todayApts = 36;
+    let pendingApts = 8;
+    const savedApts = localStorage.getItem('medibridge_hospital_appointments');
+    if (savedApts) {
+      try {
+        const apts = JSON.parse(savedApts);
+        if (apts && apts.length > 0) {
+          todayApts = apts.length;
+          pendingApts = apts.filter((a) => a.status === 'Pending').length;
+        }
+      } catch (e) {}
+    }
+
+    // 3. Bed Capacity
+    let gAvail = 278;
+    let gTotal = 320;
+    let iAvail = 7;
+    let iTotal = 28;
+    const savedBeds = localStorage.getItem('medibridge_hospital_bed_wards');
+    if (savedBeds) {
+      try {
+        const wards = JSON.parse(savedBeds);
+        const genWards = wards.filter((w) => w.type !== 'Critical Care');
+        const icuWards = wards.filter((w) => w.type === 'Critical Care');
+        gAvail = genWards.reduce((acc, w) => acc + (w.available || 0), 0);
+        gTotal = genWards.reduce((acc, w) => acc + (w.total || 0), 0);
+        iAvail = icuWards.reduce((acc, w) => acc + (w.available || 0), 0);
+        iTotal = icuWards.reduce((acc, w) => acc + (w.total || 0), 0);
+      } catch (e) {}
+    }
+
+    // 4. Cancellations & Replacements
+    let cancPending = 2;
+    const savedCanc = localStorage.getItem('medibridge_cancellation_requests');
+    if (savedCanc) {
+      try {
+        const cancs = JSON.parse(savedCanc);
+        cancPending = cancs.filter((c) => c.status === 'Pending' || c.status === 'Submitted').length;
+      } catch (e) {}
+    }
+
+    let repCount = 1;
+    const savedRep = localStorage.getItem('medibridge_active_doctor_replacements');
+    if (savedRep) {
+      try {
+        const reps = JSON.parse(savedRep);
+        repCount = reps.length;
+      } catch (e) {}
+    }
+
+    setDynamicMetrics({
+      totalDoctors: totalDocs,
+      verifiedDoctors: verifiedDocs,
+      todayAppointments: todayApts,
+      pendingRequests: pendingApts,
+      genAvailable: gAvail,
+      genTotal: gTotal,
+      icuAvailable: iAvail,
+      icuTotal: iTotal,
+      doctorVerificationsPending: docVerPending,
+      cancellationsPending: cancPending,
+      replacementRequests: repCount
+    });
+  };
+
+  useEffect(() => {
+    refreshDynamicMetrics();
+    const handleSync = () => {
+      refreshDynamicMetrics();
+      const savedDocs = localStorage.getItem('medibridge_hospital_doctors');
+      if (savedDocs) {
+        try { setScreen8Doctors(JSON.parse(savedDocs)); } catch (e) {}
+      }
+    };
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('focus', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
+  }, []);
 
   // Super Admin Platform Approvals (Screen 9)
   const [platformApprovals, setPlatformApprovals] = useState([
@@ -165,28 +301,194 @@ export default function AdminConsolePage() {
   const handleInspectDoctorDocs = (doctor) => {
     setSelectedDoctor(doctor);
     setSelectedDoctorDocs([
-      { id: 'doc-cert-1', fileName: 'State_Medical_Council_Registration.pdf', type: 'registration_certificate', sha256: '9a3f2b8c9d1e4f5a6b7c8d9e0f1a2b3c4d5e6f7a', status: 'Verified' },
-      { id: 'doc-cert-2', fileName: 'Specialist_Degree_Certificate.pdf', type: 'degree_certificate', sha256: '5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f', status: 'Verified' }
+      { id: 'doc-cert-1', fileName: `${doctor.name.replace(/[^a-zA-Z0-9]/g, '_')}_Registration_Certificate.pdf`, type: 'registration_certificate', sha256: '9a3f2b8c9d1e4f5a6b7c8d9e0f1a2b3c4d5e6f7a', status: doctor.verification || 'Verified' },
+      { id: 'doc-cert-2', fileName: `${doctor.name.replace(/[^a-zA-Z0-9]/g, '_')}_Specialist_Degree.pdf`, type: 'degree_certificate', sha256: '5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f', status: doctor.verification || 'Verified' }
     ]);
     setShowDocModal(true);
   };
 
+  // Open Edit Doctor Modal
+  const handleOpenEditDoctorModal = (doc) => {
+    setEditingDoctor(doc);
+    setEditDoctorForm({
+      name: doc.name || '',
+      specialty: doc.specialty || 'Cardiology',
+      department: doc.department || 'Cardiology',
+      regNumber: doc.regNumber || 'TNMC/2021/04812',
+      qualifications: doc.qualifications || 'MBBS, MD',
+      verification: doc.verification || 'Pending',
+      availability: doc.availability || 'Available'
+    });
+    setShowEditDoctorModal(true);
+  };
+
+  // Submit Edit Doctor
+  const handleEditDoctorSubmit = (e) => {
+    e.preventDefault();
+    if (!editingDoctor) return;
+
+    const oldName = editingDoctor.name;
+    const updatedDocs = screen8Doctors.map((d) => {
+      if (d.id === editingDoctor.id) {
+        return {
+          ...d,
+          name: editDoctorForm.name.trim(),
+          specialty: editDoctorForm.specialty,
+          department: editDoctorForm.department,
+          regNumber: editDoctorForm.regNumber,
+          qualifications: editDoctorForm.qualifications,
+          verification: editDoctorForm.verification,
+          availability: editDoctorForm.availability
+        };
+      }
+      return d;
+    });
+
+    setScreen8Doctors(updatedDocs);
+    localStorage.setItem('medibridge_hospital_doctors', JSON.stringify(updatedDocs));
+
+    // Also update in medibridge_doctor_verifications if name or verification changed
+    const savedVer = localStorage.getItem('medibridge_doctor_verifications');
+    if (savedVer) {
+      try {
+        const verList = JSON.parse(savedVer);
+        const updatedVerList = verList.map((v) => {
+          if (v.doctorName === oldName || v.doctorName === editingDoctor.name) {
+            return {
+              ...v,
+              doctorName: editDoctorForm.name.trim(),
+              specialty: editDoctorForm.specialty,
+              department: editDoctorForm.department,
+              regNumber: editDoctorForm.regNumber,
+              status: editDoctorForm.verification === 'Verified' ? 'Verified' : 'Under Verification',
+              currentStep: editDoctorForm.verification === 'Verified' ? 4 : v.currentStep
+            };
+          }
+          return v;
+        });
+        localStorage.setItem('medibridge_doctor_verifications', JSON.stringify(updatedVerList));
+      } catch (err) {}
+    }
+
+    // Also update in medibridge_doctor_availability_schedules if doctor name or department changed
+    const savedSch = localStorage.getItem('medibridge_doctor_availability_schedules');
+    if (savedSch) {
+      try {
+        const schList = JSON.parse(savedSch);
+        const updatedSchList = schList.map((s) => {
+          if (s.doctorName === oldName || s.doctorName === editingDoctor.name) {
+            return {
+              ...s,
+              doctorName: editDoctorForm.name.trim(),
+              specialty: editDoctorForm.specialty,
+              department: editDoctorForm.department
+            };
+          }
+          return s;
+        });
+        localStorage.setItem('medibridge_doctor_availability_schedules', JSON.stringify(updatedSchList));
+      } catch (err) {}
+    }
+
+    window.dispatchEvent(new Event('storage'));
+    refreshDynamicMetrics();
+
+    setShowEditDoctorModal(false);
+    setEditingDoctor(null);
+    setMsg({ type: 'success', text: `Doctor record for ${editDoctorForm.name.trim()} updated across all hospital modules.` });
+  };
+
+  // Add New Doctor and sync to all modules (Doctor Management, Verification, Availability, Dashboard)
   const handleAddDoctorSubmit = (e) => {
     e.preventDefault();
+    if (!newDoctorForm.name.trim()) return;
+
+    const newId = `doc-${Date.now()}`;
     const newEntry = {
-      id: `doc-${Date.now()}`,
-      name: newDoctorForm.name,
+      id: newId,
+      name: newDoctorForm.name.trim(),
       specialty: newDoctorForm.specialty,
       department: newDoctorForm.department,
+      regNumber: newDoctorForm.regNumber || `TNMC/${new Date().getFullYear()}/${Math.floor(10000 + Math.random() * 90000)}`,
+      qualifications: newDoctorForm.qualifications || 'MBBS, MD',
       verification: 'Pending',
       availability: 'Available'
     };
-    const updated = [newEntry, ...screen8Doctors];
-    setScreen8Doctors(updated);
-    localStorage.setItem('medibridge_hospital_doctors', JSON.stringify(updated));
+
+    const updatedDoctors = [newEntry, ...screen8Doctors];
+    setScreen8Doctors(updatedDoctors);
+    localStorage.setItem('medibridge_hospital_doctors', JSON.stringify(updatedDoctors));
+
+    // Also sync to medibridge_doctor_verifications so it appears in Doctor Verification module!
+    let verifications = [];
+    const savedVer = localStorage.getItem('medibridge_doctor_verifications');
+    if (savedVer) {
+      try { verifications = JSON.parse(savedVer); } catch (e) {}
+    } else {
+      verifications = [
+        { id: 'ver-1', doctorName: 'Dr. Lavanya S', specialty: 'Neurology', department: 'Neurology', regNumber: 'TNMC/2017/09841', status: 'Under Verification', currentStep: 3, submissionDate: '21 Nov 2026', documents: [{ name: 'Medical_Registration.pdf', type: 'Registration Certificate', status: 'Verified' }] },
+        { id: 'ver-2', doctorName: 'Dr. Priya Dharshini', specialty: 'Pediatrics', department: 'Pediatrics', regNumber: 'TNMC/2019/11234', status: 'Under Verification', currentStep: 3, submissionDate: '22 Nov 2026', documents: [{ name: 'TNMC_Medical_Council_Reg.pdf', type: 'Registration Certificate', status: 'Verified' }] },
+        { id: 'ver-3', doctorName: 'Dr. Karthik Raja', specialty: 'General Surgery', department: 'General Surgery', regNumber: 'TNMC/2014/05678', status: 'Info Requested', currentStep: 2, submissionDate: '19 Nov 2026', documents: [{ name: 'TNMC_Medical_Registration.pdf', type: 'Registration Certificate', status: 'Verified' }] }
+      ];
+    }
+    const newVerEntry = {
+      id: `ver-${Date.now()}`,
+      doctorName: newDoctorForm.name.trim(),
+      specialty: newDoctorForm.specialty,
+      department: newDoctorForm.department,
+      regNumber: newDoctorForm.regNumber || `TNMC/${new Date().getFullYear()}/${Math.floor(10000 + Math.random() * 90000)}`,
+      medicalCouncil: 'Tamil Nadu Medical Council',
+      qualification: newDoctorForm.qualifications || 'MBBS, MD',
+      experienceYears: 5,
+      status: 'Under Verification',
+      currentStep: 2,
+      submissionDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      documents: [
+        { name: `${newDoctorForm.name.trim().replace(/[^a-zA-Z0-9]/g, '_')}_Registration_Certificate.pdf`, type: 'Registration Certificate', status: 'Pending Review', hash: '8f4c2e1a9b3d5f7e6a1c2b3d4e5f6a7b8c9d0e1f' },
+        { name: `${newDoctorForm.name.trim().replace(/[^a-zA-Z0-9]/g, '_')}_Degree_Certificate.pdf`, type: 'Degree Certificate', status: 'Pending Review', hash: '5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f' }
+      ],
+      adminNotes: 'Newly onboarded physician. Verification of medical council credentials initiated by hospital admin.'
+    };
+    const updatedVerifications = [newVerEntry, ...verifications];
+    localStorage.setItem('medibridge_doctor_verifications', JSON.stringify(updatedVerifications));
+
+    // Also sync to medibridge_doctor_availability_schedules so doctor appears in Doctor Availability!
+    let schedules = [];
+    const savedSch = localStorage.getItem('medibridge_doctor_availability_schedules');
+    if (savedSch) {
+      try { schedules = JSON.parse(savedSch); } catch (e) {}
+    } else {
+      schedules = [
+        { id: 'sch-1', doctorName: 'Dr. Sundar M', specialty: 'Cardiology', department: 'Cardiology', days: 'Monday - Friday', time: '09:00 AM - 01:00 PM', mode: 'In-Person OPD', room: 'OPD 204', maxTokens: 20, booked: 16, status: 'Active' },
+        { id: 'sch-2', doctorName: 'Dr. Sundar M', specialty: 'Cardiology', department: 'Cardiology', days: 'Monday, Wednesday, Friday', time: '02:30 PM - 05:00 PM', mode: 'Teleconsultation', room: 'Virtual Desk', maxTokens: 12, booked: 8, status: 'Active' },
+        { id: 'sch-3', doctorName: 'Dr. Lavanya S', specialty: 'Neurology', department: 'Neurology', days: 'Tuesday, Thursday, Saturday', time: '09:00 AM - 01:30 PM', mode: 'In-Person OPD', room: 'OPD 310', maxTokens: 18, booked: 12, status: 'Active' },
+        { id: 'sch-4', doctorName: 'Dr. Prakash R', specialty: 'Orthopedics', department: 'Orthopedics', days: 'Monday - Saturday', time: '10:00 AM - 02:00 PM', mode: 'In-Person OPD', room: 'OPD 108', maxTokens: 25, booked: 21, status: 'Active' },
+        { id: 'sch-5', doctorName: 'Dr. Anand K', specialty: 'General Medicine', department: 'General Medicine', days: 'Monday - Saturday', time: '08:30 AM - 12:30 PM', mode: 'In-Person OPD', room: 'OPD 102', maxTokens: 30, booked: 28, status: 'Active' },
+        { id: 'sch-6', doctorName: 'Dr. M. Revathi', specialty: 'Cardiology', department: 'Cardiology', days: 'Tuesday, Thursday, Saturday', time: '02:00 PM - 06:00 PM', mode: 'Teleconsultation', room: 'Virtual Desk', maxTokens: 15, booked: 9, status: 'Active' }
+      ];
+    }
+    const newSchedule = {
+      id: `sch-${Date.now()}`,
+      doctorName: newDoctorForm.name.trim(),
+      specialty: newDoctorForm.specialty,
+      department: newDoctorForm.department,
+      days: 'Monday - Friday',
+      time: '09:00 AM - 01:00 PM',
+      mode: 'In-Person OPD',
+      room: `OPD ${Math.floor(100 + Math.random() * 200)}`,
+      maxTokens: 20,
+      booked: 0,
+      status: 'Active'
+    };
+    const updatedSchedules = [newSchedule, ...schedules];
+    localStorage.setItem('medibridge_doctor_availability_schedules', JSON.stringify(updatedSchedules));
+
+    window.dispatchEvent(new Event('storage'));
+    refreshDynamicMetrics();
+
     setShowAddDoctorModal(false);
     setNewDoctorForm({ name: '', specialty: 'Cardiology', regNumber: '', qualifications: '', department: 'Cardiology' });
-    setMsg({ type: 'success', text: `Doctor ${newDoctorForm.name} added. Credential verification initiated.` });
+    setMsg({ type: 'success', text: `Doctor ${newDoctorForm.name.trim()} successfully added to hospital staff, credential verification queue, and OPD scheduling.` });
   };
 
   const handleReviewHospitalApproval = (appr) => {
@@ -444,7 +746,7 @@ export default function AdminConsolePage() {
                 <Users size={22} strokeWidth={2} />
               </div>
               <div className="ref-metric-info">
-                <span className="ref-metric-value">64</span>
+                <span className="ref-metric-value">{dynamicMetrics.totalDoctors}</span>
                 <span className="ref-metric-label">Total Doctors</span>
               </div>
             </div>
@@ -454,7 +756,7 @@ export default function AdminConsolePage() {
                 <ShieldCheck size={22} strokeWidth={2} />
               </div>
               <div className="ref-metric-info">
-                <span className="ref-metric-value">58</span>
+                <span className="ref-metric-value">{dynamicMetrics.verifiedDoctors}</span>
                 <span className="ref-metric-label">Verified Doctors</span>
               </div>
             </div>
@@ -464,7 +766,7 @@ export default function AdminConsolePage() {
                 <Calendar size={22} strokeWidth={2} />
               </div>
               <div className="ref-metric-info">
-                <span className="ref-metric-value">36</span>
+                <span className="ref-metric-value">{dynamicMetrics.todayAppointments}</span>
                 <span className="ref-metric-label">Today's Appointments</span>
               </div>
             </div>
@@ -474,7 +776,7 @@ export default function AdminConsolePage() {
                 <Clock size={22} strokeWidth={2} />
               </div>
               <div className="ref-metric-info">
-                <span className="ref-metric-value">8</span>
+                <span className="ref-metric-value">{dynamicMetrics.pendingRequests}</span>
                 <span className="ref-metric-label">Pending Requests</span>
               </div>
             </div>
@@ -484,7 +786,7 @@ export default function AdminConsolePage() {
                 <Bed size={22} strokeWidth={2} />
               </div>
               <div className="ref-metric-info">
-                <span className="ref-metric-value">278 / 320</span>
+                <span className="ref-metric-value">{dynamicMetrics.genAvailable} / {dynamicMetrics.genTotal}</span>
                 <span className="ref-metric-label">Available General Beds</span>
               </div>
             </div>
@@ -494,7 +796,7 @@ export default function AdminConsolePage() {
                 <Activity size={22} strokeWidth={2} />
               </div>
               <div className="ref-metric-info">
-                <span className="ref-metric-value">7 / 28</span>
+                <span className="ref-metric-value">{dynamicMetrics.icuAvailable} / {dynamicMetrics.icuTotal}</span>
                 <span className="ref-metric-label">Available ICU Beds</span>
               </div>
             </div>
@@ -504,7 +806,7 @@ export default function AdminConsolePage() {
                 <UserCheck size={22} strokeWidth={2} />
               </div>
               <div className="ref-metric-info">
-                <span className="ref-metric-value">3</span>
+                <span className="ref-metric-value">{dynamicMetrics.doctorVerificationsPending}</span>
                 <span className="ref-metric-label">Doctor Verifications</span>
               </div>
             </div>
@@ -514,7 +816,7 @@ export default function AdminConsolePage() {
                 <AlertTriangle size={22} strokeWidth={2} />
               </div>
               <div className="ref-metric-info">
-                <span className="ref-metric-value">2</span>
+                <span className="ref-metric-value">{dynamicMetrics.cancellationsPending}</span>
                 <span className="ref-metric-label">Cancellations Pending</span>
               </div>
             </div>
@@ -522,11 +824,11 @@ export default function AdminConsolePage() {
 
           {/* 2-Column Main Content Layout */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
-            {/* Left Card: Pending Approvals (5) */}
+            {/* Left Card: Pending Approvals */}
             <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                  Pending Approvals (5)
+                  Pending Approvals ({dynamicMetrics.doctorVerificationsPending + dynamicMetrics.cancellationsPending + dynamicMetrics.replacementRequests})
                 </h3>
               </div>
 
@@ -544,7 +846,7 @@ export default function AdminConsolePage() {
                     </span>
                   </div>
                   <span style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                    3
+                    {dynamicMetrics.doctorVerificationsPending}
                   </span>
                 </Link>
 
@@ -561,7 +863,7 @@ export default function AdminConsolePage() {
                     </span>
                   </div>
                   <span style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                    1
+                    {dynamicMetrics.cancellationsPending}
                   </span>
                 </Link>
 
@@ -578,7 +880,7 @@ export default function AdminConsolePage() {
                     </span>
                   </div>
                   <span style={{ fontSize: '1.125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                    1
+                    {dynamicMetrics.replacementRequests}
                   </span>
                 </Link>
               </div>
@@ -595,43 +897,49 @@ export default function AdminConsolePage() {
                 </Link>
               </div>
 
-              <div className="ref-donut-wrapper">
-                <div className="ref-donut-container">
-                  <svg width="150" height="150" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
-                    <circle cx="50" cy="50" r="40" fill="transparent" stroke="#FCEFED" strokeWidth="12" />
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="40"
-                      fill="transparent"
-                      stroke="#477B67"
-                      strokeWidth="12"
-                      strokeDasharray="251.2"
-                      strokeDashoffset="32.6"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="ref-donut-center">
-                    <span className="ref-donut-percent">87%</span>
-                    <span className="ref-donut-subtext">Available</span>
-                  </div>
-                </div>
+              {(() => {
+                const bedPercent = dynamicMetrics.genTotal > 0 ? Math.round((dynamicMetrics.genAvailable / dynamicMetrics.genTotal) * 100) : 87;
+                const strokeOffset = 251.2 - (251.2 * bedPercent) / 100;
+                return (
+                  <div className="ref-donut-wrapper">
+                    <div className="ref-donut-container">
+                      <svg width="150" height="150" viewBox="0 0 100 100" style={{ transform: 'rotate(-90deg)' }}>
+                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="#FCEFED" strokeWidth="12" />
+                        <circle
+                          cx="50"
+                          cy="50"
+                          r="40"
+                          fill="transparent"
+                          stroke="#477B67"
+                          strokeWidth="12"
+                          strokeDasharray="251.2"
+                          strokeDashoffset={strokeOffset}
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="ref-donut-center">
+                        <span className="ref-donut-percent">{bedPercent}%</span>
+                        <span className="ref-donut-subtext">Available</span>
+                      </div>
+                    </div>
 
-                <div className="ref-donut-legend">
-                  <div className="ref-legend-item">
-                    <span className="ref-legend-dot" style={{ backgroundColor: '#477B67' }} />
-                    <span>Available (278)</span>
+                    <div className="ref-donut-legend">
+                      <div className="ref-legend-item">
+                        <span className="ref-legend-dot" style={{ backgroundColor: '#477B67' }} />
+                        <span>Available ({dynamicMetrics.genAvailable})</span>
+                      </div>
+                      <div className="ref-legend-item">
+                        <span className="ref-legend-dot" style={{ backgroundColor: '#B77A32' }} />
+                        <span>Occupied ({Math.max(0, dynamicMetrics.genTotal - dynamicMetrics.genAvailable)})</span>
+                      </div>
+                      <div className="ref-legend-item">
+                        <span className="ref-legend-dot" style={{ backgroundColor: '#9CA3AF' }} />
+                        <span>Maintenance (0)</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="ref-legend-item">
-                    <span className="ref-legend-dot" style={{ backgroundColor: '#B77A32' }} />
-                    <span>Occupied (42)</span>
-                  </div>
-                  <div className="ref-legend-item">
-                    <span className="ref-legend-dot" style={{ backgroundColor: '#9CA3AF' }} />
-                    <span>Maintenance (0)</span>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           </div>
         </div>
@@ -747,9 +1055,22 @@ export default function AdminConsolePage() {
                         </span>
                       </td>
                       <td style={{ padding: '14px 20px' }}>
-                        <button className="btn-action-view" onClick={() => handleInspectDoctorDocs(doc)}>
-                          View
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <button className="btn-action-view" onClick={() => handleInspectDoctorDocs(doc)}>
+                            View
+                          </button>
+                          <button
+                            className="btn-action-view"
+                            style={{
+                              borderColor: 'var(--color-primary)',
+                              color: 'var(--color-primary)',
+                              backgroundColor: '#FAF6F7'
+                            }}
+                            onClick={() => handleOpenEditDoctorModal(doc)}
+                          >
+                            Edit
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -890,45 +1211,7 @@ export default function AdminConsolePage() {
           MODULE 20: AUDIT LOGS
           ================================================================ */}
       {currentTab === 'audit' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div>
-            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-heading)', margin: '0 0 4px 0' }}>
-              Hospital Operations Audit Trail
-            </h1>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              Immutable system activity trail compliant with CERT-In and hospital tenant safeguards.
-            </p>
-          </div>
-
-          <div className="card" style={{ padding: 0, overflow: 'hidden', backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--shadow-card)' }}>
-            <div className="table-container">
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead style={{ backgroundColor: '#FAF6F7', borderBottom: '1px solid var(--border)' }}>
-                  <tr>
-                    <th style={{ padding: '12px 18px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Timestamp</th>
-                    <th style={{ padding: '12px 18px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Event Type</th>
-                    <th style={{ padding: '12px 18px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Actor</th>
-                    <th style={{ padding: '12px 18px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Details</th>
-                    <th style={{ padding: '12px 18px', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-heading)' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditLogs.map((log) => (
-                    <tr key={log.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '14px 18px', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{log.time}</td>
-                      <td style={{ padding: '14px 18px', fontWeight: '700', fontSize: '0.8125rem', color: 'var(--color-heading)' }}>{log.type}</td>
-                      <td style={{ padding: '14px 18px', fontSize: '0.75rem' }}>{log.actor}</td>
-                      <td style={{ padding: '14px 18px', fontSize: '0.8125rem' }}>{log.details}</td>
-                      <td style={{ padding: '14px 18px' }}>
-                        <span className="badge badge-pill badge-success">{log.status}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <AuditLogsView onToast={setMsg} />
       )}
 
       {/* ================================================================
@@ -1015,6 +1298,122 @@ export default function AdminConsolePage() {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <Button variant="outline" type="button" onClick={() => setShowAddDoctorModal(false)}>Cancel</Button>
               <Button variant="primary" type="submit">Submit Doctor Credentials</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* MODAL 1B: EDIT DOCTOR */}
+      {showEditDoctorModal && editingDoctor && (
+        <Modal
+          isOpen={showEditDoctorModal}
+          onClose={() => { setShowEditDoctorModal(false); setEditingDoctor(null); }}
+          title={`Edit Doctor Profile: ${editingDoctor.name}`}
+        >
+          <form onSubmit={handleEditDoctorSubmit}>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Doctor Full Name</label>
+              <Input
+                type="text"
+                placeholder="Doctor name with title"
+                value={editDoctorForm.name}
+                onChange={(e) => setEditDoctorForm({ ...editDoctorForm, name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Specialty</label>
+                <select
+                  value={editDoctorForm.specialty}
+                  onChange={(e) => setEditDoctorForm({ ...editDoctorForm, specialty: e.target.value })}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '0.875rem', backgroundColor: '#FFFFFF' }}
+                >
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Neurology">Neurology</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                  <option value="General Medicine">General Medicine</option>
+                  <option value="Pediatrics">Pediatrics</option>
+                  <option value="General Surgery">General Surgery</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Department</label>
+                <select
+                  value={editDoctorForm.department}
+                  onChange={(e) => setEditDoctorForm({ ...editDoctorForm, department: e.target.value })}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '0.875rem', backgroundColor: '#FFFFFF' }}
+                >
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Neurology">Neurology</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                  <option value="General Medicine">General Medicine</option>
+                  <option value="Pediatrics">Pediatrics</option>
+                  <option value="General Surgery">General Surgery</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Council Reg #</label>
+                <Input
+                  type="text"
+                  placeholder="e.g. TNMC/2018/12345"
+                  value={editDoctorForm.regNumber}
+                  onChange={(e) => setEditDoctorForm({ ...editDoctorForm, regNumber: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Qualifications</label>
+                <Input
+                  type="text"
+                  placeholder="e.g. MBBS, MD, DM"
+                  value={editDoctorForm.qualifications}
+                  onChange={(e) => setEditDoctorForm({ ...editDoctorForm, qualifications: e.target.value })}
+                  required
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Verification Status</label>
+                <select
+                  value={editDoctorForm.verification}
+                  onChange={(e) => setEditDoctorForm({ ...editDoctorForm, verification: e.target.value })}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '0.875rem', backgroundColor: '#FFFFFF' }}
+                >
+                  <option value="Verified">Verified</option>
+                  <option value="Pending">Pending</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.8125rem', fontWeight: '600', marginBottom: '4px', display: 'block' }}>Availability Status</label>
+                <select
+                  value={editDoctorForm.availability}
+                  onChange={(e) => setEditDoctorForm({ ...editDoctorForm, availability: e.target.value })}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '0.875rem', backgroundColor: '#FFFFFF' }}
+                >
+                  <option value="Available">Available</option>
+                  <option value="Unavailable">Unavailable</option>
+                  <option value="On Leave">On Leave</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <Button variant="outline" type="button" onClick={() => { setShowEditDoctorModal(false); setEditingDoctor(null); }}>
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit">
+                Save Changes
+              </Button>
             </div>
           </form>
         </Modal>

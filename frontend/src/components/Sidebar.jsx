@@ -511,16 +511,6 @@ export default function Sidebar({ isOpen, onClose }) {
                       <span>Patient Check-in</span>
                     </Link>
                   </li>
-                  <li>
-                    <Link
-                      to="/admin-console?tab=patient-coordination"
-                      className={`nav-link ${isCurrent('/admin-console', 'patient-coordination') ? 'active' : ''}`}
-                      onClick={onClose}
-                    >
-                      <Users size={17} strokeWidth={1.75} />
-                      <span>Patient Coordination</span>
-                    </Link>
-                  </li>
                 </ul>
               </div>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bed,
   Activity,
@@ -47,9 +47,16 @@ export default function BedManagementView({ onToast }) {
   const totalIcuBeds = wards.filter((w) => w.type === 'Critical Care').reduce((acc, w) => acc + w.total, 0);
   const availableIcuBeds = wards.filter((w) => w.type === 'Critical Care').reduce((acc, w) => acc + w.available, 0);
 
+  useEffect(() => {
+    if (!localStorage.getItem('medibridge_hospital_bed_wards')) {
+      localStorage.setItem('medibridge_hospital_bed_wards', JSON.stringify(wards));
+    }
+  }, []);
+
   const persistWards = (updated) => {
     setWards(updated);
     localStorage.setItem('medibridge_hospital_bed_wards', JSON.stringify(updated));
+    window.dispatchEvent(new Event('storage'));
     setLastUpdated('just now');
   };
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   CheckCircle,
@@ -110,6 +110,27 @@ export default function DoctorVerificationView({ onToast, onDoctorUpdated }) {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [actionReason, setActionReason] = useState('');
 
+  useEffect(() => {
+    // If not in storage yet, persist default queue so other views can read
+    if (!localStorage.getItem('medibridge_doctor_verifications')) {
+      localStorage.setItem('medibridge_doctor_verifications', JSON.stringify(verificationQueue));
+    }
+    const handleSync = () => {
+      const saved = localStorage.getItem('medibridge_doctor_verifications');
+      if (saved) {
+        try {
+          setVerificationQueue(JSON.parse(saved));
+        } catch (e) {}
+      }
+    };
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('focus', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
+  }, []);
+
   const filteredQueue = verificationQueue.filter((item) => {
     const matchesSearch =
       !searchQuery ||
@@ -140,6 +161,7 @@ export default function DoctorVerificationView({ onToast, onDoctorUpdated }) {
 
     setVerificationQueue(updated);
     localStorage.setItem('medibridge_doctor_verifications', JSON.stringify(updated));
+    window.dispatchEvent(new Event('storage'));
 
     // Also update doctors list if handler provided
     if (onDoctorUpdated && selectedDoc) {
@@ -172,6 +194,7 @@ export default function DoctorVerificationView({ onToast, onDoctorUpdated }) {
 
     setVerificationQueue(updated);
     localStorage.setItem('medibridge_doctor_verifications', JSON.stringify(updated));
+    window.dispatchEvent(new Event('storage'));
     setShowInfoModal(false);
     setShowReviewModal(false);
     setActionReason('');
@@ -201,6 +224,7 @@ export default function DoctorVerificationView({ onToast, onDoctorUpdated }) {
 
     setVerificationQueue(updated);
     localStorage.setItem('medibridge_doctor_verifications', JSON.stringify(updated));
+    window.dispatchEvent(new Event('storage'));
     setShowRejectModal(false);
     setShowReviewModal(false);
     setActionReason('');

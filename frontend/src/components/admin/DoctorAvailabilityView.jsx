@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CalendarCheck,
   Clock,
@@ -35,6 +35,46 @@ export default function DoctorAvailabilityView({ onToast }) {
       { id: 'sch-6', doctorName: 'Dr. M. Revathi', specialty: 'Cardiology', department: 'Cardiology', days: 'Tuesday, Thursday, Saturday', time: '02:00 PM - 06:00 PM', mode: 'Teleconsultation', room: 'Virtual Desk', maxTokens: 15, booked: 9, status: 'Active' }
     ];
   });
+
+  // Dynamic Doctor list loaded from medibridge_hospital_doctors
+  const [availableDoctors, setAvailableDoctors] = useState(() => {
+    const saved = localStorage.getItem('medibridge_hospital_doctors');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {}
+    }
+    return [
+      { name: 'Dr. Sundar M', specialty: 'Cardiology', department: 'Cardiology' },
+      { name: 'Dr. Lavanya S', specialty: 'Neurology', department: 'Neurology' },
+      { name: 'Dr. Prakash R', specialty: 'Orthopedics', department: 'Orthopedics' },
+      { name: 'Dr. Anand K', specialty: 'General Medicine', department: 'General Medicine' },
+      { name: 'Dr. Priya Dharshini', specialty: 'Pediatrics', department: 'Pediatrics' },
+      { name: 'Dr. M. Revathi', specialty: 'Cardiology', department: 'Cardiology' }
+    ];
+  });
+
+  useEffect(() => {
+    if (!localStorage.getItem('medibridge_doctor_availability_schedules')) {
+      localStorage.setItem('medibridge_doctor_availability_schedules', JSON.stringify(schedules));
+    }
+    const handleSync = () => {
+      const savedSch = localStorage.getItem('medibridge_doctor_availability_schedules');
+      if (savedSch) {
+        try { setSchedules(JSON.parse(savedSch)); } catch (e) {}
+      }
+      const savedDocs = localStorage.getItem('medibridge_hospital_doctors');
+      if (savedDocs) {
+        try { setAvailableDoctors(JSON.parse(savedDocs)); } catch (e) {}
+      }
+    };
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('focus', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
+  }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [newSchedule, setNewSchedule] = useState({
@@ -316,14 +356,22 @@ export default function DoctorAvailabilityView({ onToast }) {
               <label style={{ fontSize: '0.8125rem', fontWeight: '700', display: 'block', marginBottom: '4px' }}>Consulting Doctor</label>
               <select
                 value={newSchedule.doctorName}
-                onChange={(e) => setNewSchedule({ ...newSchedule, doctorName: e.target.value })}
+                onChange={(e) => {
+                  const doc = availableDoctors.find((d) => d.name === e.target.value);
+                  setNewSchedule({
+                    ...newSchedule,
+                    doctorName: e.target.value,
+                    specialty: doc?.specialty || 'Cardiology',
+                    department: doc?.department || doc?.specialty || 'Cardiology'
+                  });
+                }}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
               >
-                <option value="Dr. Sundar M">Dr. Sundar M (Cardiology)</option>
-                <option value="Dr. Lavanya S">Dr. Lavanya S (Neurology)</option>
-                <option value="Dr. Prakash R">Dr. Prakash R (Orthopedics)</option>
-                <option value="Dr. Anand K">Dr. Anand K (General Medicine)</option>
-                <option value="Dr. M. Revathi">Dr. M. Revathi (Cardiology)</option>
+                {availableDoctors.map((doc, idx) => (
+                  <option key={idx} value={doc.name}>
+                    {doc.name} ({doc.specialty || doc.department})
+                  </option>
+                ))}
               </select>
             </div>
 
