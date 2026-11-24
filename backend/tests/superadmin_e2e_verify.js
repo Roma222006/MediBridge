@@ -113,7 +113,7 @@ async function verifyAll() {
   // Step 6: Role Management (Scenario 4 / Module 5)
   console.log('\n[Module 5 / Scenario 4] Role & Permissions Management...');
   const roles = await req('GET', '/api/v1/super-admin/roles', null, token);
-  console.log('✓ Roles loaded:', roles.body.data?.roles?.map(r => r.name));
+  console.log('✓ Roles loaded:', roles.body.data?.map(r => r.name));
   const updatePerms = await req('PATCH', '/api/v1/super-admin/roles/doctor', {
     permissions: ['doctor.dashboard.view', 'doctor.profile.edit', 'clinical.prescribe', 'referrals.manage']
   }, token);
@@ -126,10 +126,11 @@ async function verifyAll() {
   console.log('✓ Monitored Services:', services.map(s => `${s.name}: ${s.status} (${s.latency}ms)`));
 
   const newInc = await req('POST', '/api/v1/super-admin/incidents', {
+    service: 'Notification Delivery Service',
     title: 'High latency observed on SMS Gateway',
     severity: 'MEDIUM',
-    affectedServices: ['Notification Service'],
-    description: 'Upstream SMS provider experiencing 2.4s delivery delays'
+    description: 'Upstream SMS provider experiencing 2.4s delivery delays',
+    assignedTo: 'Super Admin Operations'
   }, token);
   const incId = newInc.body.data?._id;
   console.log('✓ Created Incident:', newInc.body.data?.incidentNumber, 'Status:', newInc.body.data?.status);
@@ -143,13 +144,13 @@ async function verifyAll() {
   // Step 8: Audit Logs (Scenario 6 / Module 7)
   console.log('\n[Module 7 / Scenario 6] Platform Audit Trail Verification...');
   const auditLogs = await req('GET', '/api/v1/super-admin/audit-logs?limit=5', null, token);
-  console.log('✓ Total Logged Audit Events:', auditLogs.body.data?.total);
+  console.log('✓ Total Logged Audit Events:', auditLogs.body.data?.pagination?.total || auditLogs.body.data?.logs?.length);
   console.log('  Recent Log Actions:', auditLogs.body.data?.logs?.map(l => `${l.action} by ${l.user?.role || 'SYSTEM'}`));
 
   // Step 9: Platform Reports & CSV Export (Scenario 7 / Module 8)
   console.log('\n[Module 8 / Scenario 7] Aggregated Analytics & CSV Report Export...');
   const reports = await req('GET', '/api/v1/super-admin/reports?range=30d', null, token);
-  console.log('✓ Reports Aggregates: Total Appts =', reports.body.data?.overview?.totalAppointments, ', Hospitals =', reports.body.data?.overview?.totalHospitals);
+  console.log('✓ Reports Aggregates: Total Appts =', reports.body.data?.appointments?.total, ', Hospitals =', reports.body.data?.hospitals?.total);
   const csvExport = await req('GET', '/api/v1/super-admin/audit-logs/export', null, token);
   console.log('✓ CSV Export Status:', csvExport.status, 'Export Length:', csvExport.raw?.length);
 
