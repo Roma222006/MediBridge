@@ -25,7 +25,12 @@ import {
   History,
   CheckCircle,
   X,
-  UserCheck
+  UserCheck,
+  ClipboardList,
+  CalendarX,
+  ScrollText,
+  BarChart3,
+  UserPlus
 } from 'lucide-react';
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -281,126 +286,302 @@ export default function Sidebar({ isOpen, onClose }) {
           )}
 
           {/* ========================================================
-              3. HOSPITAL ADMIN SIDEBAR
+              3. HOSPITAL ADMIN SIDEBAR (Organized Grouped Navigation)
               ======================================================== */}
           {user?.role === 'hospital_admin' && (
-            <div className="nav-group">
-              <span className="nav-group-label" style={{ fontSize: '0.8125rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                Hospital Admin
-              </span>
-              <ul className="nav-list">
-                <li>
-                  <Link
-                    to="/admin-console"
-                    className={`nav-link ${isCurrent('/admin-console') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <LayoutDashboard size={17} strokeWidth={1.75} />
-                    <span>Dashboard</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/admin-console?tab=profile"
-                    className={`nav-link ${isCurrent('/admin-console', 'profile') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <Building2 size={17} strokeWidth={1.75} />
-                    <span>Hospital Profile</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/admin-console?tab=doctors"
-                    className={`nav-link ${isCurrent('/admin-console', 'doctors') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <UserCheck size={17} strokeWidth={1.75} />
-                    <span>Doctor Management</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/admin-console?tab=services"
-                    className={`nav-link ${isCurrent('/admin-console', 'services') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <Layers size={17} strokeWidth={1.75} />
-                    <span>Departments & Services</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/admin-console?tab=slots"
-                    className={`nav-link ${isCurrent('/admin-console', 'slots') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <CalendarCheck size={17} strokeWidth={1.75} />
-                    <span>Availability</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/admin-console?tab=appointments"
-                    className={`nav-link ${isCurrent('/admin-console', 'appointments') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <Calendar size={17} strokeWidth={1.75} />
-                    <span>Appointments</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/admin-console?tab=beds"
-                    className={`nav-link ${isCurrent('/admin-console', 'beds') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <Bed size={17} strokeWidth={1.75} />
-                    <span>Bed Management</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/admin-console?tab=referrals"
-                    className={`nav-link ${isCurrent('/admin-console', 'referrals') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <Send size={17} strokeWidth={1.75} />
-                    <span>Referrals</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/admin-console?tab=reports"
-                    className={`nav-link ${isCurrent('/admin-console', 'reports') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <FileText size={17} strokeWidth={1.75} />
-                    <span>Reports</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/admin-console?tab=notifications"
-                    className={`nav-link ${isCurrent('/admin-console', 'notifications') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <Bell size={17} strokeWidth={1.75} />
-                    <span>Notifications</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/admin-console?tab=settings"
-                    className={`nav-link ${isCurrent('/admin-console', 'settings') ? 'active' : ''}`}
-                    onClick={onClose}
-                  >
-                    <Settings size={17} strokeWidth={1.75} />
-                    <span>Settings</span>
-                  </Link>
-                </li>
-              </ul>
-            </div>
+            <>
+              {/* GROUP 1: HOSPITAL OVERVIEW */}
+              <div className="nav-group">
+                <span className="nav-group-label" style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--color-heading)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Hospital Overview
+                </span>
+                <ul className="nav-list">
+                  <li>
+                    <Link
+                      to="/admin-console"
+                      className={`nav-link ${isCurrent('/admin-console') && (!location.search || location.search.includes('tab=dashboard')) ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <LayoutDashboard size={17} strokeWidth={1.75} />
+                      <span>Dashboard</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=profile"
+                      className={`nav-link ${isCurrent('/admin-console', 'profile') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <Building2 size={17} strokeWidth={1.75} />
+                      <span>Hospital Profile</span>
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* GROUP 2: DOCTOR MANAGEMENT */}
+              <div className="nav-group">
+                <span className="nav-group-label" style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--color-heading)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Doctor Management
+                </span>
+                <ul className="nav-list">
+                  <li>
+                    <Link
+                      to="/admin-console?tab=doctors"
+                      className={`nav-link ${isCurrent('/admin-console', 'doctors') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <UserCheck size={17} strokeWidth={1.75} />
+                      <span>Doctor Management</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=doctor-verification"
+                      className={`nav-link ${isCurrent('/admin-console', 'doctor-verification') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <ShieldCheck size={17} strokeWidth={1.75} />
+                      <span>Doctor Verification</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=doctor-availability"
+                      className={`nav-link ${isCurrent('/admin-console', 'doctor-availability') || isCurrent('/admin-console', 'slots') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <CalendarCheck size={17} strokeWidth={1.75} />
+                      <span>Doctor Availability</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=leave-management"
+                      className={`nav-link ${isCurrent('/admin-console', 'leave-management') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <CalendarX size={17} strokeWidth={1.75} />
+                      <span>Leave Management</span>
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* GROUP 3: HOSPITAL STRUCTURE */}
+              <div className="nav-group">
+                <span className="nav-group-label" style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--color-heading)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Hospital Structure
+                </span>
+                <ul className="nav-list">
+                  <li>
+                    <Link
+                      to="/admin-console?tab=departments"
+                      className={`nav-link ${isCurrent('/admin-console', 'departments') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <Layers size={17} strokeWidth={1.75} />
+                      <span>Department Management</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=services"
+                      className={`nav-link ${isCurrent('/admin-console', 'services') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <ClipboardList size={17} strokeWidth={1.75} />
+                      <span>Service Management</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=diagnostics"
+                      className={`nav-link ${isCurrent('/admin-console', 'diagnostics') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <Activity size={17} strokeWidth={1.75} />
+                      <span>Diagnostic Services</span>
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* GROUP 4: APPOINTMENT OPERATIONS */}
+              <div className="nav-group">
+                <span className="nav-group-label" style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--color-heading)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Appointment Operations
+                </span>
+                <ul className="nav-list">
+                  <li>
+                    <Link
+                      to="/admin-console?tab=appointments"
+                      className={`nav-link ${isCurrent('/admin-console', 'appointments') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <Calendar size={17} strokeWidth={1.75} />
+                      <span>Appointment Management</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=pending-appointments"
+                      className={`nav-link ${isCurrent('/admin-console', 'pending-appointments') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <Clock size={17} strokeWidth={1.75} />
+                      <span>Pending Appointments</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=cancellations"
+                      className={`nav-link ${isCurrent('/admin-console', 'cancellations') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <AlertTriangle size={17} strokeWidth={1.75} />
+                      <span>Cancellation Requests</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=replacements"
+                      className={`nav-link ${isCurrent('/admin-console', 'replacements') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <UserPlus size={17} strokeWidth={1.75} />
+                      <span>Replacement Doctor</span>
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* GROUP 5: RESOURCE MANAGEMENT */}
+              <div className="nav-group">
+                <span className="nav-group-label" style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--color-heading)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Resource Management
+                </span>
+                <ul className="nav-list">
+                  <li>
+                    <Link
+                      to="/admin-console?tab=beds"
+                      className={`nav-link ${isCurrent('/admin-console', 'beds') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <Bed size={17} strokeWidth={1.75} />
+                      <span>Bed Management</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=facilities"
+                      className={`nav-link ${isCurrent('/admin-console', 'facilities') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <Hospital size={17} strokeWidth={1.75} />
+                      <span>Facility Availability</span>
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* GROUP 6: PATIENT COORDINATION */}
+              <div className="nav-group">
+                <span className="nav-group-label" style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--color-heading)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Patient Coordination
+                </span>
+                <ul className="nav-list">
+                  <li>
+                    <Link
+                      to="/admin-console?tab=referrals"
+                      className={`nav-link ${isCurrent('/admin-console', 'referrals') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <Send size={17} strokeWidth={1.75} />
+                      <span>Referral Management</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=checkin"
+                      className={`nav-link ${isCurrent('/admin-console', 'checkin') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <UserCheck size={17} strokeWidth={1.75} />
+                      <span>Patient Check-in</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=patient-coordination"
+                      className={`nav-link ${isCurrent('/admin-console', 'patient-coordination') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <Users size={17} strokeWidth={1.75} />
+                      <span>Patient Coordination</span>
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* GROUP 7: REPORTS AND COMMUNICATION */}
+              <div className="nav-group">
+                <span className="nav-group-label" style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--color-heading)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Reports & Communication
+                </span>
+                <ul className="nav-list">
+                  <li>
+                    <Link
+                      to="/admin-console?tab=reports"
+                      className={`nav-link ${isCurrent('/admin-console', 'reports') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <BarChart3 size={17} strokeWidth={1.75} />
+                      <span>Operational Reports</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=notifications"
+                      className={`nav-link ${isCurrent('/admin-console', 'notifications') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <Bell size={17} strokeWidth={1.75} />
+                      <span>Notifications</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      to="/admin-console?tab=audit"
+                      className={`nav-link ${isCurrent('/admin-console', 'audit') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <ScrollText size={17} strokeWidth={1.75} />
+                      <span>Audit Logs</span>
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* GROUP 8: SETTINGS */}
+              <div className="nav-group">
+                <span className="nav-group-label" style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--color-heading)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Settings
+                </span>
+                <ul className="nav-list">
+                  <li>
+                    <Link
+                      to="/admin-console?tab=settings"
+                      className={`nav-link ${isCurrent('/admin-console', 'settings') ? 'active' : ''}`}
+                      onClick={onClose}
+                    >
+                      <Settings size={17} strokeWidth={1.75} />
+                      <span>Hospital Settings</span>
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+            </>
           )}
 
           {/* ========================================================
