@@ -585,8 +585,8 @@ export default function Sidebar({ isOpen, onClose }) {
               <ul className="nav-list">
                 <li>
                   <Link
-                    to="/admin-console?tab=platform"
-                    className={`nav-link ${isCurrent('/admin-console', 'platform') || isCurrent('/admin-console') ? 'active' : ''}`}
+                    to="/admin-console?tab=dashboard"
+                    className={`nav-link ${isCurrent('/admin-console', 'dashboard') || isCurrent('/admin-console', 'platform') || (location.pathname === '/admin-console' && !location.search) ? 'active' : ''}`}
                     onClick={onClose}
                   >
                     <LayoutDashboard size={17} strokeWidth={1.75} />
@@ -606,7 +606,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 <li>
                   <Link
                     to="/admin-console?tab=approvals"
-                    className={`nav-link ${isCurrent('/admin-console', 'approvals') ? 'active' : ''}`}
+                    className={`nav-link ${isCurrent('/admin-console', 'approvals') || isCurrent('/admin-console', 'hospital-approvals') ? 'active' : ''}`}
                     onClick={onClose}
                   >
                     <CheckCircle size={17} strokeWidth={1.75} />
@@ -646,7 +646,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 <li>
                   <Link
                     to="/admin-console?tab=audit"
-                    className={`nav-link ${isCurrent('/admin-console', 'audit') ? 'active' : ''}`}
+                    className={`nav-link ${isCurrent('/admin-console', 'audit') || isCurrent('/admin-console', 'audit-logs') ? 'active' : ''}`}
                     onClick={onClose}
                   >
                     <History size={17} strokeWidth={1.75} />
@@ -665,8 +665,8 @@ export default function Sidebar({ isOpen, onClose }) {
                 </li>
                 <li>
                   <Link
-                    to="/admin-console?tab=system"
-                    className={`nav-link ${isCurrent('/admin-console', 'system') ? 'active' : ''}`}
+                    to="/admin-console?tab=settings"
+                    className={`nav-link ${isCurrent('/admin-console', 'settings') || isCurrent('/admin-console', 'system') ? 'active' : ''}`}
                     onClick={onClose}
                   >
                     <Settings size={17} strokeWidth={1.75} />

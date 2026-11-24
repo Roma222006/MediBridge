@@ -64,6 +64,17 @@ import NotificationsView from '../components/admin/NotificationsView';
 import HospitalSettingsView from '../components/admin/HospitalSettingsView';
 import AuditLogsView from '../components/admin/AuditLogsView';
 
+// Modular Super Admin Subcomponents
+import SuperAdminDashboardView from '../components/superadmin/SuperAdminDashboardView';
+import HospitalManagementView from '../components/superadmin/HospitalManagementView';
+import HospitalApprovalsView from '../components/superadmin/HospitalApprovalsView';
+import UserManagementView from '../components/superadmin/UserManagementView';
+import RoleManagementView from '../components/superadmin/RoleManagementView';
+import PlatformMonitoringView from '../components/superadmin/PlatformMonitoringView';
+import SuperAdminAuditLogsView from '../components/superadmin/SuperAdminAuditLogsView';
+import SuperAdminReportsView from '../components/superadmin/SuperAdminReportsView';
+import SystemSettingsView from '../components/superadmin/SystemSettingsView';
+
 export default function AdminConsolePage() {
   const { user } = useAuth();
   const location = useLocation();
@@ -587,120 +598,49 @@ export default function AdminConsolePage() {
       )}
 
       {/* ================================================================
-          SUPER ADMIN VIEW (Platform Overview - Screen 9)
+          SUPER ADMIN PORTAL VIEWS (9 FULLY FUNCTIONAL MODULES)
           ================================================================ */}
-      {(user?.role === 'super_admin' || currentTab === 'platform') && (
-        <div>
-          <div style={{ marginBottom: '24px' }}>
-            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.75rem', fontWeight: '800', color: 'var(--color-heading)', margin: '0 0 4px 0' }}>
-              Platform Overview
-            </h1>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              Monitor hospitals, users and platform activities across Tamil Nadu state network.
-            </p>
-          </div>
+      {user?.role === 'super_admin' && (
+        <>
+          {(currentTab === 'dashboard' || currentTab === 'platform') && (
+            <SuperAdminDashboardView
+              onNavigateTab={(tab) => navigate(`/admin-console?tab=${tab}`)}
+              onToast={setMsg}
+            />
+          )}
 
-          {/* 4 Metric Cards */}
-          <div className="ref-metrics-grid">
-            <div className="ref-metric-card">
-              <div className="ref-metric-icon pink">
-                <Building2 size={22} strokeWidth={2} />
-              </div>
-              <div className="ref-metric-info">
-                <span className="ref-metric-value">24</span>
-                <span className="ref-metric-label">Hospitals</span>
-              </div>
-            </div>
+          {currentTab === 'hospitals' && (
+            <HospitalManagementView onToast={setMsg} />
+          )}
 
-            <div className="ref-metric-card">
-              <div className="ref-metric-icon pink">
-                <Users size={22} strokeWidth={2} />
-              </div>
-              <div className="ref-metric-info">
-                <span className="ref-metric-value">1,260</span>
-                <span className="ref-metric-label">Registered Users</span>
-              </div>
-            </div>
+          {(currentTab === 'approvals' || currentTab === 'hospital-approvals') && (
+            <HospitalApprovalsView onToast={setMsg} />
+          )}
 
-            <div className="ref-metric-card">
-              <div className="ref-metric-icon pink">
-                <Stethoscope size={22} strokeWidth={2} />
-              </div>
-              <div className="ref-metric-info">
-                <span className="ref-metric-value">402</span>
-                <span className="ref-metric-label">Doctors</span>
-              </div>
-            </div>
+          {currentTab === 'users' && (
+            <UserManagementView onToast={setMsg} />
+          )}
 
-            <div className="ref-metric-card">
-              <div className="ref-metric-icon pink">
-                <Calendar size={22} strokeWidth={2} />
-              </div>
-              <div className="ref-metric-info">
-                <span className="ref-metric-value">1,984</span>
-                <span className="ref-metric-label">Total Appointments</span>
-              </div>
-            </div>
-          </div>
+          {currentTab === 'roles' && (
+            <RoleManagementView onToast={setMsg} />
+          )}
 
-          {/* 2-Column Content Layout (Hospital Approvals + Recent Activity) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
-            {/* Left Card: Hospital Approvals (3) */}
-            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                  Hospital Approvals ({platformApprovals.length})
-                </h3>
-              </div>
+          {currentTab === 'monitoring' && (
+            <PlatformMonitoringView onToast={setMsg} />
+          )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {platformApprovals.map((hosp) => (
-                  <div key={hosp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', backgroundColor: '#FAF6F7', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', flexWrap: 'wrap', gap: '8px' }}>
-                    <div>
-                      <div style={{ fontWeight: '700', fontSize: '0.875rem', color: 'var(--color-heading)' }}>{hosp.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{hosp.type} &bull; {hosp.beds}</div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: '700', backgroundColor: '#FEF3C7', color: '#B77A32' }}>
-                        {hosp.status}
-                      </span>
-                      <button className="btn-action-view" style={{ borderColor: 'var(--color-primary)' }} onClick={() => handleReviewHospitalApproval(hosp)}>
-                        Review
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {(currentTab === 'audit' || currentTab === 'audit-logs') && (
+            <SuperAdminAuditLogsView onToast={setMsg} />
+          )}
 
-            {/* Right Card: Recent Platform Activity */}
-            <div className="card" style={{ backgroundColor: '#FFFFFF', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', padding: '24px', boxShadow: 'var(--shadow-card)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.0625rem', fontWeight: '800', color: 'var(--color-heading)' }}>
-                  Recent Platform Activity
-                </h3>
-              </div>
+          {currentTab === 'reports' && (
+            <SuperAdminReportsView onToast={setMsg} />
+          )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {[
-                  { text: 'New hospital registration', time: '10 min ago' },
-                  { text: 'Doctor verification completed', time: '25 min ago' },
-                  { text: 'Appointment spike detected', time: '1 hour ago' },
-                  { text: 'System backup completed', time: '3 hours ago' },
-                  { text: 'Emergency 108 dispatch routed', time: '5 hours ago' }
-                ].map((act, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                    <span style={{ color: 'var(--color-primary)', fontSize: '0.875rem', lineHeight: '1.4' }}>●</span>
-                    <div>
-                      <span style={{ fontSize: '0.875rem', fontWeight: '600', color: 'var(--text)' }}>{act.text}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '8px' }}>- {act.time}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+          {(currentTab === 'settings' || currentTab === 'system') && (
+            <SystemSettingsView onToast={setMsg} />
+          )}
+        </>
       )}
 
       {/* ================================================================
@@ -995,9 +935,14 @@ export default function AdminConsolePage() {
       )}
 
       {/* ================================================================
-          MODULE 1: HOSPITAL PROFILE
+          HOSPITAL ADMIN PORTAL OPERATIONS (Only for hospital_admin)
           ================================================================ */}
-      {currentTab === 'profile' && <HospitalProfileView onToast={setMsg} />}
+      {user?.role !== 'super_admin' && (
+        <>
+          {/* ================================================================
+              MODULE 1: HOSPITAL PROFILE
+              ================================================================ */}
+          {currentTab === 'profile' && <HospitalProfileView onToast={setMsg} />}
 
       {/* ================================================================
           MODULE 2: DOCTOR MANAGEMENT (Screen 8 from Reference Image)
@@ -1268,6 +1213,8 @@ export default function AdminConsolePage() {
           ================================================================ */}
       {currentTab === 'settings' && (
         <HospitalSettingsView onToast={setMsg} />
+      )}
+        </>
       )}
 
       {/* ================================================================

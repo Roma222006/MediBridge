@@ -41,6 +41,24 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    accountStatus: {
+      type: String,
+      enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED'],
+      default: 'ACTIVE',
+      index: true
+    },
+    suspensionReason: {
+      type: String,
+      default: null
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: true
+    },
+    lastLoginAt: {
+      type: Date,
+      default: Date.now
+    },
     failedLoginAttempts: {
       type: Number,
       default: 0

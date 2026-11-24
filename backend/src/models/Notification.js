@@ -37,6 +37,10 @@ const notificationSchema = new mongoose.Schema(
         'CONSENT_REVOKED',
         'LEAVE_STATUS',
         'EMERGENCY_ALERT',
+        'HOSPITAL_REGISTRATION',
+        'HOSPITAL_APPROVAL',
+        'SECURITY_ALERT',
+        'PLATFORM_INCIDENT',
         'GENERAL'
       ],
       default: 'GENERAL',

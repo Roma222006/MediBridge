@@ -78,6 +78,56 @@ const hospitalSchema = new mongoose.Schema(
       type: Boolean,
       default: true
     },
+    approvalStatus: {
+      type: String,
+      enum: ['APPROVED', 'PENDING', 'UNDER_REVIEW', 'ADDITIONAL_INFO_REQUIRED', 'REJECTED'],
+      default: 'APPROVED',
+      index: true
+    },
+    accountStatus: {
+      type: String,
+      enum: ['ACTIVE', 'INACTIVE', 'SUSPENDED'],
+      default: 'ACTIVE',
+      index: true
+    },
+    suspensionReason: {
+      type: String,
+      default: null
+    },
+    rejectionReason: {
+      type: String,
+      default: null
+    },
+    infoRequiredNote: {
+      type: String,
+      default: null
+    },
+    website: {
+      type: String,
+      default: null
+    },
+    operatingHours: {
+      type: String,
+      default: '24/7 Emergency & OPD (08:00 - 20:00)'
+    },
+    documents: [
+      {
+        title: { type: String, required: true },
+        docType: { type: String, required: true },
+        url: { type: String, required: true },
+        uploadedAt: { type: Date, default: Date.now },
+        status: { type: String, enum: ['VERIFIED', 'PENDING', 'REJECTED'], default: 'PENDING' }
+      }
+    ],
+    statusHistory: [
+      {
+        status: String,
+        actorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        actorRole: String,
+        reason: String,
+        timestamp: { type: Date, default: Date.now }
+      }
+    ],
     ianaTimezone: {
       type: String,
       default: 'Asia/Kolkata'

@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Menu, PhoneCall, LogOut, User as UserIcon, Bell, Search } from 'lucide-react';
+import SuperAdminSearchModal from './superadmin/SuperAdminSearchModal';
+import SuperAdminNotificationModal from './superadmin/SuperAdminNotificationModal';
 
 export default function Header({ onMenuClick }) {
   const { user, profiles, activeProfile, switchProfile, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showSuperAdminSearch, setShowSuperAdminSearch] = useState(false);
+  const [showSuperAdminNotifications, setShowSuperAdminNotifications] = useState(false);
 
   const getUserInitials = () => {
     if (!user) return 'G';
@@ -60,7 +65,15 @@ export default function Header({ onMenuClick }) {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search hospitals, doctors..."
+            onClick={() => {
+              if (user?.role === 'super_admin') setShowSuperAdminSearch(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && user?.role === 'super_admin') {
+                setShowSuperAdminSearch(true);
+              }
+            }}
+            placeholder={user?.role === 'super_admin' ? "Search platform hospitals, doctors, users... (Ctrl+K)" : "Search hospitals, doctors..."}
             style={{
               width: '100%',
               height: '38px',
@@ -71,6 +84,7 @@ export default function Header({ onMenuClick }) {
               fontSize: '0.8125rem',
               color: 'var(--text)',
               outline: 'none',
+              cursor: user?.role === 'super_admin' ? 'pointer' : 'text',
               transition: 'border-color 0.15s ease'
             }}
             onFocus={(e) => (e.target.style.borderColor = 'var(--color-primary)')}
@@ -96,7 +110,13 @@ export default function Header({ onMenuClick }) {
             <button
               type="button"
               className="btn btn-sm btn-secondary"
-              onClick={() => setShowNotifications(!showNotifications)}
+              onClick={() => {
+                if (user?.role === 'super_admin') {
+                  setShowSuperAdminNotifications(true);
+                } else {
+                  setShowNotifications(!showNotifications);
+                }
+              }}
               aria-label="Notification Centre"
               style={{
                 width: '36px',
@@ -217,6 +237,28 @@ export default function Header({ onMenuClick }) {
           </Link>
         )}
       </div>
+
+      {/* Super Admin Global Modals */}
+      {user?.role === 'super_admin' && (
+        <>
+          <SuperAdminSearchModal
+            isOpen={showSuperAdminSearch}
+            onClose={() => setShowSuperAdminSearch(false)}
+            onNavigate={(tab) => {
+              setShowSuperAdminSearch(false);
+              navigate(`/admin-console?tab=${tab}`);
+            }}
+          />
+          <SuperAdminNotificationModal
+            isOpen={showSuperAdminNotifications}
+            onClose={() => setShowSuperAdminNotifications(false)}
+            onNavigate={(tab) => {
+              setShowSuperAdminNotifications(false);
+              navigate(`/admin-console?tab=${tab}`);
+            }}
+          />
+        </>
+      )}
     </header>
   );
 }

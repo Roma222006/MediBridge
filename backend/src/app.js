@@ -18,6 +18,7 @@ const emergencyRoutes = require('./routes/emergencyRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const doctorRoutes = require('./routes/doctorRoutes');
 const teleconsultRoutes = require('./routes/teleconsultRoutes');
+const superAdminRoutes = require('./routes/superAdminRoutes');
 
 const app = express();
 
@@ -90,6 +91,7 @@ app.use('/api/v1/emergency', emergencyRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/doctor', doctorRoutes);
 app.use('/api/v1/teleconsult', teleconsultRoutes);
+app.use('/api/v1/super-admin', superAdminRoutes);
 
 // 404 Handler for undefined routes
 app.use((req, res) => {
