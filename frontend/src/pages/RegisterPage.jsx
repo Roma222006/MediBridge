@@ -187,7 +187,7 @@ export default function RegisterPage() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          padding: '36px 36px',
+          padding: '24px 32px',
           backgroundColor: '#FFFFFF',
           borderLeft: '1px solid var(--border, #E8E3E5)',
           overflowY: 'auto',

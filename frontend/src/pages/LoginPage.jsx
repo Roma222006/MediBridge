@@ -66,7 +66,8 @@ export default function LoginPage() {
       className="auth-split-layout"
       style={{
         display: 'flex',
-        minHeight: '100vh',
+        height: '100vh',
+        maxHeight: '100vh',
         width: '100vw',
         margin: 0,
         padding: 0,
@@ -77,22 +78,24 @@ export default function LoginPage() {
     >
       {/* ================================================================
           LEFT SIDE: HOSPITAL BACKGROUND IMAGE (55-60% Screen Width)
+          Clean full-bleed hospital view without obstructive overlays
           ================================================================ */}
       <AuthHospitalHero />
 
       {/* ================================================================
           RIGHT SIDE: LOGIN AUTHENTICATION PANEL (40-45% Screen Width)
+          Compact layout optimized for standard laptop & desktop viewports
           ================================================================ */}
       <div
         className="auth-panel-container"
         style={{
           flex: '0 0 42%',
-          minWidth: '380px',
-          maxWidth: '520px',
+          minWidth: '360px',
+          maxWidth: '480px',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '40px 36px',
+          justifyContent: 'center',
+          padding: '24px 32px',
           backgroundColor: '#FFFFFF',
           borderLeft: '1px solid var(--border, #E8E3E5)',
           overflowY: 'auto',
@@ -102,25 +105,25 @@ export default function LoginPage() {
       >
         <div>
           {/* Logo & Subtitle matching Screen 1 */}
-          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '14px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
               <div
                 style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '8px',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '7px',
                   backgroundColor: 'var(--color-blush-pink, #F8DDE3)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}
               >
-                <Hospital size={18} strokeWidth={2.2} style={{ color: 'var(--color-primary, #B83D83)' }} />
+                <Hospital size={16} strokeWidth={2.2} style={{ color: 'var(--color-primary, #B83D83)' }} />
               </div>
               <span
                 style={{
                   fontFamily: 'var(--font-heading, "Manrope", sans-serif)',
-                  fontSize: '1.5rem',
+                  fontSize: '1.35rem',
                   fontWeight: '800',
                   letterSpacing: '-0.02em'
                 }}
@@ -129,25 +132,25 @@ export default function LoginPage() {
                 <span style={{ color: 'var(--color-primary, #B83D83)' }}>Bridge</span>
               </span>
             </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted, #702B59)', fontWeight: '600' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted, #702B59)', fontWeight: '600' }}>
               Hospital Healthcare Coordination Platform
             </div>
           </div>
 
           {/* Heading */}
-          <div style={{ textAlign: 'left', marginBottom: '24px' }}>
+          <div style={{ textAlign: 'left', marginBottom: '14px' }}>
             <h1
               style={{
-                margin: '0 0 6px 0',
+                margin: '0 0 4px 0',
                 fontFamily: 'var(--font-heading, "Manrope", sans-serif)',
-                fontSize: '1.625rem',
+                fontSize: '1.375rem',
                 fontWeight: '800',
                 color: 'var(--color-heading, #702B59)'
               }}
             >
               Welcome Back
             </h1>
-            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted, #702B59)' }}>
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted, #702B59)' }}>
               Sign in to access your healthcare portal.
             </p>
           </div>
@@ -158,17 +161,17 @@ export default function LoginPage() {
               style={{
                 backgroundColor: '#DCFCE7',
                 color: '#15803D',
-                padding: '12px 14px',
+                padding: '10px 12px',
                 borderRadius: '8px',
-                marginBottom: '18px',
-                fontSize: '0.8125rem',
+                marginBottom: '12px',
+                fontSize: '0.75rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 border: '1px solid #86EFAC'
               }}
             >
-              <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
+              <CheckCircle2 size={15} style={{ flexShrink: 0 }} />
               <span>Registration completed successfully! Please sign in with your credentials.</span>
             </div>
           )}
@@ -180,17 +183,17 @@ export default function LoginPage() {
               style={{
                 backgroundColor: '#FEE2E2',
                 color: '#B83245',
-                padding: '12px 14px',
+                padding: '10px 12px',
                 borderRadius: '8px',
-                marginBottom: '20px',
-                fontSize: '0.875rem',
+                marginBottom: '12px',
+                fontSize: '0.8125rem',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 border: '1px solid #FCA5A5'
               }}
             >
-              <AlertCircle size={18} style={{ flexShrink: 0 }} />
+              <AlertCircle size={16} style={{ flexShrink: 0 }} />
               <span>{error}</span>
             </div>
           )}
@@ -198,24 +201,24 @@ export default function LoginPage() {
           {/* Authentication Form */}
           <form onSubmit={handleSubmit}>
             {/* Email Field */}
-            <div style={{ marginBottom: '18px' }}>
+            <div style={{ marginBottom: '12px' }}>
               <label
                 style={{
                   display: 'block',
-                  fontSize: '0.8125rem',
+                  fontSize: '0.75rem',
                   fontWeight: '700',
                   color: 'var(--color-heading, #702B59)',
-                  marginBottom: '6px'
+                  marginBottom: '4px'
                 }}
               >
                 Email Address
               </label>
               <div style={{ position: 'relative' }}>
                 <Mail
-                  size={16}
+                  size={15}
                   style={{
                     position: 'absolute',
-                    left: '14px',
+                    left: '12px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     color: 'var(--text-muted, #702B59)'
@@ -229,13 +232,13 @@ export default function LoginPage() {
                   required
                   style={{
                     width: '100%',
-                    height: '44px',
-                    padding: '0 14px 0 40px',
+                    height: '38px',
+                    padding: '0 12px 0 36px',
                     borderRadius: '8px',
                     border: '1px solid var(--border, #E8E3E5)',
                     backgroundColor: '#FFFFFF',
                     color: 'var(--text, #29252A)',
-                    fontSize: '0.875rem',
+                    fontSize: '0.8125rem',
                     outline: 'none',
                     transition: 'border-color 0.15s ease'
                   }}
@@ -246,24 +249,24 @@ export default function LoginPage() {
             </div>
 
             {/* Password Field */}
-            <div style={{ marginBottom: '18px' }}>
+            <div style={{ marginBottom: '12px' }}>
               <label
                 style={{
                   display: 'block',
-                  fontSize: '0.8125rem',
+                  fontSize: '0.75rem',
                   fontWeight: '700',
                   color: 'var(--color-heading, #702B59)',
-                  marginBottom: '6px'
+                  marginBottom: '4px'
                 }}
               >
                 Password
               </label>
               <div style={{ position: 'relative' }}>
                 <Lock
-                  size={16}
+                  size={15}
                   style={{
                     position: 'absolute',
-                    left: '14px',
+                    left: '12px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     color: 'var(--text-muted, #702B59)'
@@ -277,13 +280,13 @@ export default function LoginPage() {
                   required
                   style={{
                     width: '100%',
-                    height: '44px',
-                    padding: '0 40px 0 40px',
+                    height: '38px',
+                    padding: '0 36px 0 36px',
                     borderRadius: '8px',
                     border: '1px solid var(--border, #E8E3E5)',
                     backgroundColor: '#FFFFFF',
                     color: 'var(--text, #29252A)',
-                    fontSize: '0.875rem',
+                    fontSize: '0.8125rem',
                     outline: 'none',
                     transition: 'border-color 0.15s ease'
                   }}
@@ -296,7 +299,7 @@ export default function LoginPage() {
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   style={{
                     position: 'absolute',
-                    right: '12px',
+                    right: '10px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     background: 'none',
@@ -308,7 +311,7 @@ export default function LoginPage() {
                     padding: 0
                   }}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
@@ -319,11 +322,11 @@ export default function LoginPage() {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: '24px',
-                fontSize: '0.8125rem'
+                marginBottom: '14px',
+                fontSize: '0.75rem'
               }}
             >
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: 'var(--text, #29252A)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: 'var(--text, #29252A)' }}>
                 <input
                   type="checkbox"
                   checked={rememberMe}
@@ -351,11 +354,11 @@ export default function LoginPage() {
               disabled={submitting}
               style={{
                 width: '100%',
-                height: '44px',
+                height: '38px',
                 borderRadius: '8px',
                 backgroundColor: 'var(--color-primary, #B83D83)',
                 color: '#FFFFFF',
-                fontSize: '0.9375rem',
+                fontSize: '0.875rem',
                 fontWeight: '700',
                 border: 'none',
                 cursor: submitting ? 'not-allowed' : 'pointer',
@@ -374,7 +377,7 @@ export default function LoginPage() {
           </form>
 
           {/* Registration Navigation Link */}
-          <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.8125rem', color: 'var(--text-muted, #702B59)' }}>
+          <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.75rem', color: 'var(--text-muted, #702B59)' }}>
             Don't have an account?{' '}
             <Link
               to="/register"
@@ -389,20 +392,20 @@ export default function LoginPage() {
           </div>
 
           {/* Quick Demo Fill Buttons (Evaluation Shortcuts) */}
-          <div style={{ marginTop: '26px', paddingTop: '18px', borderTop: '1px solid var(--border, #E8E3E5)' }}>
+          <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border, #E8E3E5)' }}>
             <div
               style={{
-                fontSize: '0.75rem',
+                fontSize: '0.6875rem',
                 fontWeight: '800',
                 color: 'var(--color-heading, #702B59)',
                 textTransform: 'uppercase',
-                marginBottom: '10px',
+                marginBottom: '8px',
                 letterSpacing: '0.04em'
               }}
             >
               Instant Demo Access
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
               <button
                 type="button"
                 onClick={() => handleFillDemo('roma.patient@medibridge.org', 'PatientPass123!')}
@@ -410,17 +413,17 @@ export default function LoginPage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '7px 10px',
+                  padding: '6px 8px',
                   borderRadius: '6px',
                   border: '1px solid var(--border, #E8E3E5)',
                   backgroundColor: '#FAF6F7',
                   cursor: 'pointer',
-                  fontSize: '0.75rem',
+                  fontSize: '0.72rem',
                   fontWeight: '700',
                   color: 'var(--color-heading, #702B59)'
                 }}
               >
-                <UserCheck size={14} style={{ color: 'var(--color-primary, #B83D83)' }} />
+                <UserCheck size={13} style={{ color: 'var(--color-primary, #B83D83)' }} />
                 <span>Patient</span>
               </button>
               <button
@@ -430,17 +433,17 @@ export default function LoginPage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '7px 10px',
+                  padding: '6px 8px',
                   borderRadius: '6px',
                   border: '1px solid var(--border, #E8E3E5)',
                   backgroundColor: '#FAF6F7',
                   cursor: 'pointer',
-                  fontSize: '0.75rem',
+                  fontSize: '0.72rem',
                   fontWeight: '700',
                   color: 'var(--color-heading, #702B59)'
                 }}
               >
-                <Stethoscope size={14} style={{ color: 'var(--color-primary, #B83D83)' }} />
+                <Stethoscope size={13} style={{ color: 'var(--color-primary, #B83D83)' }} />
                 <span>Doctor</span>
               </button>
               <button
@@ -450,17 +453,17 @@ export default function LoginPage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '7px 10px',
+                  padding: '6px 8px',
                   borderRadius: '6px',
                   border: '1px solid var(--border, #E8E3E5)',
                   backgroundColor: '#FAF6F7',
                   cursor: 'pointer',
-                  fontSize: '0.75rem',
+                  fontSize: '0.72rem',
                   fontWeight: '700',
                   color: 'var(--color-heading, #702B59)'
                 }}
               >
-                <Building2 size={14} style={{ color: 'var(--color-primary, #B83D83)' }} />
+                <Building2 size={13} style={{ color: 'var(--color-primary, #B83D83)' }} />
                 <span>Hospital Admin</span>
               </button>
               <button
@@ -470,17 +473,17 @@ export default function LoginPage() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  padding: '7px 10px',
+                  padding: '6px 8px',
                   borderRadius: '6px',
                   border: '1px solid var(--border, #E8E3E5)',
                   backgroundColor: '#FAF6F7',
                   cursor: 'pointer',
-                  fontSize: '0.75rem',
+                  fontSize: '0.72rem',
                   fontWeight: '700',
                   color: 'var(--color-heading, #702B59)'
                 }}
               >
-                <ShieldCheck size={14} style={{ color: 'var(--color-primary, #B83D83)' }} />
+                <ShieldCheck size={13} style={{ color: 'var(--color-primary, #B83D83)' }} />
                 <span>Super Admin</span>
               </button>
             </div>
@@ -488,7 +491,7 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-muted, #702B59)' }}>
+        <div style={{ marginTop: '12px', textAlign: 'center', fontSize: '0.65rem', color: 'var(--text-muted, #702B59)' }}>
           Protected under Digital Personal Data Protection (DPDP) Act 2023 &bull; Tamil Nadu Health Systems
         </div>
       </div>
