@@ -2,7 +2,9 @@ node_modules/
 dist/
 build/
 .env
-.env.local
+.env*
+**/.env
+**/.env*
 *.log
 coverage/
 backend/uploads/
