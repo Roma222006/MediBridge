@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 async function setupTestDB() {
-  const uri = process.env.TEST_MONGODB_URI || 'mongodb://127.0.0.1:27017/medibridge_test';
+  const uri = process.env.TEST_MONGODB_URI || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/medibridge_test';
   if (mongoose.connection.readyState === 1) {
     return;
   }
