@@ -19,7 +19,7 @@ import {
   CheckCircle2,
   Info
 } from 'lucide-react';
-import AuthHospitalHero from '../components/auth/AuthHospitalHero';
+import hospitalBg from '../assets/hospital-login-bg.jpg';
 import { api } from '../services/api';
 
 const ROLES = [
@@ -158,41 +158,55 @@ export default function RegisterPage() {
 
   return (
     <div
-      className="auth-split-layout"
+      className="auth-floating-page"
       style={{
-        display: 'flex',
+        position: 'relative',
         minHeight: '100vh',
+        height: '100vh',
+        maxHeight: '100vh',
         width: '100vw',
-        margin: 0,
-        padding: 0,
+        backgroundImage: `url(${hospitalBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'left center',
+        backgroundRepeat: 'no-repeat',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        paddingRight: 'clamp(20px, 5vw, 70px)',
+        paddingLeft: 'clamp(16px, 3vw, 40px)',
         overflow: 'hidden',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#FCEFED',
         fontFamily: 'var(--font-body, "Inter", sans-serif)'
       }}
     >
-      {/* ================================================================
-          LEFT SIDE: HOSPITAL BACKGROUND IMAGE (55-60% Screen Width)
-          ================================================================ */}
-      <AuthHospitalHero />
+      {/* Subtle Atmosphere Layer */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.05) 35%, rgba(252, 239, 237, 0.3) 70%, rgba(252, 239, 237, 0.55) 100%)',
+          pointerEvents: 'none'
+        }}
+      />
 
       {/* ================================================================
-          RIGHT SIDE: REGISTRATION FORM PANEL (40-45% Screen Width)
+          FLOATING REGISTRATION CARD
+          Elevated white card floating directly over the hospital background
           ================================================================ */}
       <div
-        className="auth-panel-container"
+        className="auth-floating-card"
         style={{
-          flex: '0 0 42%',
-          minWidth: '380px',
-          maxWidth: '560px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          padding: '24px 32px',
+          position: 'relative',
+          zIndex: 10,
+          width: '100%',
+          maxWidth: '520px',
           backgroundColor: '#FFFFFF',
-          borderLeft: '1px solid var(--border, #E8E3E5)',
-          overflowY: 'auto',
-          zIndex: 2,
-          boxShadow: '-4px 0 24px rgba(112, 43, 89, 0.04)'
+          borderRadius: '16px',
+          padding: '20px 28px',
+          boxShadow: '0 20px 48px -10px rgba(112, 43, 89, 0.22), 0 4px 16px rgba(0, 0, 0, 0.05)',
+          border: '1px solid rgba(232, 227, 229, 0.95)',
+          maxHeight: 'calc(100vh - 36px)',
+          overflowY: 'auto'
         }}
       >
         <div>

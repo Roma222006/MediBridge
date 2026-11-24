@@ -14,7 +14,7 @@ import {
   ShieldCheck,
   CheckCircle2
 } from 'lucide-react';
-import AuthHospitalHero from '../components/auth/AuthHospitalHero';
+import hospitalBg from '../assets/hospital-login-bg.jpg';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -63,44 +63,54 @@ export default function LoginPage() {
 
   return (
     <div
-      className="auth-split-layout"
+      className="auth-floating-page"
       style={{
-        display: 'flex',
+        position: 'relative',
         height: '100vh',
         maxHeight: '100vh',
         width: '100vw',
-        margin: 0,
-        padding: 0,
+        backgroundImage: `url(${hospitalBg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'left center',
+        backgroundRepeat: 'no-repeat',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        paddingRight: 'clamp(20px, 6vw, 90px)',
+        paddingLeft: 'clamp(16px, 3vw, 40px)',
         overflow: 'hidden',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#FCEFED',
         fontFamily: 'var(--font-body, "Inter", sans-serif)'
       }}
     >
-      {/* ================================================================
-          LEFT SIDE: HOSPITAL BACKGROUND IMAGE (55-60% Screen Width)
-          Clean full-bleed hospital view without obstructive overlays
-          ================================================================ */}
-      <AuthHospitalHero />
+      {/* Subtle Atmosphere Layer */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.05) 35%, rgba(252, 239, 237, 0.3) 70%, rgba(252, 239, 237, 0.55) 100%)',
+          pointerEvents: 'none'
+        }}
+      />
 
       {/* ================================================================
-          RIGHT SIDE: LOGIN AUTHENTICATION PANEL (40-45% Screen Width)
-          Compact layout optimized for standard laptop & desktop viewports
+          FLOATING LOGIN AUTHENTICATION CARD
+          Elevated white card floating directly over the hospital background
           ================================================================ */}
       <div
-        className="auth-panel-container"
+        className="auth-floating-card"
         style={{
-          flex: '0 0 42%',
-          minWidth: '360px',
-          maxWidth: '480px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          padding: '24px 32px',
+          position: 'relative',
+          zIndex: 10,
+          width: '100%',
+          maxWidth: '430px',
           backgroundColor: '#FFFFFF',
-          borderLeft: '1px solid var(--border, #E8E3E5)',
-          overflowY: 'auto',
-          zIndex: 2,
-          boxShadow: '-4px 0 24px rgba(112, 43, 89, 0.04)'
+          borderRadius: '16px',
+          padding: '24px 28px',
+          boxShadow: '0 20px 48px -10px rgba(112, 43, 89, 0.22), 0 4px 16px rgba(0, 0, 0, 0.05)',
+          border: '1px solid rgba(232, 227, 229, 0.95)',
+          maxHeight: 'calc(100vh - 36px)',
+          overflowY: 'auto'
         }}
       >
         <div>
