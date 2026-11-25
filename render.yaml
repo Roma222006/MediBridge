@@ -17,5 +17,9 @@ services:
         value: medibridge_access_secret_super_secure_key_15m
       - key: JWT_REFRESH_SECRET
         value: medibridge_refresh_secret_super_secure_key_7d
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 30d
+      - key: JWT_REFRESH_EXPIRES_DAYS
+        value: "90"
       - key: CORS_ORIGIN
         value: "*"

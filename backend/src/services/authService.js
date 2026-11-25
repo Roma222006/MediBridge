@@ -38,7 +38,7 @@ class AuthService {
     return {
       accessToken,
       refreshToken: refreshTokenValue,
-      expiresIn: 900 // 15 minutes
+      expiresIn: 30 * 24 * 3600 // 30 days persistent session
     };
   }
 
