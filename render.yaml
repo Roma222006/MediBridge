@@ -1,48 +1,21 @@
 services:
-  # Backend API Modular Monolith
   - type: web
-    name: medibridge-api
-    runtime: node
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: npm start
+    name: medibridge-healthcare
+    env: node
     plan: free
-    healthCheckPath: /health
+    region: singapore
+    buildCommand: npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 5000
+        value: 10000
+      - key: MONGODB_URI
+        value: mongodb+srv://roma:Roma2006@cluster0.4vngwbz.mongodb.net/medibridge?retryWrites=true&w=majority
+      - key: JWT_ACCESS_SECRET
+        value: medibridge_access_secret_super_secure_key_15m
+      - key: JWT_REFRESH_SECRET
+        value: medibridge_refresh_secret_super_secure_key_7d
       - key: CORS_ORIGIN
         value: "*"
-      - key: MONGODB_URI
-        sync: false
-      - key: JWT_SECRET
-        generateValue: true
-      - key: JWT_REFRESH_SECRET
-        generateValue: true
-      - key: VAULT_SECRET_KEY
-        generateValue: true
-      - key: VAULT_STORAGE_DRIVER
-        value: local
-      - key: VAULT_LOCAL_DIR
-        value: ./uploads
-      - key: TELECONSULT_SECRET
-        generateValue: true
-
-  # Frontend Single Page Application
-  - type: static
-    name: medibridge-web
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_API_BASE_URL
-        fromService:
-          type: web
-          name: medibridge-api
-          property: host
