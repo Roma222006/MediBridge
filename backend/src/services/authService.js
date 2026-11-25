@@ -43,6 +43,7 @@ class AuthService {
   }
 
   async register({ email, phone, password, role = 'patient', hospitalId = null, fullName = '', ...extra }) {
+    const rawName = fullName || extra.name || '';
     const existing = await User.findOne({ email });
     if (existing) {
       const err = new Error('An account with this email address already exists.');
@@ -74,7 +75,7 @@ class AuthService {
     if (role === 'patient') {
       await PatientProfile.create({
         userId: user._id,
-        fullName: fullName || email.split('@')[0],
+        fullName: rawName || email.split('@')[0],
         dateOfBirth: new Date('1990-01-01'),
         gender: 'other',
         phone: user.phone,
@@ -93,15 +94,23 @@ class AuthService {
       user.hospitalId = hId;
       await user.save();
 
+      const docDetails = extra.doctorDetails || {};
+      const finalDocName = rawName ? (rawName.startsWith('Dr.') ? rawName : `Dr. ${rawName}`) : `Dr. ${email.split('@')[0]}`;
+      const specialty = extra.specialty || docDetails.specialization || docDetails.specialty || 'General Medicine';
+      const qualifications = extra.qualifications || docDetails.qualifications || 'MBBS, MD';
+      const regNumber = extra.regNumber || docDetails.registrationNumber || docDetails.regNumber || `TNMC/${new Date().getFullYear()}/${Math.floor(10000 + Math.random() * 90000)}`;
+      const department = extra.department || docDetails.department || specialty || 'General Medicine';
+      const consultationFee = extra.consultationFee || docDetails.consultationFee ? Number(extra.consultationFee || docDetails.consultationFee) : 500;
+
       await Doctor.create({
         userId: user._id,
         hospitalId: hId,
-        name: fullName.startsWith('Dr.') ? fullName : `Dr. ${fullName || email.split('@')[0]}`,
-        specialty: extra.specialty || 'General Medicine',
-        qualifications: extra.qualifications || 'MBBS, MD',
-        regNumber: extra.regNumber || `TNMC/${new Date().getFullYear()}/${Math.floor(10000 + Math.random() * 90000)}`,
-        department: extra.department || extra.specialty || 'General Medicine',
-        consultationFee: extra.consultationFee ? Number(extra.consultationFee) : 500,
+        name: finalDocName,
+        specialty,
+        qualifications,
+        regNumber,
+        department,
+        consultationFee,
         verificationStatus: 'UNDER_REVIEW',
         reviewStage: 'HOSPITAL_STAGE'
       });
@@ -177,10 +186,11 @@ class AuthService {
       user: {
         id: user._id,
         _id: user._id,
+        name: resolvedName,
+        fullName: resolvedName,
         email: user.email,
         phone: user.phone,
         role: user.role,
-        fullName: resolvedName,
         hospitalId: user.hospitalId
       },
       tokens
@@ -264,10 +274,11 @@ class AuthService {
       user: {
         id: user._id,
         _id: user._id,
+        name: resolvedName,
+        fullName: resolvedName,
         email: user.email,
         phone: user.phone,
         role: user.role,
-        fullName: resolvedName,
         hospitalId: user.hospitalId
       },
       tokens

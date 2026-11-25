@@ -52,6 +52,7 @@ class DoctorPortalController {
         data: {
           id: doctor._id,
           name: doctor.name,
+          fullName: doctor.name,
           email: req.user.email,
           phone: req.user.phone,
           specialty: doctor.specialty,

@@ -23,12 +23,17 @@ const superAdminRoutes = require('./routes/superAdminRoutes');
 const app = express();
 
 // Security Headers
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false
+  })
+);
 
 // CORS configuration
 app.use(
   cors({
-    origin: config.cors.origin,
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Request-Id']
